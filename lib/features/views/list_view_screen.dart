@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:xml/xml.dart';
 
 import '../auth/auth_provider.dart';
@@ -10,6 +7,8 @@ import '../model/field_definition.dart';
 import '../model/model_service.dart';
 import '../model/record.dart';
 import '../model/toolbar_data.dart';
+import '../shell/app_shell.dart';
+import '../shell/tab_manager.dart';
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/pyson/pyson_evaluator.dart';
@@ -37,6 +36,8 @@ class ListViewScreen extends ConsumerStatefulWidget {
   final String? contextDomain;
   /// `ir.action.act_window` ID — used to load domain tabs.
   final int? actionId;
+  /// Called when the user clicks "Close" – removes this tab from AppShell.
+  final VoidCallback? onClose;
 
   const ListViewScreen({
     super.key,
@@ -47,6 +48,7 @@ class ListViewScreen extends ConsumerStatefulWidget {
     this.contextModel,
     this.contextDomain,
     this.actionId,
+    this.onClose,
   });
 
   @override
@@ -629,27 +631,18 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   // ─── Actions ─────────────────────────────────────────────────────────────
 
-  /// URL parameters passed to DynamicFormScreen – title + action domain.
-  /// The domain is the screen domain (from the act_window action) used for
-  /// domain_readonly evaluation in the form (like SAO's record.group.domain).
-  String get _titleParam {
-    final parts = <String>[];
-    if (widget.title.isNotEmpty && widget.title != widget.model) {
-      parts.add('title=${Uri.encodeComponent(widget.title)}');
-    }
-    if (widget.initialDomain.isNotEmpty) {
-      parts.add('domain=${Uri.encodeComponent(jsonEncode(widget.initialDomain))}');
-    }
-    return parts.isEmpty ? '' : '?${parts.join('&')}';
-  }
-
   Future<void> _newRecord() async {
-    await context.push('/models/${widget.model}/new$_titleParam');
+    await pushFormScreen(
+      context,
+      model: widget.model,
+      recordId: -1,
+      title: widget.title,
+      screenDomain: widget.initialDomain,
+    );
     if (mounted) _load(reset: true);
   }
 
   Future<void> _openRecord(int id) async {
-    // Build navigation context so the form can use Prev/Next
     final allIds = _isHierarchical
         ? _treeRows.map((r) => r.record.id).toList()
         : _records.map((r) => r.id).toList();
@@ -660,36 +653,39 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       recordIds: allIds,
       currentIndex: idx < 0 ? 0 : idx,
     );
-    await context.push('/models/${widget.model}/$id$_titleParam');
+    await pushFormScreen(
+      context,
+      model: widget.model,
+      recordId: id,
+      title: widget.title,
+      screenDomain: widget.initialDomain,
+    );
     if (mounted) _load(reset: true);
   }
 
-  /// Opens the form for the first selected record.
-  /// When multiple records are selected the nav context contains only the
-  /// selected IDs (in display order) so Prev/Next steps through the selection.
   Future<void> _switchToForm() async {
     if (_selected.isEmpty) return;
-
-    // Build ordered list of selected IDs (preserve display order)
     final allIds = _isHierarchical
         ? _treeRows.map((r) => r.record.id).toList()
         : _records.map((r) => r.id).toList();
-
     final orderedSelected = allIds.where(_selected.contains).toList();
-    final firstId = orderedSelected.isNotEmpty ? orderedSelected.first : _selected.first;
-
-    // Nav context: if multiple selected → navigate through selection only.
-    // If single selected → navigate through all loaded records (current behavior).
+    final firstId =
+        orderedSelected.isNotEmpty ? orderedSelected.first : _selected.first;
     final navIds = orderedSelected.length > 1 ? orderedSelected : allIds;
     final idx = navIds.indexOf(firstId);
-
     ref.read(navContextProvider.notifier).state = RecordNavContext(
       model: widget.model,
       title: widget.title,
       recordIds: navIds,
       currentIndex: idx < 0 ? 0 : idx,
     );
-    await context.push('/models/${widget.model}/$firstId$_titleParam');
+    await pushFormScreen(
+      context,
+      model: widget.model,
+      recordId: firstId,
+      title: widget.title,
+      screenDomain: widget.initialDomain,
+    );
     if (mounted) _load(reset: true);
   }
 
@@ -858,7 +854,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           IconButton(
             icon: const Icon(Icons.close),
             tooltip: context.l10n.close,
-            onPressed: () => context.go('/models'),
+            onPressed: () => widget.onClose?.call(),
           ),
           const SizedBox(width: 4),
         ],
@@ -1448,8 +1444,11 @@ class _AttachmentButtonState extends ConsumerState<_AttachmentButton> {
   void _openAttachments(BuildContext context) {
     final id = widget.selectedId;
     if (id == null) return;
-    context.push('/models/ir.attachment?title=Attachments&domain='
-        'resource%3D${widget.model}%2C$id');
+    ref.read(tabsProvider.notifier).openTab(
+      title: 'Attachments',
+      model: 'ir.attachment',
+      initialDomain: [['resource', '=', '${widget.model},$id']],
+    );
   }
 }
 

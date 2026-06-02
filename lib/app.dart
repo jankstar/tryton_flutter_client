@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -12,80 +11,14 @@ import 'features/auth/auth_provider.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
 import 'features/model/model_service.dart';
-import 'features/tabs/model_browser_screen.dart';
-import 'features/views/dynamic_form_screen.dart';
-import 'features/views/list_view_screen.dart';
+import 'features/shell/app_shell.dart';
 import 'l10n/app_localizations.dart';
 
 final _router = GoRouter(
   initialLocation: '/login',
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-    GoRoute(
-      path: '/models',
-      builder: (context, state) => const ModelBrowserScreen(),
-      routes: [
-        GoRoute(
-          path: ':model',
-          builder: (ctx, state) {
-            final model = state.pathParameters['model']!;
-            final title = state.uri.queryParameters['title'] ?? model;
-            // Decode domain from URL (encoded as JSON by _openAction)
-            final domainJson = state.uri.queryParameters['domain'];
-            List<dynamic> domain = const [];
-            if (domainJson != null && domainJson.isNotEmpty) {
-              try {
-                final decoded = jsonDecode(Uri.decodeComponent(domainJson));
-                if (decoded is List) domain = decoded;
-              } catch (_) {}
-            }
-            final q = state.uri.queryParameters;
-            final contextModel = q['context_model'] != null
-                ? Uri.decodeComponent(q['context_model']!)
-                : null;
-            final contextDomain = q['context_domain'] != null
-                ? Uri.decodeComponent(q['context_domain']!)
-                : null;
-            final actionId = q['action_id'] != null
-                ? int.tryParse(q['action_id']!)
-                : null;
-            return ListViewScreen(
-              model: model,
-              title: title,
-              initialDomain: domain,
-              contextModel: contextModel,
-              contextDomain: contextDomain,
-              actionId: actionId,
-            );
-          },
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (ctx, state) {
-                final model = state.pathParameters['model']!;
-                final title = state.uri.queryParameters['title'] ?? model;
-                final domain = _decodeDomain(state.uri.queryParameters['domain']);
-                return DynamicFormScreen(
-                    model: model, title: title, recordId: -1,
-                    screenDomain: domain);
-              },
-            ),
-            GoRoute(
-              path: ':id',
-              builder: (ctx, state) {
-                final model = state.pathParameters['model']!;
-                final id = int.parse(state.pathParameters['id']!);
-                final title = state.uri.queryParameters['title'] ?? model;
-                final domain = _decodeDomain(state.uri.queryParameters['domain']);
-                return DynamicFormScreen(
-                    model: model, title: title, recordId: id,
-                    screenDomain: domain);
-              },
-            ),
-          ],
-        ),
-      ],
-    ),
+    GoRoute(path: '/app',   builder: (context, state) => const AppShell()),
   ],
 );
 
@@ -123,14 +56,6 @@ ThemeData _buildTheme(Brightness brightness) {
   );
 }
 
-List<dynamic> _decodeDomain(String? encoded) {
-  if (encoded == null || encoded.isEmpty) return const [];
-  try {
-    final decoded = jsonDecode(Uri.decodeComponent(encoded));
-    if (decoded is List) return decoded;
-  } catch (_) {}
-  return const [];
-}
 
 class TrytonFlutterClientApp extends ConsumerStatefulWidget {
   const TrytonFlutterClientApp({super.key});

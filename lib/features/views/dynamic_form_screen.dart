@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/icons/tryton_icon.dart';
 import '../../core/pyson/pyson_evaluator.dart';
@@ -11,6 +10,8 @@ import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/model_service.dart';
 import '../model/toolbar_data.dart';
+import '../shell/app_shell.dart';
+import '../shell/tab_manager.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../../shared/widgets/field_widget.dart';
 import 'embedded_tree_widget.dart';
@@ -407,7 +408,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       final svc = ref.read(modelServiceProvider);
       final newIds = await svc.copy(widget.model, [widget.recordId]);
       if (newIds.isNotEmpty && mounted) {
-        context.pushReplacement('/models/${widget.model}/${newIds.first}');
+        pushFormScreen(context,
+            model: widget.model,
+            recordId: newIds.first,
+            title: widget.title,
+            screenDomain: widget.screenDomain,
+            replace: true);
       }
     } catch (e) {
       if (mounted) _showSnack('Error: $e');
@@ -416,15 +422,19 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   Future<void> _viewLogs() async {
     if (_isNew) return;
-    context.push(
-      '/models/ir.model.log?title=Logs&domain=${Uri.encodeComponent('[["resource","=","${widget.model},${widget.recordId}"]]')}',
+    ref.read(tabsProvider.notifier).openTab(
+      title: 'Logs',
+      model: 'ir.model.log',
+      initialDomain: [['resource', '=', '${widget.model},${widget.recordId}']],
     );
   }
 
   Future<void> _openNote() async {
     if (_isNew) return;
-    context.push(
-      '/models/ir.note?title=Notes&domain=${Uri.encodeComponent('[["resource","=","${widget.model},${widget.recordId}"]]')}',
+    ref.read(tabsProvider.notifier).openTab(
+      title: 'Notes',
+      model: 'ir.note',
+      initialDomain: [['resource', '=', '${widget.model},${widget.recordId}']],
     );
   }
 
@@ -475,7 +485,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (prevId == null) return;
     ref.read(navContextProvider.notifier).state =
         nav!.withIndex(nav.currentIndex - 1);
-    if (mounted) context.pushReplacement('/models/${widget.model}/$prevId');
+    if (mounted) {
+      pushFormScreen(context,
+          model: widget.model,
+          recordId: prevId,
+          title: widget.title,
+          screenDomain: widget.screenDomain,
+          replace: true);
+    }
   }
 
   Future<void> _navigateNext() async {
@@ -486,7 +503,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (nextId == null) return;
     ref.read(navContextProvider.notifier).state =
         nav!.withIndex(nav.currentIndex + 1);
-    if (mounted) context.pushReplacement('/models/${widget.model}/$nextId');
+    if (mounted) {
+      pushFormScreen(context,
+          model: widget.model,
+          recordId: nextId,
+          title: widget.title,
+          screenDomain: widget.screenDomain,
+          replace: true);
+    }
   }
 
   void _showSnack(String msg) =>
@@ -548,9 +572,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             icon: const Icon(Icons.add),
             tooltip: l.createNew,
             onPressed: _saving ? null : () async {
-              final router = GoRouter.of(context);
               final ok = await _confirmDiscard();
-              if (ok && mounted) router.push('/models/${widget.model}/new');
+              if (ok && mounted) {
+                pushFormScreen(context,
+                    model: widget.model,
+                    recordId: -1,
+                    title: widget.title,
+                    screenDomain: widget.screenDomain);
+              }
             },
           ),
           IconButton(
@@ -638,9 +667,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             icon: const Icon(Icons.close),  // tryton-close
             tooltip: context.l10n.close,
             onPressed: () async {
-              final router = GoRouter.of(context);
               final ok = await _confirmDiscard();
-              if (ok && mounted) router.go('/models');
+              if (ok && mounted) Navigator.of(context).pop();
             },
           ),
         ],
@@ -1270,9 +1298,6 @@ class _AttachmentIconButton extends ConsumerWidget {
     required this.count,
   });
 
-  String get _domain =>
-      Uri.encodeComponent('[["resource","=","$model,$recordId"]]');
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
@@ -1288,13 +1313,18 @@ class _AttachmentIconButton extends ConsumerWidget {
           onSelected: (choice) {
             switch (choice) {
               case 'add':
-                // Open a new ir.attachment form pre-filled with the resource
-                context.push(
-                  '/models/ir.attachment/new?title=Add Attachment',
-                );
+                pushFormScreen(context,
+                    model: 'ir.attachment',
+                    recordId: -1,
+                    title: 'Add Attachment',
+                    screenDomain: const []);
               case 'manage':
-                context.push(
-                  '/models/ir.attachment?title=Attachments&domain=$_domain',
+                ref.read(tabsProvider.notifier).openTab(
+                  title: 'Attachments',
+                  model: 'ir.attachment',
+                  initialDomain: [
+                    ['resource', '=', '$model,$recordId']
+                  ],
                 );
             }
           },

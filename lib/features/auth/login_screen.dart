@@ -68,7 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.listen(authProvider, (_, next) {
       if (next.status == AuthStatus.authenticated) {
         _saveValues();
-        context.go('/models');
+        context.go('/app');
       }
     });
 

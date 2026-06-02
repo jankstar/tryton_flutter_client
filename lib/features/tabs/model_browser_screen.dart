@@ -6,11 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/icons/tryton_icon.dart';
+import '../../core/l10n/locale_provider.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/model_service.dart';
-import '../../core/l10n/locale_provider.dart';
+import '../shell/tab_manager.dart';
 
 // ─── Data model ──────────────────────────────────────────────────────────────
 
@@ -192,6 +193,76 @@ class ModelBrowserScreen extends ConsumerWidget {
         ),
         data: (roots) => _MenuTree(roots: roots),
       ),
+    );
+  }
+}
+
+// ─── Sidebar (used by AppShell) ──────────────────────────────────────────────
+
+/// Menu tree without Scaffold – embedded in AppShell's collapsible sidebar.
+class ModelBrowserSidebar extends ConsumerWidget {
+  const ModelBrowserSidebar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final menuAsync = ref.watch(menuProvider);
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header: title + reload
+        Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          color: cs.surfaceContainerHighest,
+          child: Row(children: [
+            Expanded(
+              child: Text(
+                context.l10n.appTitle,
+                style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 16),
+              tooltip: context.l10n.reloadMenu,
+              padding: EdgeInsets.zero,
+              constraints:
+                  const BoxConstraints(minWidth: 28, minHeight: 28),
+              onPressed: () => ref.invalidate(menuProvider),
+            ),
+          ]),
+        ),
+        Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+        // Menu tree
+        Expanded(
+          child: menuAsync.when(
+            loading: () =>
+                const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.error_outline,
+                    size: 32, color: Colors.red),
+                const SizedBox(height: 6),
+                Text(e.toString(),
+                    style: const TextStyle(fontSize: 12),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                FilledButton.tonal(
+                  onPressed: () => ref.invalidate(menuProvider),
+                  child: Text(context.l10n.retry),
+                ),
+              ]),
+            ),
+            data: (roots) => _MenuTree(roots: roots),
+          ),
+        ),
+        Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+        // User chip at bottom
+        const _UserChip(),
+      ],
     );
   }
 }
@@ -386,21 +457,19 @@ class _MenuNodeState extends ConsumerState<_MenuNode> {
         evalCtx,
       );
 
-      // Navigate to ListViewScreen – domain + context_model as URL parameters
-      final titleEnc = Uri.encodeComponent(name);
-      final params = <String>['title=$titleEnc', 'action_id=$actionId'];
-      if (domain.isNotEmpty) {
-        params.add('domain=${Uri.encodeComponent(jsonEncode(domain))}');
-      }
       final contextModel = action['context_model']?.toString();
-      if (contextModel != null && contextModel.isNotEmpty) {
-        params.add('context_model=${Uri.encodeComponent(contextModel)}');
-      }
       final contextDomain = action['context_domain']?.toString();
-      if (contextDomain != null && contextDomain.isNotEmpty) {
-        params.add('context_domain=${Uri.encodeComponent(contextDomain)}');
-      }
-      context.push('/models/$model?${params.join('&')}');
+
+      ref.read(tabsProvider.notifier).openTab(
+        title: name,
+        model: model,
+        initialDomain: domain,
+        contextModel:
+            (contextModel != null && contextModel.isNotEmpty) ? contextModel : null,
+        contextDomain:
+            (contextDomain != null && contextDomain.isNotEmpty) ? contextDomain : null,
+        actionId: actionId,
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
@@ -446,15 +515,19 @@ class _UserChip extends ConsumerWidget {
       onSelected: (item) async {
         switch (item) {
           case _UserMenuItem.preferences:
-            // Open the current user's form in DynamicFormScreen
             if (userId != null && userId > 0) {
-              context.push('/models/res.user/$userId?title=${context.l10n.preferences}');
+              ref.read(tabsProvider.notifier).openTab(
+                title: context.l10n.preferences,
+                model: 'res.user',
+                initialDomain: [['id', '=', userId]],
+              );
             }
           case _UserMenuItem.help:
             final uri = Uri.parse('https://docs.tryton.org/');
             if (await canLaunchUrl(uri)) launchUrl(uri);
           case _UserMenuItem.logout:
             await ref.read(authProvider.notifier).logout();
+            ref.read(tabsProvider.notifier).clearAll();
             if (context.mounted) context.go('/login');
         }
       },
