@@ -235,6 +235,16 @@ class ModelService {
     }
   }
 
+  /// Returns the number of records matching [domain].
+  /// Mirrors SAO: model.execute('search_count', [domain, 0, null], context).
+  Future<int> searchCount(String model, {List<dynamic> domain = const []}) async {
+    final result = await _call<int>(
+      'model.$model.search_count',
+      [domain, 0, null, _ctx],
+    );
+    return result;
+  }
+
   /// Many2One search: returns matching [id, name] pairs.
   Future<List<Map<String, dynamic>>> searchName(
     String model,

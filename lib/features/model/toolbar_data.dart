@@ -1,3 +1,18 @@
+/// One tab from `ir.action.act_window.domain` — evaluated PYSON domain + count flag.
+class TabDomain {
+  final int id;
+  final String name;
+  final List<dynamic> domain;
+  final bool count;
+
+  const TabDomain({
+    required this.id,
+    required this.name,
+    required this.domain,
+    required this.count,
+  });
+}
+
 /// Toolbar data received from the server via `view_toolbar_get`.
 class TrytonToolbar {
   final List<TrytonActionItem> actions;

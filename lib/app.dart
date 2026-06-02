@@ -46,12 +46,16 @@ final _router = GoRouter(
             final contextDomain = q['context_domain'] != null
                 ? Uri.decodeComponent(q['context_domain']!)
                 : null;
+            final actionId = q['action_id'] != null
+                ? int.tryParse(q['action_id']!)
+                : null;
             return ListViewScreen(
               model: model,
               title: title,
               initialDomain: domain,
               contextModel: contextModel,
               contextDomain: contextDomain,
+              actionId: actionId,
             );
           },
           routes: [

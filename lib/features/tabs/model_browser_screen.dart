@@ -388,7 +388,7 @@ class _MenuNodeState extends ConsumerState<_MenuNode> {
 
       // Navigate to ListViewScreen – domain + context_model as URL parameters
       final titleEnc = Uri.encodeComponent(name);
-      final params = <String>['title=$titleEnc'];
+      final params = <String>['title=$titleEnc', 'action_id=$actionId'];
       if (domain.isNotEmpty) {
         params.add('domain=${Uri.encodeComponent(jsonEncode(domain))}');
       }

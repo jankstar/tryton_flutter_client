@@ -35,6 +35,8 @@ class ListViewScreen extends ConsumerStatefulWidget {
   final String? contextModel;
   /// PYSON domain string combined with context form values (context_domain).
   final String? contextDomain;
+  /// `ir.action.act_window` ID — used to load domain tabs.
+  final int? actionId;
 
   const ListViewScreen({
     super.key,
@@ -44,6 +46,7 @@ class ListViewScreen extends ConsumerStatefulWidget {
     this.initialDomain = const [],
     this.contextModel,
     this.contextDomain,
+    this.actionId,
   });
 
   @override
@@ -99,6 +102,11 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   final Set<int> _selected = {};
   final _scrollController = ScrollController();
 
+  // ─── Domain tabs (ir.action.act_window.domain) ───────────────────────────
+  List<TabDomain> _tabDomains = [];
+  int _activeTabIndex = -1; // -1 = no tab selected
+  final Map<int, int?> _tabCounts = {}; // null = loading, int = loaded
+
   // ─── Context form state (context_model / context_domain) ─────────────────
   FormRoot? _ctxFormRoot;
   ViewDefinition? _ctxViewDef;
@@ -110,6 +118,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   void initState() {
     super.initState();
     _loadContextModel().then((_) => _load());
+    if (widget.actionId != null) _loadTabDomains();
     _scrollController.addListener(_onScroll);
   }
 
@@ -238,13 +247,93 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     }
 
     if (filtered.isEmpty) return const [];
-    // Unwrap single remaining condition from AND/OR wrapper
-    if (filtered.length == 1 && filtered[0] is List) {
-      return filtered[0] as List<dynamic>;
-    }
     if (isOr)  return ['OR',  ...filtered];
     if (isAnd) return ['AND', ...filtered];
     return filtered;
+  }
+
+  // ─── Domain tab helpers ──────────────────────────────────────────────────
+
+  List<dynamic> get _activeTabDomain {
+    if (_activeTabIndex < 0 || _activeTabIndex >= _tabDomains.length) {
+      return const [];
+    }
+    return _tabDomains[_activeTabIndex].domain;
+  }
+
+  /// Loads `ir.action.act_window.domain` entries for the action, evaluates
+  /// their PYSON domain strings, and triggers count loading.
+  Future<void> _loadTabDomains() async {
+    final id = widget.actionId;
+    if (id == null) return;
+    try {
+      final svc = ref.read(modelServiceProvider);
+      final session = ref.read(sessionProvider);
+      final rows = await svc.searchRead(
+        'ir.action.act_window.domain',
+        domain: [
+          ['act_window', '=', id],
+          ['active', '=', true],
+        ],
+        fields: ['name', 'domain', 'count', 'sequence'],
+        limit: null,
+        order: [['sequence', 'ASC']],
+      );
+      final evalCtx = <String, dynamic>{
+        ...session.context,
+        'active_model': widget.model,
+        'active_id': null,
+        'active_ids': <int>[],
+      };
+      final tabs = rows
+          .map((r) => TabDomain(
+                id: r.id,
+                name: r['name']?.toString() ?? '',
+                domain: evaluateActionDomain(
+                    r['domain']?.toString(), evalCtx),
+                count: r['count'] as bool? ?? false,
+              ))
+          .where((t) => t.name.isNotEmpty)
+          .toList();
+      if (mounted) {
+        setState(() {
+          _tabDomains = tabs;
+          if (tabs.isNotEmpty) _activeTabIndex = 0;
+        });
+        if (tabs.isNotEmpty) {
+          _load(reset: true);
+        } else {
+          _loadTabCounts();
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Asynchronously refreshes the record count for every tab with count=true.
+  /// Mirrors SAO's count_tab_domain(current=false).
+  Future<void> _loadTabCounts() async {
+    if (_tabDomains.isEmpty) return;
+    final svc = ref.read(modelServiceProvider);
+    final searchDomain = _searchQuery.isEmpty
+        ? <dynamic>[]
+        : [['rec_name', 'ilike', '%$_searchQuery%']];
+    final ctxDomain = _buildContextDomain();
+    final base = _buildCombinedDomain(
+      _buildCombinedDomain(widget.initialDomain, ctxDomain),
+      searchDomain,
+    );
+    for (int i = 0; i < _tabDomains.length; i++) {
+      final tab = _tabDomains[i];
+      if (!tab.count) continue;
+      if (mounted) setState(() => _tabCounts[i] = null);
+      try {
+        final domain = _buildCombinedDomain(base, tab.domain);
+        final count = await svc.searchCount(widget.model, domain: domain);
+        if (mounted) setState(() => _tabCounts[i] = count);
+      } catch (_) {
+        if (mounted) setState(() => _tabCounts[i] = 0);
+      }
+    }
   }
 
   Future<void> _load({bool reset = false}) async {
@@ -274,6 +363,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       } else {
         await _loadFlat(svc, searchDomain, reset: reset);
       }
+      if (_tabDomains.isNotEmpty) _loadTabCounts();
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -361,7 +451,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   }) async {
     final ctxDomain = _buildContextDomain();
     final domain = _buildCombinedDomain(
-        _buildCombinedDomain(widget.initialDomain, ctxDomain), searchDomain);
+      _buildCombinedDomain(
+        _buildCombinedDomain(widget.initialDomain, ctxDomain),
+        _activeTabDomain,
+      ),
+      searchDomain,
+    );
     final records = await svc.searchRead(
       widget.model,
       domain: domain,
@@ -395,7 +490,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final ctxDomain = _buildContextDomain();
     final domain = _buildCombinedDomain(
       _buildCombinedDomain(
-          _buildCombinedDomain(widget.initialDomain, ctxDomain), rootFilter),
+        _buildCombinedDomain(
+          _buildCombinedDomain(widget.initialDomain, ctxDomain),
+          _activeTabDomain,
+        ),
+        rootFilter,
+      ),
       searchDomain,
     );
 
@@ -801,10 +901,60 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           ),
         // 2. Search bar (always visible)
         searchBar,
-        // 3. Table / list
+        // 3. Domain tabs (when action has ir.action.act_window.domain entries)
+        if (_tabDomains.isNotEmpty) _buildTabBar(),
+        // 4. Table / list
         Expanded(child: _buildListBody(isEmpty)),
       ],
     );
+  }
+
+  /// Horizontal scrollable row of filter chips, one per ir.action.act_window.domain entry.
+  /// Mirrors SAO's Bootstrap nav-tabs above the list.
+  Widget _buildTabBar() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
+      child: Row(
+        children: [
+          for (int i = 0; i < _tabDomains.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: FilterChip(
+                label: _buildTabLabel(i),
+                selected: _activeTabIndex == i,
+                onSelected: (_) {
+                  final next = _activeTabIndex == i ? -1 : i;
+                  setState(() {
+                    _activeTabIndex = next;
+                    _tabCounts.clear();
+                  });
+                  _load(reset: true);
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabLabel(int i) {
+    final tab = _tabDomains[i];
+    if (!tab.count) return Text(tab.name);
+    if (!_tabCounts.containsKey(i)) return Text(tab.name);
+    final c = _tabCounts[i];
+    if (c == null) {
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(tab.name),
+        const SizedBox(width: 6),
+        const SizedBox(
+          width: 10,
+          height: 10,
+          child: CircularProgressIndicator(strokeWidth: 1.5),
+        ),
+      ]);
+    }
+    return Text('${tab.name} ($c)');
   }
 
   Widget _buildListBody(bool isEmpty) {
