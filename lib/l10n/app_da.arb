@@ -1,0 +1,327 @@
+{
+  "@@locale": "da",
+  "appTitle": "Tryton Flutter Client",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "appSubtitle": "Tryton ERP-klient",
+  "@appSubtitle": {
+    "description": "Application subtitle on login screen"
+  },
+  "username": "Brugernavn",
+  "@username": {
+    "description": "Label for the username field"
+  },
+  "password": "Adgangskode",
+  "@password": {
+    "description": "Label for the password field"
+  },
+  "database": "Database",
+  "@database": {
+    "description": "Label for the database selector"
+  },
+  "serverUrl": "Server-URL",
+  "@serverUrl": {
+    "description": "Label for the server URL field"
+  },
+  "required": "Påkrævet",
+  "@required": {
+    "description": "Validation message for empty required fields"
+  },
+  "signIn": "Log ind",
+  "@signIn": {
+    "description": "Login button label"
+  },
+  "signOut": "Log ud",
+  "@signOut": {
+    "description": "Logout button tooltip"
+  },
+  "loadDatabases": "Indlæs databaser",
+  "@loadDatabases": {
+    "description": "Tooltip for the refresh databases button"
+  },
+  "additionalInputRequired": "Yderligere input påkrævet",
+  "@additionalInputRequired": {
+    "description": "Shown when MFA or extra login step is needed"
+  },
+  "reloadMenu": "Genindlæs menu",
+  "@reloadMenu": {
+    "description": "Tooltip for the menu refresh button"
+  },
+  "noMenuEntriesFound": "Ingen menupunkter fundet.",
+  "@noMenuEntriesFound": {
+    "description": "Shown when the server returns an empty menu"
+  },
+  "retry": "Prøv igen",
+  "@retry": {
+    "description": "Button label to retry a failed operation"
+  },
+  "error": "Fejl",
+  "@error": {
+    "description": "Generic error label"
+  },
+  "search": "Søg…",
+  "@search": {
+    "description": "Placeholder text in the search bar"
+  },
+  "selected": "{count} valgt",
+  "@selected": {
+    "description": "Number of selected rows in a list view",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteRecords": "Slet poster",
+  "@deleteRecords": {
+    "description": "Dialog title for multi-record deletion"
+  },
+  "reallyDeleteRecords": "Slet {count} post(er)?",
+  "@reallyDeleteRecords": {
+    "description": "Confirmation message for deleting multiple records",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRecordsFound": "Ingen poster fundet.",
+  "@noRecordsFound": {
+    "description": "Shown when a list view returns no results"
+  },
+  "createNew": "Opret ny",
+  "@createNew": {
+    "description": "Button label to create a new record"
+  },
+  "attachments": "Vedhæftede filer",
+  "@attachments": {
+    "description": "Tooltip for the attachments button"
+  },
+  "duplicate": "Dupliker",
+  "@duplicate": {
+    "description": "Tooltip for the duplicate/copy button"
+  },
+  "openEdit": "Åbn / Rediger",
+  "@openEdit": {
+    "description": "Tooltip for the open/edit button in list views"
+  },
+  "reload": "Genindlæs",
+  "@reload": {
+    "description": "Tooltip for the reload button"
+  },
+  "delete": "Slet",
+  "@delete": {
+    "description": "Button/tooltip label to delete a record"
+  },
+  "moreActions": "Flere handlinger",
+  "@moreActions": {
+    "description": "Tooltip for the overflow actions menu"
+  },
+  "launchActions": "Start handlinger",
+  "@launchActions": {
+    "description": "Toolbar submenu header for keyword actions"
+  },
+  "relatedRecords": "Relaterede poster",
+  "@relatedRecords": {
+    "description": "Toolbar submenu header for relate actions"
+  },
+  "reports": "Rapporter",
+  "@reports": {
+    "description": "Toolbar submenu header for report actions"
+  },
+  "email": "E-mail",
+  "@email": {
+    "description": "Toolbar submenu header for email templates"
+  },
+  "save": "Gem",
+  "@save": {
+    "description": "Button label to save a record"
+  },
+  "cancel": "Annuller",
+  "@cancel": {
+    "description": "Button label to cancel a dialog or operation"
+  },
+  "recordCreated": "Post oprettet.",
+  "@recordCreated": {
+    "description": "Snackbar shown after a new record is created"
+  },
+  "saved": "Gemt.",
+  "@saved": {
+    "description": "Snackbar shown after saving a record"
+  },
+  "deleteRecord": "Slet post",
+  "@deleteRecord": {
+    "description": "Confirmation dialog title for deleting a single record"
+  },
+  "reallyDelete": "Slet? Denne handling kan ikke fortrydes.",
+  "@reallyDelete": {
+    "description": "Confirmation dialog body for deleting a record"
+  },
+  "add": "Tilføj",
+  "@add": {
+    "description": "Button label to add a row in an inline tree widget"
+  },
+  "noEntries": "Ingen poster.",
+  "@noEntries": {
+    "description": "Shown when an inline One2Many table is empty"
+  },
+  "apply": "Anvend",
+  "@apply": {
+    "description": "Button label to apply/confirm a row dialog"
+  },
+  "openRecord": "Åbn post",
+  "@openRecord": {
+    "description": "Tooltip for the open-related-record button on Many2One fields"
+  },
+  "clearField": "Ryd felt",
+  "@clearField": {
+    "description": "Tooltip for the clear button on Many2One fields"
+  },
+  "searchRecord": "Søg post",
+  "@searchRecord": {
+    "description": "Tooltip for the search button on Many2One fields"
+  },
+  "entries": "{count} poster",
+  "@entries": {
+    "description": "Entry count shown for X2Many fields in read-only mode",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generatingReport": "Genererer rapport…",
+  "@generatingReport": {
+    "description": "Snackbar shown while a report is being generated"
+  },
+  "reportGenerated": "Rapport \"{name}\" ({format}) genereret.",
+  "@reportGenerated": {
+    "description": "Snackbar shown after a report is successfully generated",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "actionNotSupported": "\"{name}\" ({type}) understøttes endnu ikke.",
+  "@actionNotSupported": {
+    "description": "Snackbar shown when an action type is not yet implemented",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "executingButton": "Udfører knap \"{name}\"…",
+  "@executingButton": {
+    "description": "Snackbar shown when a form button is triggered",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "language": "Sprog",
+  "@language": {
+    "description": "Label for the language selector"
+  },
+  "sessionExpired": "Session udløbet",
+  "@sessionExpired": {
+    "description": "Title of the re-login dialog when session expires"
+  },
+  "preferences": "Præferencer",
+  "@preferences": {
+    "description": "Menu item and screen title for user preferences"
+  },
+  "help": "Hjælp",
+  "@help": {
+    "description": "Menu item for help"
+  },
+  "collapse": "Skjul",
+  "@collapse": {
+    "description": "Tooltip to collapse a tree node"
+  },
+  "expand": "Udvid",
+  "@expand": {
+    "description": "Tooltip to expand a tree node"
+  },
+  "openInForm": "Åbn i formular",
+  "@openInForm": {
+    "description": "Tooltip to open an embedded tree record in full form view"
+  },
+  "undelete": "Fortryd sletning",
+  "@undelete": {
+    "description": "Tooltip to undo a pending delete in embedded tree"
+  },
+  "switchToForm": "Skift til formular",
+  "@switchToForm": {
+    "description": "Tooltip to switch selected list records to form view"
+  },
+  "close": "Luk",
+  "@close": {
+    "description": "Tooltip/button to close the current view and return to menu"
+  },
+  "boolYes": "Ja",
+  "@boolYes": {
+    "description": "Display value for boolean true in list/form"
+  },
+  "boolNo": "Nej",
+  "@boolNo": {
+    "description": "Display value for boolean false in list/form"
+  },
+  "clearSearch": "Ryd",
+  "@clearSearch": {
+    "description": "Tooltip for the clear button in the search bar"
+  },
+  "previousRecord": "Forrige",
+  "@previousRecord": {
+    "description": "Tooltip for the previous-record navigation button"
+  },
+  "nextRecord": "Næste",
+  "@nextRecord": {
+    "description": "Tooltip for the next-record navigation button"
+  },
+  "viewLogs": "Vis logfiler",
+  "@viewLogs": {
+    "description": "Tooltip for the view-logs button in the form toolbar"
+  },
+  "note": "Note",
+  "@note": {
+    "description": "Tooltip for the note/chat button in the form toolbar"
+  },
+  "wizard": "Guide",
+  "@wizard": {
+    "description": "Action type label shown when a wizard is not yet supported"
+  },
+  "versionMismatch": "Inkompatibel serverversion {server} (klienten forventer {client}).",
+  "@versionMismatch": {
+    "description": "Error shown when server major.minor version doesn't match the client",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "client": {
+        "type": "String"
+      }
+    }
+  },
+  "recordModified": "Denne post er blevet ændret.\nVil du gemme den?",
+  "@recordModified": {
+    "description": "Dialog shown when navigating away from a modified record"
+  },
+  "yes": "Ja",
+  "@yes": {
+    "description": "Affirmative answer in dialogs"
+  },
+  "no": "Nej",
+  "@no": {
+    "description": "Negative answer in dialogs"
+  }
+}

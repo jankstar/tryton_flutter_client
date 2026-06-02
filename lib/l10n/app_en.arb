@@ -1,0 +1,327 @@
+{
+  "@@locale": "en",
+  "appTitle": "Tryton Flutter Client",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "appSubtitle": "Tryton ERP Client",
+  "@appSubtitle": {
+    "description": "Application subtitle on login screen"
+  },
+  "username": "Username",
+  "@username": {
+    "description": "Label for the username field"
+  },
+  "password": "Password",
+  "@password": {
+    "description": "Label for the password field"
+  },
+  "database": "Database",
+  "@database": {
+    "description": "Label for the database selector"
+  },
+  "serverUrl": "Server URL",
+  "@serverUrl": {
+    "description": "Label for the server URL field"
+  },
+  "required": "Required",
+  "@required": {
+    "description": "Validation message for empty required fields"
+  },
+  "signIn": "Sign in",
+  "@signIn": {
+    "description": "Login button label"
+  },
+  "signOut": "Sign out",
+  "@signOut": {
+    "description": "Logout button tooltip"
+  },
+  "loadDatabases": "Load databases",
+  "@loadDatabases": {
+    "description": "Tooltip for the refresh databases button"
+  },
+  "additionalInputRequired": "Additional input required",
+  "@additionalInputRequired": {
+    "description": "Shown when MFA or extra login step is needed"
+  },
+  "reloadMenu": "Reload menu",
+  "@reloadMenu": {
+    "description": "Tooltip for the menu refresh button"
+  },
+  "noMenuEntriesFound": "No menu entries found.",
+  "@noMenuEntriesFound": {
+    "description": "Shown when the server returns an empty menu"
+  },
+  "retry": "Retry",
+  "@retry": {
+    "description": "Button label to retry a failed operation"
+  },
+  "error": "Error",
+  "@error": {
+    "description": "Generic error label"
+  },
+  "search": "Search…",
+  "@search": {
+    "description": "Placeholder text in the search bar"
+  },
+  "selected": "{count} selected",
+  "@selected": {
+    "description": "Number of selected rows in a list view",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteRecords": "Delete records",
+  "@deleteRecords": {
+    "description": "Dialog title for multi-record deletion"
+  },
+  "reallyDeleteRecords": "Really delete {count} record(s)?",
+  "@reallyDeleteRecords": {
+    "description": "Confirmation message for deleting multiple records",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRecordsFound": "No records found.",
+  "@noRecordsFound": {
+    "description": "Shown when a list view returns no results"
+  },
+  "createNew": "Create new",
+  "@createNew": {
+    "description": "Button label to create a new record"
+  },
+  "attachments": "Attachments",
+  "@attachments": {
+    "description": "Tooltip for the attachments button"
+  },
+  "duplicate": "Duplicate",
+  "@duplicate": {
+    "description": "Tooltip for the duplicate/copy button"
+  },
+  "openEdit": "Open / Edit",
+  "@openEdit": {
+    "description": "Tooltip for the open/edit button in list views"
+  },
+  "reload": "Reload",
+  "@reload": {
+    "description": "Tooltip for the reload button"
+  },
+  "delete": "Delete",
+  "@delete": {
+    "description": "Button/tooltip label to delete a record"
+  },
+  "moreActions": "More actions",
+  "@moreActions": {
+    "description": "Tooltip for the overflow actions menu"
+  },
+  "launchActions": "Launch actions",
+  "@launchActions": {
+    "description": "Toolbar submenu header for keyword actions"
+  },
+  "relatedRecords": "Related records",
+  "@relatedRecords": {
+    "description": "Toolbar submenu header for relate actions"
+  },
+  "reports": "Reports",
+  "@reports": {
+    "description": "Toolbar submenu header for report actions"
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Toolbar submenu header for email templates"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Button label to save a record"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Button label to cancel a dialog or operation"
+  },
+  "recordCreated": "Record created.",
+  "@recordCreated": {
+    "description": "Snackbar shown after a new record is created"
+  },
+  "saved": "Saved.",
+  "@saved": {
+    "description": "Snackbar shown after saving a record"
+  },
+  "deleteRecord": "Delete record",
+  "@deleteRecord": {
+    "description": "Confirmation dialog title for deleting a single record"
+  },
+  "reallyDelete": "Really delete? This cannot be undone.",
+  "@reallyDelete": {
+    "description": "Confirmation dialog body for deleting a record"
+  },
+  "add": "Add",
+  "@add": {
+    "description": "Button label to add a row in an inline tree widget"
+  },
+  "noEntries": "No entries.",
+  "@noEntries": {
+    "description": "Shown when an inline One2Many table is empty"
+  },
+  "apply": "Apply",
+  "@apply": {
+    "description": "Button label to apply/confirm a row dialog"
+  },
+  "openRecord": "Open record",
+  "@openRecord": {
+    "description": "Tooltip for the open-related-record button on Many2One fields"
+  },
+  "clearField": "Clear field",
+  "@clearField": {
+    "description": "Tooltip for the clear button on Many2One fields"
+  },
+  "searchRecord": "Search record",
+  "@searchRecord": {
+    "description": "Tooltip for the search button on Many2One fields"
+  },
+  "entries": "{count} entries",
+  "@entries": {
+    "description": "Entry count shown for X2Many fields in read-only mode",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generatingReport": "Generating report…",
+  "@generatingReport": {
+    "description": "Snackbar shown while a report is being generated"
+  },
+  "reportGenerated": "Report \"{name}\" ({format}) generated.",
+  "@reportGenerated": {
+    "description": "Snackbar shown after a report is successfully generated",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "actionNotSupported": "\"{name}\" ({type}) is not yet supported.",
+  "@actionNotSupported": {
+    "description": "Snackbar shown when an action type is not yet implemented",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "executingButton": "Executing button \"{name}\"…",
+  "@executingButton": {
+    "description": "Snackbar shown when a form button is triggered",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Label for the language selector"
+  },
+  "sessionExpired": "Session expired",
+  "@sessionExpired": {
+    "description": "Title of the re-login dialog when session expires"
+  },
+  "preferences": "Preferences",
+  "@preferences": {
+    "description": "Menu item and screen title for user preferences"
+  },
+  "help": "Help",
+  "@help": {
+    "description": "Menu item for help"
+  },
+  "collapse": "Collapse",
+  "@collapse": {
+    "description": "Tooltip to collapse a tree node"
+  },
+  "expand": "Expand",
+  "@expand": {
+    "description": "Tooltip to expand a tree node"
+  },
+  "openInForm": "Open in form",
+  "@openInForm": {
+    "description": "Tooltip to open an embedded tree record in full form view"
+  },
+  "undelete": "Undelete",
+  "@undelete": {
+    "description": "Tooltip to undo a pending delete in embedded tree"
+  },
+  "switchToForm": "Switch to form",
+  "@switchToForm": {
+    "description": "Tooltip to switch selected list records to form view"
+  },
+  "close": "Close",
+  "@close": {
+    "description": "Tooltip/button to close the current view and return to menu"
+  },
+  "boolYes": "Yes",
+  "@boolYes": {
+    "description": "Display value for boolean true in list/form"
+  },
+  "boolNo": "No",
+  "@boolNo": {
+    "description": "Display value for boolean false in list/form"
+  },
+  "clearSearch": "Clear",
+  "@clearSearch": {
+    "description": "Tooltip for the clear button in the search bar"
+  },
+  "previousRecord": "Previous",
+  "@previousRecord": {
+    "description": "Tooltip for the previous-record navigation button"
+  },
+  "nextRecord": "Next",
+  "@nextRecord": {
+    "description": "Tooltip for the next-record navigation button"
+  },
+  "viewLogs": "View logs",
+  "@viewLogs": {
+    "description": "Tooltip for the view-logs button in the form toolbar"
+  },
+  "note": "Note",
+  "@note": {
+    "description": "Tooltip for the note/chat button in the form toolbar"
+  },
+  "wizard": "Wizard",
+  "@wizard": {
+    "description": "Action type label shown when a wizard is not yet supported"
+  },
+  "versionMismatch": "Incompatible server version {server} (client expects {client}).",
+  "@versionMismatch": {
+    "description": "Error shown when server major.minor version doesn't match the client",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "client": {
+        "type": "String"
+      }
+    }
+  },
+  "recordModified": "This record has been modified.\nDo you want to save it?",
+  "@recordModified": {
+    "description": "Dialog shown when navigating away from a modified record"
+  },
+  "yes": "Yes",
+  "@yes": {
+    "description": "Affirmative answer in dialogs"
+  },
+  "no": "No",
+  "@no": {
+    "description": "Negative answer in dialogs"
+  }
+}

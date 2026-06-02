@@ -1,0 +1,327 @@
+{
+  "@@locale": "pl",
+  "appTitle": "Tryton Flutter Client",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "appSubtitle": "Klient ERP Tryton",
+  "@appSubtitle": {
+    "description": "Application subtitle on login screen"
+  },
+  "username": "Nazwa użytkownika",
+  "@username": {
+    "description": "Label for the username field"
+  },
+  "password": "Hasło",
+  "@password": {
+    "description": "Label for the password field"
+  },
+  "database": "Baza danych",
+  "@database": {
+    "description": "Label for the database selector"
+  },
+  "serverUrl": "Adres URL serwera",
+  "@serverUrl": {
+    "description": "Label for the server URL field"
+  },
+  "required": "Wymagane",
+  "@required": {
+    "description": "Validation message for empty required fields"
+  },
+  "signIn": "Zaloguj się",
+  "@signIn": {
+    "description": "Login button label"
+  },
+  "signOut": "Wyloguj się",
+  "@signOut": {
+    "description": "Logout button tooltip"
+  },
+  "loadDatabases": "Załaduj bazy danych",
+  "@loadDatabases": {
+    "description": "Tooltip for the refresh databases button"
+  },
+  "additionalInputRequired": "Wymagane dodatkowe dane",
+  "@additionalInputRequired": {
+    "description": "Shown when MFA or extra login step is needed"
+  },
+  "reloadMenu": "Odśwież menu",
+  "@reloadMenu": {
+    "description": "Tooltip for the menu refresh button"
+  },
+  "noMenuEntriesFound": "Nie znaleziono pozycji menu.",
+  "@noMenuEntriesFound": {
+    "description": "Shown when the server returns an empty menu"
+  },
+  "retry": "Spróbuj ponownie",
+  "@retry": {
+    "description": "Button label to retry a failed operation"
+  },
+  "error": "Błąd",
+  "@error": {
+    "description": "Generic error label"
+  },
+  "search": "Szukaj…",
+  "@search": {
+    "description": "Placeholder text in the search bar"
+  },
+  "selected": "Wybrano: {count}",
+  "@selected": {
+    "description": "Number of selected rows in a list view",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteRecords": "Usuń rekordy",
+  "@deleteRecords": {
+    "description": "Dialog title for multi-record deletion"
+  },
+  "reallyDeleteRecords": "Czy na pewno usunąć {count} rekord(y)?",
+  "@reallyDeleteRecords": {
+    "description": "Confirmation message for deleting multiple records",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRecordsFound": "Nie znaleziono rekordów.",
+  "@noRecordsFound": {
+    "description": "Shown when a list view returns no results"
+  },
+  "createNew": "Utwórz nowy",
+  "@createNew": {
+    "description": "Button label to create a new record"
+  },
+  "attachments": "Załączniki",
+  "@attachments": {
+    "description": "Tooltip for the attachments button"
+  },
+  "duplicate": "Duplikuj",
+  "@duplicate": {
+    "description": "Tooltip for the duplicate/copy button"
+  },
+  "openEdit": "Otwórz / Edytuj",
+  "@openEdit": {
+    "description": "Tooltip for the open/edit button in list views"
+  },
+  "reload": "Odśwież",
+  "@reload": {
+    "description": "Tooltip for the reload button"
+  },
+  "delete": "Usuń",
+  "@delete": {
+    "description": "Button/tooltip label to delete a record"
+  },
+  "moreActions": "Więcej akcji",
+  "@moreActions": {
+    "description": "Tooltip for the overflow actions menu"
+  },
+  "launchActions": "Uruchom akcje",
+  "@launchActions": {
+    "description": "Toolbar submenu header for keyword actions"
+  },
+  "relatedRecords": "Powiązane rekordy",
+  "@relatedRecords": {
+    "description": "Toolbar submenu header for relate actions"
+  },
+  "reports": "Raporty",
+  "@reports": {
+    "description": "Toolbar submenu header for report actions"
+  },
+  "email": "E-mail",
+  "@email": {
+    "description": "Toolbar submenu header for email templates"
+  },
+  "save": "Zapisz",
+  "@save": {
+    "description": "Button label to save a record"
+  },
+  "cancel": "Anuluj",
+  "@cancel": {
+    "description": "Button label to cancel a dialog or operation"
+  },
+  "recordCreated": "Rekord został utworzony.",
+  "@recordCreated": {
+    "description": "Snackbar shown after a new record is created"
+  },
+  "saved": "Zapisano.",
+  "@saved": {
+    "description": "Snackbar shown after saving a record"
+  },
+  "deleteRecord": "Usuń rekord",
+  "@deleteRecord": {
+    "description": "Confirmation dialog title for deleting a single record"
+  },
+  "reallyDelete": "Czy na pewno usunąć? Tej operacji nie można cofnąć.",
+  "@reallyDelete": {
+    "description": "Confirmation dialog body for deleting a record"
+  },
+  "add": "Dodaj",
+  "@add": {
+    "description": "Button label to add a row in an inline tree widget"
+  },
+  "noEntries": "Brak wpisów.",
+  "@noEntries": {
+    "description": "Shown when an inline One2Many table is empty"
+  },
+  "apply": "Zastosuj",
+  "@apply": {
+    "description": "Button label to apply/confirm a row dialog"
+  },
+  "openRecord": "Otwórz rekord",
+  "@openRecord": {
+    "description": "Tooltip for the open-related-record button on Many2One fields"
+  },
+  "clearField": "Wyczyść pole",
+  "@clearField": {
+    "description": "Tooltip for the clear button on Many2One fields"
+  },
+  "searchRecord": "Szukaj rekordu",
+  "@searchRecord": {
+    "description": "Tooltip for the search button on Many2One fields"
+  },
+  "entries": "{count} wpis(y)",
+  "@entries": {
+    "description": "Entry count shown for X2Many fields in read-only mode",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generatingReport": "Generowanie raportu…",
+  "@generatingReport": {
+    "description": "Snackbar shown while a report is being generated"
+  },
+  "reportGenerated": "Raport \"{name}\" ({format}) został wygenerowany.",
+  "@reportGenerated": {
+    "description": "Snackbar shown after a report is successfully generated",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "actionNotSupported": "\"{name}\" ({type}) nie jest jeszcze obsługiwany.",
+  "@actionNotSupported": {
+    "description": "Snackbar shown when an action type is not yet implemented",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "executingButton": "Wykonywanie przycisku \"{name}\"…",
+  "@executingButton": {
+    "description": "Snackbar shown when a form button is triggered",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "language": "Język",
+  "@language": {
+    "description": "Label for the language selector"
+  },
+  "sessionExpired": "Sesja wygasła",
+  "@sessionExpired": {
+    "description": "Title of the re-login dialog when session expires"
+  },
+  "preferences": "Preferencje",
+  "@preferences": {
+    "description": "Menu item and screen title for user preferences"
+  },
+  "help": "Pomoc",
+  "@help": {
+    "description": "Menu item for help"
+  },
+  "collapse": "Zwiń",
+  "@collapse": {
+    "description": "Tooltip to collapse a tree node"
+  },
+  "expand": "Rozwiń",
+  "@expand": {
+    "description": "Tooltip to expand a tree node"
+  },
+  "openInForm": "Otwórz w formularzu",
+  "@openInForm": {
+    "description": "Tooltip to open an embedded tree record in full form view"
+  },
+  "undelete": "Przywróć",
+  "@undelete": {
+    "description": "Tooltip to undo a pending delete in embedded tree"
+  },
+  "switchToForm": "Przełącz na formularz",
+  "@switchToForm": {
+    "description": "Tooltip to switch selected list records to form view"
+  },
+  "close": "Zamknij",
+  "@close": {
+    "description": "Tooltip/button to close the current view and return to menu"
+  },
+  "boolYes": "Tak",
+  "@boolYes": {
+    "description": "Display value for boolean true in list/form"
+  },
+  "boolNo": "Nie",
+  "@boolNo": {
+    "description": "Display value for boolean false in list/form"
+  },
+  "clearSearch": "Wyczyść",
+  "@clearSearch": {
+    "description": "Tooltip for the clear button in the search bar"
+  },
+  "previousRecord": "Poprzedni",
+  "@previousRecord": {
+    "description": "Tooltip for the previous-record navigation button"
+  },
+  "nextRecord": "Następny",
+  "@nextRecord": {
+    "description": "Tooltip for the next-record navigation button"
+  },
+  "viewLogs": "Pokaż dzienniki",
+  "@viewLogs": {
+    "description": "Tooltip for the view-logs button in the form toolbar"
+  },
+  "note": "Notatka",
+  "@note": {
+    "description": "Tooltip for the note/chat button in the form toolbar"
+  },
+  "wizard": "Kreator",
+  "@wizard": {
+    "description": "Action type label shown when a wizard is not yet supported"
+  },
+  "versionMismatch": "Niekompatybilna wersja serwera {server} (klient oczekuje {client}).",
+  "@versionMismatch": {
+    "description": "Error shown when server major.minor version doesn't match the client",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "client": {
+        "type": "String"
+      }
+    }
+  },
+  "recordModified": "Ten rekord został zmodyfikowany.\nCzy chcesz go zapisać?",
+  "@recordModified": {
+    "description": "Dialog shown when navigating away from a modified record"
+  },
+  "yes": "Tak",
+  "@yes": {
+    "description": "Affirmative answer in dialogs"
+  },
+  "no": "Nie",
+  "@no": {
+    "description": "Negative answer in dialogs"
+  }
+}

@@ -1,0 +1,327 @@
+{
+  "@@locale": "nl",
+  "appTitle": "Tryton Flutter Client",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "appSubtitle": "Tryton ERP-client",
+  "@appSubtitle": {
+    "description": "Application subtitle on login screen"
+  },
+  "username": "Gebruikersnaam",
+  "@username": {
+    "description": "Label for the username field"
+  },
+  "password": "Wachtwoord",
+  "@password": {
+    "description": "Label for the password field"
+  },
+  "database": "Database",
+  "@database": {
+    "description": "Label for the database selector"
+  },
+  "serverUrl": "Server-URL",
+  "@serverUrl": {
+    "description": "Label for the server URL field"
+  },
+  "required": "Verplicht",
+  "@required": {
+    "description": "Validation message for empty required fields"
+  },
+  "signIn": "Inloggen",
+  "@signIn": {
+    "description": "Login button label"
+  },
+  "signOut": "Uitloggen",
+  "@signOut": {
+    "description": "Logout button tooltip"
+  },
+  "loadDatabases": "Databases laden",
+  "@loadDatabases": {
+    "description": "Tooltip for the refresh databases button"
+  },
+  "additionalInputRequired": "Aanvullende invoer vereist",
+  "@additionalInputRequired": {
+    "description": "Shown when MFA or extra login step is needed"
+  },
+  "reloadMenu": "Menu herladen",
+  "@reloadMenu": {
+    "description": "Tooltip for the menu refresh button"
+  },
+  "noMenuEntriesFound": "Geen menu-items gevonden.",
+  "@noMenuEntriesFound": {
+    "description": "Shown when the server returns an empty menu"
+  },
+  "retry": "Opnieuw proberen",
+  "@retry": {
+    "description": "Button label to retry a failed operation"
+  },
+  "error": "Fout",
+  "@error": {
+    "description": "Generic error label"
+  },
+  "search": "Zoeken…",
+  "@search": {
+    "description": "Placeholder text in the search bar"
+  },
+  "selected": "{count} geselecteerd",
+  "@selected": {
+    "description": "Number of selected rows in a list view",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteRecords": "Records verwijderen",
+  "@deleteRecords": {
+    "description": "Dialog title for multi-record deletion"
+  },
+  "reallyDeleteRecords": "{count} record(s) verwijderen?",
+  "@reallyDeleteRecords": {
+    "description": "Confirmation message for deleting multiple records",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRecordsFound": "Geen records gevonden.",
+  "@noRecordsFound": {
+    "description": "Shown when a list view returns no results"
+  },
+  "createNew": "Nieuw aanmaken",
+  "@createNew": {
+    "description": "Button label to create a new record"
+  },
+  "attachments": "Bijlagen",
+  "@attachments": {
+    "description": "Tooltip for the attachments button"
+  },
+  "duplicate": "Dupliceren",
+  "@duplicate": {
+    "description": "Tooltip for the duplicate/copy button"
+  },
+  "openEdit": "Openen / Bewerken",
+  "@openEdit": {
+    "description": "Tooltip for the open/edit button in list views"
+  },
+  "reload": "Herladen",
+  "@reload": {
+    "description": "Tooltip for the reload button"
+  },
+  "delete": "Verwijderen",
+  "@delete": {
+    "description": "Button/tooltip label to delete a record"
+  },
+  "moreActions": "Meer acties",
+  "@moreActions": {
+    "description": "Tooltip for the overflow actions menu"
+  },
+  "launchActions": "Acties starten",
+  "@launchActions": {
+    "description": "Toolbar submenu header for keyword actions"
+  },
+  "relatedRecords": "Gerelateerde records",
+  "@relatedRecords": {
+    "description": "Toolbar submenu header for relate actions"
+  },
+  "reports": "Rapporten",
+  "@reports": {
+    "description": "Toolbar submenu header for report actions"
+  },
+  "email": "E-mail",
+  "@email": {
+    "description": "Toolbar submenu header for email templates"
+  },
+  "save": "Opslaan",
+  "@save": {
+    "description": "Button label to save a record"
+  },
+  "cancel": "Annuleren",
+  "@cancel": {
+    "description": "Button label to cancel a dialog or operation"
+  },
+  "recordCreated": "Record aangemaakt.",
+  "@recordCreated": {
+    "description": "Snackbar shown after a new record is created"
+  },
+  "saved": "Opgeslagen.",
+  "@saved": {
+    "description": "Snackbar shown after saving a record"
+  },
+  "deleteRecord": "Record verwijderen",
+  "@deleteRecord": {
+    "description": "Confirmation dialog title for deleting a single record"
+  },
+  "reallyDelete": "Verwijderen? Dit kan niet ongedaan worden gemaakt.",
+  "@reallyDelete": {
+    "description": "Confirmation dialog body for deleting a record"
+  },
+  "add": "Toevoegen",
+  "@add": {
+    "description": "Button label to add a row in an inline tree widget"
+  },
+  "noEntries": "Geen vermeldingen.",
+  "@noEntries": {
+    "description": "Shown when an inline One2Many table is empty"
+  },
+  "apply": "Toepassen",
+  "@apply": {
+    "description": "Button label to apply/confirm a row dialog"
+  },
+  "openRecord": "Record openen",
+  "@openRecord": {
+    "description": "Tooltip for the open-related-record button on Many2One fields"
+  },
+  "clearField": "Veld wissen",
+  "@clearField": {
+    "description": "Tooltip for the clear button on Many2One fields"
+  },
+  "searchRecord": "Record zoeken",
+  "@searchRecord": {
+    "description": "Tooltip for the search button on Many2One fields"
+  },
+  "entries": "{count} vermeldingen",
+  "@entries": {
+    "description": "Entry count shown for X2Many fields in read-only mode",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generatingReport": "Rapport wordt gegenereerd…",
+  "@generatingReport": {
+    "description": "Snackbar shown while a report is being generated"
+  },
+  "reportGenerated": "Rapport \"{name}\" ({format}) gegenereerd.",
+  "@reportGenerated": {
+    "description": "Snackbar shown after a report is successfully generated",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "actionNotSupported": "\"{name}\" ({type}) wordt nog niet ondersteund.",
+  "@actionNotSupported": {
+    "description": "Snackbar shown when an action type is not yet implemented",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "executingButton": "Knop \"{name}\" wordt uitgevoerd…",
+  "@executingButton": {
+    "description": "Snackbar shown when a form button is triggered",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "language": "Taal",
+  "@language": {
+    "description": "Label for the language selector"
+  },
+  "sessionExpired": "Sessie verlopen",
+  "@sessionExpired": {
+    "description": "Title of the re-login dialog when session expires"
+  },
+  "preferences": "Voorkeuren",
+  "@preferences": {
+    "description": "Menu item and screen title for user preferences"
+  },
+  "help": "Help",
+  "@help": {
+    "description": "Menu item for help"
+  },
+  "collapse": "Inklappen",
+  "@collapse": {
+    "description": "Tooltip to collapse a tree node"
+  },
+  "expand": "Uitklappen",
+  "@expand": {
+    "description": "Tooltip to expand a tree node"
+  },
+  "openInForm": "Openen in formulier",
+  "@openInForm": {
+    "description": "Tooltip to open an embedded tree record in full form view"
+  },
+  "undelete": "Wissen ongedaan maken",
+  "@undelete": {
+    "description": "Tooltip to undo a pending delete in embedded tree"
+  },
+  "switchToForm": "Naar formulier schakelen",
+  "@switchToForm": {
+    "description": "Tooltip to switch selected list records to form view"
+  },
+  "close": "Sluiten",
+  "@close": {
+    "description": "Tooltip/button to close the current view and return to menu"
+  },
+  "boolYes": "Ja",
+  "@boolYes": {
+    "description": "Display value for boolean true in list/form"
+  },
+  "boolNo": "Nee",
+  "@boolNo": {
+    "description": "Display value for boolean false in list/form"
+  },
+  "clearSearch": "Wissen",
+  "@clearSearch": {
+    "description": "Tooltip for the clear button in the search bar"
+  },
+  "previousRecord": "Vorige",
+  "@previousRecord": {
+    "description": "Tooltip for the previous-record navigation button"
+  },
+  "nextRecord": "Volgende",
+  "@nextRecord": {
+    "description": "Tooltip for the next-record navigation button"
+  },
+  "viewLogs": "Logboeken bekijken",
+  "@viewLogs": {
+    "description": "Tooltip for the view-logs button in the form toolbar"
+  },
+  "note": "Aantekening",
+  "@note": {
+    "description": "Tooltip for the note/chat button in the form toolbar"
+  },
+  "wizard": "Wizard",
+  "@wizard": {
+    "description": "Action type label shown when a wizard is not yet supported"
+  },
+  "versionMismatch": "Incompatibele serverversie {server} (client verwacht {client}).",
+  "@versionMismatch": {
+    "description": "Error shown when server major.minor version doesn't match the client",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "client": {
+        "type": "String"
+      }
+    }
+  },
+  "recordModified": "Dit record is gewijzigd.\nWilt u het opslaan?",
+  "@recordModified": {
+    "description": "Dialog shown when navigating away from a modified record"
+  },
+  "yes": "Ja",
+  "@yes": {
+    "description": "Affirmative answer in dialogs"
+  },
+  "no": "Nee",
+  "@no": {
+    "description": "Negative answer in dialogs"
+  }
+}

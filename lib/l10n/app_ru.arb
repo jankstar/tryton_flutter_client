@@ -1,0 +1,327 @@
+{
+  "@@locale": "ru",
+  "appTitle": "Tryton Flutter Client",
+  "@appTitle": {
+    "description": "Application title"
+  },
+  "appSubtitle": "Клиент ERP Tryton",
+  "@appSubtitle": {
+    "description": "Application subtitle on login screen"
+  },
+  "username": "Имя пользователя",
+  "@username": {
+    "description": "Label for the username field"
+  },
+  "password": "Пароль",
+  "@password": {
+    "description": "Label for the password field"
+  },
+  "database": "База данных",
+  "@database": {
+    "description": "Label for the database selector"
+  },
+  "serverUrl": "URL сервера",
+  "@serverUrl": {
+    "description": "Label for the server URL field"
+  },
+  "required": "Обязательное поле",
+  "@required": {
+    "description": "Validation message for empty required fields"
+  },
+  "signIn": "Войти",
+  "@signIn": {
+    "description": "Login button label"
+  },
+  "signOut": "Выйти",
+  "@signOut": {
+    "description": "Logout button tooltip"
+  },
+  "loadDatabases": "Загрузить базы данных",
+  "@loadDatabases": {
+    "description": "Tooltip for the refresh databases button"
+  },
+  "additionalInputRequired": "Требуется дополнительный ввод",
+  "@additionalInputRequired": {
+    "description": "Shown when MFA or extra login step is needed"
+  },
+  "reloadMenu": "Обновить меню",
+  "@reloadMenu": {
+    "description": "Tooltip for the menu refresh button"
+  },
+  "noMenuEntriesFound": "Пункты меню не найдены.",
+  "@noMenuEntriesFound": {
+    "description": "Shown when the server returns an empty menu"
+  },
+  "retry": "Повторить",
+  "@retry": {
+    "description": "Button label to retry a failed operation"
+  },
+  "error": "Ошибка",
+  "@error": {
+    "description": "Generic error label"
+  },
+  "search": "Поиск…",
+  "@search": {
+    "description": "Placeholder text in the search bar"
+  },
+  "selected": "Выбрано: {count}",
+  "@selected": {
+    "description": "Number of selected rows in a list view",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteRecords": "Удалить записи",
+  "@deleteRecords": {
+    "description": "Dialog title for multi-record deletion"
+  },
+  "reallyDeleteRecords": "Удалить {count} запись(ей)?",
+  "@reallyDeleteRecords": {
+    "description": "Confirmation message for deleting multiple records",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noRecordsFound": "Записи не найдены.",
+  "@noRecordsFound": {
+    "description": "Shown when a list view returns no results"
+  },
+  "createNew": "Создать новый",
+  "@createNew": {
+    "description": "Button label to create a new record"
+  },
+  "attachments": "Вложения",
+  "@attachments": {
+    "description": "Tooltip for the attachments button"
+  },
+  "duplicate": "Дублировать",
+  "@duplicate": {
+    "description": "Tooltip for the duplicate/copy button"
+  },
+  "openEdit": "Открыть / Редактировать",
+  "@openEdit": {
+    "description": "Tooltip for the open/edit button in list views"
+  },
+  "reload": "Обновить",
+  "@reload": {
+    "description": "Tooltip for the reload button"
+  },
+  "delete": "Удалить",
+  "@delete": {
+    "description": "Button/tooltip label to delete a record"
+  },
+  "moreActions": "Дополнительные действия",
+  "@moreActions": {
+    "description": "Tooltip for the overflow actions menu"
+  },
+  "launchActions": "Запустить действия",
+  "@launchActions": {
+    "description": "Toolbar submenu header for keyword actions"
+  },
+  "relatedRecords": "Связанные записи",
+  "@relatedRecords": {
+    "description": "Toolbar submenu header for relate actions"
+  },
+  "reports": "Отчёты",
+  "@reports": {
+    "description": "Toolbar submenu header for report actions"
+  },
+  "email": "Электронная почта",
+  "@email": {
+    "description": "Toolbar submenu header for email templates"
+  },
+  "save": "Сохранить",
+  "@save": {
+    "description": "Button label to save a record"
+  },
+  "cancel": "Отмена",
+  "@cancel": {
+    "description": "Button label to cancel a dialog or operation"
+  },
+  "recordCreated": "Запись создана.",
+  "@recordCreated": {
+    "description": "Snackbar shown after a new record is created"
+  },
+  "saved": "Сохранено.",
+  "@saved": {
+    "description": "Snackbar shown after saving a record"
+  },
+  "deleteRecord": "Удалить запись",
+  "@deleteRecord": {
+    "description": "Confirmation dialog title for deleting a single record"
+  },
+  "reallyDelete": "Удалить? Это действие нельзя отменить.",
+  "@reallyDelete": {
+    "description": "Confirmation dialog body for deleting a record"
+  },
+  "add": "Добавить",
+  "@add": {
+    "description": "Button label to add a row in an inline tree widget"
+  },
+  "noEntries": "Нет записей.",
+  "@noEntries": {
+    "description": "Shown when an inline One2Many table is empty"
+  },
+  "apply": "Применить",
+  "@apply": {
+    "description": "Button label to apply/confirm a row dialog"
+  },
+  "openRecord": "Открыть запись",
+  "@openRecord": {
+    "description": "Tooltip for the open-related-record button on Many2One fields"
+  },
+  "clearField": "Очистить поле",
+  "@clearField": {
+    "description": "Tooltip for the clear button on Many2One fields"
+  },
+  "searchRecord": "Найти запись",
+  "@searchRecord": {
+    "description": "Tooltip for the search button on Many2One fields"
+  },
+  "entries": "{count} запись(ей)",
+  "@entries": {
+    "description": "Entry count shown for X2Many fields in read-only mode",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "generatingReport": "Формирование отчёта…",
+  "@generatingReport": {
+    "description": "Snackbar shown while a report is being generated"
+  },
+  "reportGenerated": "Отчёт \"{name}\" ({format}) сформирован.",
+  "@reportGenerated": {
+    "description": "Snackbar shown after a report is successfully generated",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "format": {
+        "type": "String"
+      }
+    }
+  },
+  "actionNotSupported": "\"{name}\" ({type}) пока не поддерживается.",
+  "@actionNotSupported": {
+    "description": "Snackbar shown when an action type is not yet implemented",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "executingButton": "Выполняется кнопка \"{name}\"…",
+  "@executingButton": {
+    "description": "Snackbar shown when a form button is triggered",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "language": "Язык",
+  "@language": {
+    "description": "Label for the language selector"
+  },
+  "sessionExpired": "Сеанс истёк",
+  "@sessionExpired": {
+    "description": "Title of the re-login dialog when session expires"
+  },
+  "preferences": "Настройки",
+  "@preferences": {
+    "description": "Menu item and screen title for user preferences"
+  },
+  "help": "Справка",
+  "@help": {
+    "description": "Menu item for help"
+  },
+  "collapse": "Свернуть",
+  "@collapse": {
+    "description": "Tooltip to collapse a tree node"
+  },
+  "expand": "Развернуть",
+  "@expand": {
+    "description": "Tooltip to expand a tree node"
+  },
+  "openInForm": "Открыть в форме",
+  "@openInForm": {
+    "description": "Tooltip to open an embedded tree record in full form view"
+  },
+  "undelete": "Восстановить",
+  "@undelete": {
+    "description": "Tooltip to undo a pending delete in embedded tree"
+  },
+  "switchToForm": "Перейти к форме",
+  "@switchToForm": {
+    "description": "Tooltip to switch selected list records to form view"
+  },
+  "close": "Закрыть",
+  "@close": {
+    "description": "Tooltip/button to close the current view and return to menu"
+  },
+  "boolYes": "Да",
+  "@boolYes": {
+    "description": "Display value for boolean true in list/form"
+  },
+  "boolNo": "Нет",
+  "@boolNo": {
+    "description": "Display value for boolean false in list/form"
+  },
+  "clearSearch": "Очистить",
+  "@clearSearch": {
+    "description": "Tooltip for the clear button in the search bar"
+  },
+  "previousRecord": "Предыдущий",
+  "@previousRecord": {
+    "description": "Tooltip for the previous-record navigation button"
+  },
+  "nextRecord": "Следующий",
+  "@nextRecord": {
+    "description": "Tooltip for the next-record navigation button"
+  },
+  "viewLogs": "Просмотр журнала",
+  "@viewLogs": {
+    "description": "Tooltip for the view-logs button in the form toolbar"
+  },
+  "note": "Заметка",
+  "@note": {
+    "description": "Tooltip for the note/chat button in the form toolbar"
+  },
+  "wizard": "Мастер",
+  "@wizard": {
+    "description": "Action type label shown when a wizard is not yet supported"
+  },
+  "versionMismatch": "Несовместимая версия сервера {server} (клиент ожидает {client}).",
+  "@versionMismatch": {
+    "description": "Error shown when server major.minor version doesn't match the client",
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "client": {
+        "type": "String"
+      }
+    }
+  },
+  "recordModified": "Эта запись была изменена.\nВы хотите сохранить её?",
+  "@recordModified": {
+    "description": "Dialog shown when navigating away from a modified record"
+  },
+  "yes": "Да",
+  "@yes": {
+    "description": "Affirmative answer in dialogs"
+  },
+  "no": "Нет",
+  "@no": {
+    "description": "Negative answer in dialogs"
+  }
+}
