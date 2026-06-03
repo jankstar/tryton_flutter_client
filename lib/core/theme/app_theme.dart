@@ -47,6 +47,7 @@ extension AppThemeX on AppTheme {
     return ThemeData(
       colorScheme: cs,
       useMaterial3: true,
+      fontFamily: 'Lato',
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(),
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),

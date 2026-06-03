@@ -179,6 +179,7 @@ On first launch, enter the Tryton server URL (e.g. `http://localhost:8000`), sel
 | `flutter_localizations` | 11-language UI |
 | `intl` | Date/number formatting |
 | `url_launcher` | Help link |
+| `google_fonts` | Lato typeface |
 
 ## Tryton Compatibility
 
@@ -187,3 +188,21 @@ Tested with Tryton **8.x**. The protocol implementation follows the [SAO web cli
 ## License
 
 GPL-3.0 — same as Tryton. See [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
+
+## Third-Party Fonts
+
+### Lato
+
+**Designer:** Łukasz Dziedzic / tyPoland  
+**Source:** [Google Fonts — Lato](https://fonts.google.com/specimen/Lato)  
+**License:** [SIL Open Font License 1.1](https://openfontlicense.org/)
+
+> Copyright (c) 2010–2014 by tyPoland Lukasz Dziedzic (team@latofonts.com)
+> with Reserved Font Name "Lato".
+>
+> This Font Software is licensed under the SIL Open Font License, Version 1.1.
+> This license is available with a FAQ at https://openfontlicense.org/
+
+Lato covers Latin, Latin Extended, and Cyrillic character sets, supporting all
+11 application languages: English, German, French, Spanish, Portuguese, Polish,
+Danish, Dutch, Swedish, Finnish, and Russian.

@@ -103,6 +103,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   final Set<int> _selected = {};
   final _scrollController = ScrollController();
+  final _hScrollController = ScrollController();
 
   // ─── Domain tabs (ir.action.act_window.domain) ───────────────────────────
   List<TabDomain> _tabDomains = [];
@@ -127,6 +128,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _hScrollController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -1016,9 +1018,13 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     return SingleChildScrollView(
       controller: _scrollController,
       scrollDirection: Axis.vertical,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
+      child: Scrollbar(
+        controller: _hScrollController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _hScrollController,
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
           headingRowColor: WidgetStateProperty.all(
             Theme.of(context).colorScheme.surfaceContainerHighest,
           ),
@@ -1035,6 +1041,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           rows: _buildRows(),
         ),
       ),
+      ),  // Scrollbar
     );
   }
 

@@ -53,6 +53,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   /// Actual deletion happens when the parent form is saved.
   final Set<int> _markedForDeletion = {};
 
+  final _hScrollController = ScrollController();
+
   /// IDs der markierten (nicht gelöschten) Datensätze für die Inline-Navigation.
   List<int> _inlineFormIds = [];
   /// Aktueller Index innerhalb von [_inlineFormIds].
@@ -71,6 +73,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   void initState() {
     super.initState();
     _loadView();
+  }
+
+  @override
+  void dispose() {
+    _hScrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -324,9 +332,13 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                     fontSize: 13)),
           )
         else
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
+          Scrollbar(
+            controller: _hScrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: _hScrollController,
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
               columnSpacing: 12,
               headingRowHeight: 34,
               dataRowMinHeight: 30,
@@ -423,6 +435,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
               }).toList(),
             ),
           ),
+          ),  // Scrollbar
       ],
     );
   }
