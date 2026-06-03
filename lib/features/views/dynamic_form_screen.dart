@@ -31,6 +31,12 @@ class DynamicFormScreen extends ConsumerStatefulWidget {
   final bool embedded;
   /// Called when the user closes the embedded form (back to parent view).
   final VoidCallback? onClose;
+  /// Called to navigate to the previous record in embedded mode.
+  final VoidCallback? onPrev;
+  /// Called to navigate to the next record in embedded mode.
+  final VoidCallback? onNext;
+  /// Position label shown in embedded toolbar, e.g. "2 / 5".
+  final String? positionLabel;
 
   const DynamicFormScreen({
     super.key,
@@ -40,6 +46,9 @@ class DynamicFormScreen extends ConsumerStatefulWidget {
     this.screenDomain = const [],
     this.embedded = false,
     this.onClose,
+    this.onPrev,
+    this.onNext,
+    this.positionLabel,
   });
 
   @override
@@ -270,7 +279,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         final ids = await svc.create(widget.model, [saveValues]);
         if (mounted) {
           _showSnack(context.l10n.recordCreated);
-          Navigator.of(context).pop(ids.firstOrNull);
+          if (widget.embedded) {
+            widget.onClose?.call();
+          } else {
+            Navigator.of(context).pop(ids.firstOrNull);
+          }
         }
       } else {
         final isUserRecord = widget.model == 'res.user' &&
@@ -546,6 +559,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       },
       child: Scaffold(
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        scrolledUnderElevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -722,6 +737,90 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           ),
         ),
       ),
+    );
+  }
+
+  // ── Embedded (inline inside EmbeddedTreeWidget) ────────────────────────────
+  Widget _buildEmbedded(BuildContext context, dynamic l) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Compact toolbar
+        Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          color: cs.surfaceContainerHighest,
+          child: Row(children: [
+            // ── Zurück zur Tabelle ──────────────────────────────────────
+            IconButton(
+              icon: const Icon(Icons.arrow_back, size: 16),
+              tooltip: l.close,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: () async {
+                if (await _confirmDiscard()) widget.onClose?.call();
+              },
+            ),
+            // ── Vorheriger / Nächster ───────────────────────────────────
+            IconButton(
+              icon: const Icon(Icons.arrow_back_ios, size: 14),
+              tooltip: l.previousRecord,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 32),
+              onPressed: widget.onPrev == null ? null : () async {
+                if (await _confirmDiscard()) widget.onPrev!();
+              },
+            ),
+            if (widget.positionLabel != null)
+              Text(
+                widget.positionLabel!,
+                style: TextStyle(fontSize: 11, color: cs.outline),
+              ),
+            IconButton(
+              icon: const Icon(Icons.arrow_forward_ios, size: 14),
+              tooltip: l.nextRecord,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 32),
+              onPressed: widget.onNext == null ? null : () async {
+                if (await _confirmDiscard()) widget.onNext!();
+              },
+            ),
+            const SizedBox(width: 4),
+            // ── Titel ───────────────────────────────────────────────────
+            Expanded(
+              child: Text(
+                _effectiveTitle,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // ── Speichern / Reload ──────────────────────────────────────
+            if (_saving)
+              const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+            else
+              IconButton(
+                icon: const Icon(Icons.save, size: 16),
+                tooltip: l.save,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: (_saving || (!_isDirty && !_isNew)) ? null : _save,
+              ),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 16),
+              tooltip: l.reload,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: _saving ? null : _load,
+            ),
+          ]),        // Row
+        ),             // Container
+        // Form body
+        Expanded(child: _buildBody()),
+      ],
     );
   }
 }

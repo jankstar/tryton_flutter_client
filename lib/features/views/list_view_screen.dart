@@ -761,6 +761,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        scrolledUnderElevation: 0,
         title: Text(widget.title),
         actions: [
           // ── Navigation ────────────────────────────────────────────────

@@ -1,15 +1,14 @@
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'dynamic_form_screen.dart';
 
+import '../../core/icons/tryton_icon.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../model/field_definition.dart';
-import '../shell/app_shell.dart' show pushFormScreen;
 import '../model/model_service.dart';
 import '../model/record.dart';
-import 'navigation_context.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../shared/utils/m2o_name_cache.dart' as m2o;
 import '../../shared/utils/number_format_utils.dart';
@@ -53,6 +52,15 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   /// Records marked for deletion – shown with strikethrough.
   /// Actual deletion happens when the parent form is saved.
   final Set<int> _markedForDeletion = {};
+
+  /// IDs der markierten (nicht gelöschten) Datensätze für die Inline-Navigation.
+  List<int> _inlineFormIds = [];
+  /// Aktueller Index innerhalb von [_inlineFormIds].
+  int _inlineFormIndex = 0;
+
+  /// Die aktuell im Inline-Formular angezeigte ID (null = Tabelle sichtbar).
+  int? get _inlineFormId =>
+      _inlineFormIds.isEmpty ? null : _inlineFormIds[_inlineFormIndex];
 
   bool _loading = false;
   String? _error;
@@ -135,43 +143,24 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   // ─── Actions ──────────────────────────────────────────────────────────────
 
   Future<void> _openRecord(int id) async {
-    final allIds = _rows
-        .where((r) => !_markedForDeletion.contains(r.id))
-        .map((r) => r.id)
+    // Alle markierten, nicht zum Löschen markierten Datensätze als Navigationsliste.
+    final ids = _selected
+        .where((i) => !_markedForDeletion.contains(i))
         .toList();
-    final idx = allIds.indexOf(id);
-    ref.read(navContextProvider.notifier).state = RecordNavContext(
-      model: _relModel,
-      title: widget.fieldDef.label,
-      recordIds: allIds,
-      currentIndex: idx < 0 ? 0 : idx,
-    );
-    await pushFormScreen(
-      context,
-      model: _relModel,
-      recordId: id,
-      title: widget.fieldDef.label,
-      screenDomain: const [],
-    );
-    // Refresh the embedded table display only.
-    // Do NOT call widget.onChanged – that would overwrite _values[fieldName]
-    // in the parent with a non-ID value, making recordIds appear empty.
-    await _loadData();
+    // Fallback: nur den angeklickten Datensatz zeigen.
+    final navIds = ids.isEmpty ? [id] : ids;
+    final idx = navIds.indexOf(id);
+    setState(() {
+      _inlineFormIds = navIds;
+      _inlineFormIndex = idx < 0 ? 0 : idx;
+    });
   }
 
   Future<void> _newRecord() async {
-    await pushFormScreen(
-      context,
-      model: _relModel,
-      recordId: -1,
-      title: widget.fieldDef.label,
-      screenDomain: const [],
-    );
-    // Newly created records are linked via the related model's parent field.
-    // The parent form must be reloaded (Reload button) to see the new entry,
-    // because we cannot update widget.recordIds without overwriting _values.
-    // Just refresh with current IDs for now.
-    await _loadData();
+    setState(() {
+      _inlineFormIds = [-1];
+      _inlineFormIndex = 0;
+    });
   }
 
   /// Mark selected records for deletion (like SAO's screen.remove).
@@ -214,6 +203,37 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     }
     if (_treeDef == null) return const SizedBox.shrink();
 
+    // ── Inline-Form-Modus: Tabelle durch eingebettetes Formular ersetzen ──────
+    if (_inlineFormId != null) {
+      final hasPrev = _inlineFormIndex > 0;
+      final hasNext = _inlineFormIndex < _inlineFormIds.length - 1;
+      final posLabel = _inlineFormIds.length > 1
+          ? '${_inlineFormIndex + 1} / ${_inlineFormIds.length}'
+          : null;
+      return SizedBox(
+        height: 500,
+        child: DynamicFormScreen(
+          key: ValueKey('inline_${widget.fieldDef.name}_${_inlineFormId}'),
+          model: _relModel,
+          recordId: _inlineFormId!,
+          title: widget.fieldDef.label,
+          screenDomain: const [],
+          embedded: true,
+          positionLabel: posLabel,
+          onClose: () async {
+            setState(() => _inlineFormIds = []);
+            await _loadData();
+          },
+          onPrev: hasPrev
+              ? () => setState(() => _inlineFormIndex--)
+              : null,
+          onNext: hasNext
+              ? () => setState(() => _inlineFormIndex++)
+              : null,
+        ),
+      );
+    }
+
     final l = context.l10n;
     final primary = Theme.of(context).colorScheme.primary;
     final errorColor = Theme.of(context).colorScheme.error;
@@ -241,15 +261,19 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                 scrollDirection: Axis.horizontal,
                 child: Row(children: [
                   _TBtn(icon: Icons.refresh, tip: l.reload, onPressed: _loadView),
-                  _TBtn(
-                    icon: Icons.open_in_new,
-                    tip: l.openInForm,
-                    color: singleSelection &&
-                            !_markedForDeletion.contains(_selected.firstOrNull)
-                        ? primary
-                        : null,
-                    onPressed: singleSelection &&
-                            !_markedForDeletion.contains(_selected.firstOrNull)
+                  IconButton(
+                    icon: TrytonIcon(
+                      iconName: 'tryton-switch',
+                      size: 16,
+                      color: hasSelection
+                          ? primary
+                          : Theme.of(context).disabledColor,
+                      fallback: Icons.compare_arrows,
+                    ),
+                    tooltip: l.openInForm,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    onPressed: hasSelection
                         ? () => _openRecord(_selected.first)
                         : null,
                   ),
