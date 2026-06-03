@@ -528,10 +528,13 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
+
+    if (widget.embedded) return _buildEmbedded(context, l);
+
     final nav = ref.watch(navContextProvider);
     final hasPrev = nav?.hasPrevious ?? false;
     final hasNext = nav?.hasNext ?? false;
-    final l = context.l10n;
 
     return PopScope(
       canPop: false,
