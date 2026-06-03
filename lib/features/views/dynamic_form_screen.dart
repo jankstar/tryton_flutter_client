@@ -27,6 +27,10 @@ class DynamicFormScreen extends ConsumerStatefulWidget {
   /// Domain from the action that opened this form (screen domain).
   /// Used for domain_readonly evaluation, like SAO's record.group.domain.
   final List<dynamic> screenDomain;
+  /// When true, renders without Scaffold/AppBar for use inside another widget.
+  final bool embedded;
+  /// Called when the user closes the embedded form (back to parent view).
+  final VoidCallback? onClose;
 
   const DynamicFormScreen({
     super.key,
@@ -34,6 +38,8 @@ class DynamicFormScreen extends ConsumerStatefulWidget {
     required this.title,
     required this.recordId,
     this.screenDomain = const [],
+    this.embedded = false,
+    this.onClose,
   });
 
   @override
@@ -805,6 +811,13 @@ class _FormRendererState extends State<_FormRenderer> {
       if (node is FieldNode) {
         final extra = labelColspanMap[node.name] ?? 0;
         colspan = (colspan + extra).clamp(1, totalCol);
+        // one2many / many2many tables always need full width – force it even
+        // when the XML omits an explicit colspan (Tryton forms always intend
+        // this, but our parser defaults to 1).
+        final fd = widget.viewDef.fields[node.name];
+        if (fd != null && (fd.type == 'one2many' || fd.type == 'many2many')) {
+          colspan = totalCol;
+        }
       }
 
       if (currentColUsed + colspan > totalCol) flushRow();
@@ -939,6 +952,17 @@ class _FormRendererState extends State<_FormRenderer> {
       final companion = values['$name.rec_name'] ?? values['$name.'];
       if (companion != null && companion != false) return [raw, companion];
       return raw; // Integer → _updateFromValue async loads
+    }
+
+    // on_change may return many2one as {"id": n, "rec_name": "Name"}
+    if (raw is Map) {
+      final id = (raw['id'] as num?)?.toInt();
+      if (id != null && id > 0) {
+        final recName = raw['rec_name'];
+        return (recName != null && recName != false && recName.toString().isNotEmpty)
+            ? [id, recName.toString()]
+            : id;
+      }
     }
 
     return null;

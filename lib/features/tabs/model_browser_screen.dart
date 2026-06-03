@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/pyson/pyson_evaluator.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/theme/theme_provider.dart';
 import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/model_service.dart';
@@ -173,7 +175,7 @@ class ModelBrowserScreen extends ConsumerWidget {
             onPressed: () => ref.invalidate(menuProvider),
           ),
           // ── User chip (right side like SAO) ────────────────────────────
-          const _UserChip(),
+          const UserChip(),
           const SizedBox(width: 8),
         ],
       ),
@@ -259,9 +261,6 @@ class ModelBrowserSidebar extends ConsumerWidget {
             data: (roots) => _MenuTree(roots: roots),
           ),
         ),
-        Divider(height: 1, thickness: 1, color: cs.outlineVariant),
-        // User chip at bottom
-        const _UserChip(),
       ],
     );
   }
@@ -485,10 +484,10 @@ dynamic _safeDecode(String s) {
 
 // ─── User chip (top-right like SAO) ──────────────────────────────────────────
 
-enum _UserMenuItem { preferences, help, logout }
+enum _UserMenuItem { preferences, help, themes, logout }
 
-class _UserChip extends ConsumerWidget {
-  const _UserChip();
+class UserChip extends ConsumerWidget {
+  const UserChip({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -525,6 +524,13 @@ class _UserChip extends ConsumerWidget {
           case _UserMenuItem.help:
             final uri = Uri.parse('https://docs.tryton.org/');
             if (await canLaunchUrl(uri)) launchUrl(uri);
+          case _UserMenuItem.themes:
+            if (context.mounted) {
+              await showDialog<void>(
+                context: context,
+                builder: (_) => _ThemePickerDialog(ref: ref),
+              );
+            }
           case _UserMenuItem.logout:
             await ref.read(authProvider.notifier).logout();
             ref.read(tabsProvider.notifier).clearAll();
@@ -555,6 +561,17 @@ class _UserChip extends ConsumerWidget {
             const Icon(Icons.help_outline, size: 16),
             const SizedBox(width: 8),
             Text(ctx.l10n.help),
+          ]),
+        ),
+        // ── Theme ──────────────────────────────────────────────────────
+        PopupMenuItem<_UserMenuItem>(
+          value: _UserMenuItem.themes,
+          child: Row(children: [
+            const Icon(Icons.palette_outlined, size: 16),
+            const SizedBox(width: 8),
+            const Text('Theme'),
+            const Spacer(),
+            const Icon(Icons.chevron_right, size: 16),
           ]),
         ),
         const PopupMenuDivider(),
@@ -654,6 +671,95 @@ class _Avatar extends StatelessWidget {
           fontWeight: FontWeight.bold,
         ),
       ),
+    );
+  }
+}
+
+// ─── Theme picker dialog ──────────────────────────────────────────────────────
+
+class _ThemePickerDialog extends StatelessWidget {
+  final WidgetRef ref;
+  const _ThemePickerDialog({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final current = ref.watch(themeProvider);
+    return AlertDialog(
+      title: const Row(children: [
+        Icon(Icons.palette_outlined, size: 20),
+        SizedBox(width: 8),
+        Text('Theme wählen'),
+      ]),
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      content: SizedBox(
+        width: 280,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: AppTheme.values.map((theme) {
+            final isSelected = theme == current;
+            return ListTile(
+              dense: true,
+              leading: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: theme.seedColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outlineVariant,
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: isSelected
+                    ? Icon(
+                        Icons.check,
+                        size: 14,
+                        color: theme.brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
+                      )
+                    : null,
+              ),
+              title: Text(
+                theme.label,
+                style: TextStyle(
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+              trailing: Container(
+                width: 40,
+                height: 16,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  gradient: LinearGradient(colors: [
+                    ColorScheme.fromSeed(
+                            seedColor: theme.seedColor,
+                            brightness: theme.brightness)
+                        .primary,
+                    ColorScheme.fromSeed(
+                            seedColor: theme.seedColor,
+                            brightness: theme.brightness)
+                        .primaryContainer,
+                  ]),
+                ),
+              ),
+              onTap: () {
+                ref.read(themeProvider.notifier).setTheme(theme);
+                Navigator.of(context).pop();
+              },
+            );
+          }).toList(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Schließen'),
+        ),
+      ],
     );
   }
 }

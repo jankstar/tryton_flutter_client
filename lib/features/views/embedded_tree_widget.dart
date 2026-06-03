@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../model/field_definition.dart';
+import '../shell/app_shell.dart' show pushFormScreen;
 import '../model/model_service.dart';
 import '../model/record.dart';
 import 'navigation_context.dart';
@@ -145,7 +146,13 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       recordIds: allIds,
       currentIndex: idx < 0 ? 0 : idx,
     );
-    await context.push('/models/$_relModel/$id');
+    await pushFormScreen(
+      context,
+      model: _relModel,
+      recordId: id,
+      title: widget.fieldDef.label,
+      screenDomain: const [],
+    );
     // Refresh the embedded table display only.
     // Do NOT call widget.onChanged – that would overwrite _values[fieldName]
     // in the parent with a non-ID value, making recordIds appear empty.
@@ -153,7 +160,13 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   }
 
   Future<void> _newRecord() async {
-    await context.push('/models/$_relModel/new');
+    await pushFormScreen(
+      context,
+      model: _relModel,
+      recordId: -1,
+      title: widget.fieldDef.label,
+      screenDomain: const [],
+    );
     // Newly created records are linked via the related model's parent field.
     // The parent form must be reloaded (Reload button) to see the new entry,
     // because we cannot update widget.recordIds without overwriting _values.
@@ -222,52 +235,50 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Row(children: [
-            // ── Always available ─────────────────────────────────────────
-            _TBtn(icon: Icons.refresh, tip: l.reload, onPressed: _loadView),
-
-            // Switch / Open in Form – always shown when a row is selected,
-            // regardless of read-only state (like SAO: switching is always
-            // possible, only editing is restricted by state/access).
-            _TBtn(
-              icon: Icons.open_in_new,
-              tip: l.openInForm,
-              color: singleSelection &&
-                      !_markedForDeletion.contains(_selected.firstOrNull)
-                  ? primary
-                  : null,
-              onPressed: singleSelection &&
-                      !_markedForDeletion.contains(_selected.firstOrNull)
-                  ? () => _openRecord(_selected.first)
-                  : null,
+            // ── Buttons (scrollable so narrow layouts don't overflow) ─────
+            Flexible(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(children: [
+                  _TBtn(icon: Icons.refresh, tip: l.reload, onPressed: _loadView),
+                  _TBtn(
+                    icon: Icons.open_in_new,
+                    tip: l.openInForm,
+                    color: singleSelection &&
+                            !_markedForDeletion.contains(_selected.firstOrNull)
+                        ? primary
+                        : null,
+                    onPressed: singleSelection &&
+                            !_markedForDeletion.contains(_selected.firstOrNull)
+                        ? () => _openRecord(_selected.first)
+                        : null,
+                  ),
+                  if (!widget.readOnly) ...[
+                    _TBtn(icon: Icons.add, tip: l.createNew, onPressed: _newRecord),
+                    _TBtn(
+                      icon: Icons.undo,
+                      tip: l.undelete,
+                      color: selectedHaveMarked ? Colors.green : null,
+                      onPressed: selectedHaveMarked ? _undelete : null,
+                    ),
+                    _TBtn(
+                      icon: Icons.delete_outline,
+                      tip: l.delete,
+                      color: hasSelection && !selectedAreMarked ? errorColor : null,
+                      onPressed:
+                          hasSelection && !selectedAreMarked ? _markForDeletion : null,
+                    ),
+                  ],
+                ]),
+              ),
             ),
-
-            // ── Editing buttons (respect read-only / state control) ───────
-            if (!widget.readOnly) ...[
-              _TBtn(icon: Icons.add, tip: l.createNew, onPressed: _newRecord),
-              // Undelete: only when selected rows are marked for deletion
-              _TBtn(
-                icon: Icons.undo,
-                tip: l.undelete,
-                color: selectedHaveMarked ? Colors.green : null,
-                onPressed: selectedHaveMarked ? _undelete : null,
-              ),
-              // Delete: mark for deletion (committed on parent save)
-              _TBtn(
-                icon: Icons.delete_outline,
-                tip: l.delete,
-                color: hasSelection && !selectedAreMarked ? errorColor : null,
-                onPressed:
-                    hasSelection && !selectedAreMarked ? _markForDeletion : null,
-              ),
-            ],
-            const Spacer(),
+            // ── Counts (pinned right) ─────────────────────────────────────
             if (_markedForDeletion.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: Text(
                   '${_markedForDeletion.length} ×',
-                  style:
-                      TextStyle(fontSize: 11, color: errorColor),
+                  style: TextStyle(fontSize: 11, color: errorColor),
                 ),
               ),
             if (_rows.isNotEmpty)
@@ -411,17 +422,31 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
           companion is String && companion.isNotEmpty) {
         return companion;
       }
-      // Cache from batch-resolve
+      // Cache from batch-resolve — guard against stale non-string entries.
       final relModel = fd?.relation;
       final id = _safeId(val);
       if (id != null && relModel != null && relModel.isNotEmpty) {
         final cached = m2o.m2oNameCache['$relModel,$id'];
-        if (cached != null && cached.isNotEmpty) return cached;
+        if (cached != null && cached.isNotEmpty &&
+            !cached.startsWith('{') && !cached.startsWith('[')) {
+          return cached;
+        }
       }
       return id != null ? '#$id' : '';
     }
 
+    // reference field: value is [model_name, rec_name] — show rec_name only.
+    if (fd?.type == 'reference' || _isReferencePair(val)) {
+      if (val is List && val.length >= 2) {
+        final recName = val[1];
+        if (recName is String && recName.isNotEmpty) return recName;
+      }
+      return '';
+    }
+
     if (fd?.type == 'selection' && fd!.selection != null) {
+      // Guard first: a List/Map can never be a valid selection key.
+      if (val is List || val is Map) return '';
       final match = fd.selection!
           .where((e) => e[0].toString() == val.toString())
           .firstOrNull;
@@ -436,6 +461,14 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   /// Returns true if [val] looks like a Tryton Many2One [id, rec_name] pair.
   static bool _isM2OPair(dynamic val) =>
       val is List && val.length == 2 && val[0] is int && val[1] is String;
+
+  /// True if [val] looks like a Tryton reference [model_name, rec_name] pair.
+  static bool _isReferencePair(dynamic val) =>
+      val is List &&
+      val.length == 2 &&
+      val[0] is String &&
+      (val[0] as String).contains('.') &&
+      (val[1] is String || val[1] == false || val[1] == null);
 
   /// Safely extracts an integer ID from a Many2One value (int or [id, …]).
   static int? _safeId(dynamic val) {

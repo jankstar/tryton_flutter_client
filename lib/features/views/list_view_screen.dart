@@ -1239,17 +1239,32 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       final id = _safeId(value);
       if (id == null || id <= 0) return '';
 
-      // Cache from batch-resolve
+      // Cache from batch-resolve — guard against stale non-string entries.
       final relModel = field?.relation;
       if (relModel != null && relModel.isNotEmpty) {
         final cached = _m2oNameCache['$relModel,$id'];
-        if (cached != null && cached.isNotEmpty) return cached;
+        if (cached != null && cached.isNotEmpty &&
+            !cached.startsWith('{') && !cached.startsWith('[')) {
+          return cached;
+        }
       }
 
       return '#$id';
     }
 
+    // reference field: value is [model_name, rec_name] — show rec_name only.
+    // Also catches untyped reference pairs when fd is null.
+    if (field?.type == 'reference' || _isReferencePair(value)) {
+      if (value is List && value.length >= 2) {
+        final recName = value[1];
+        if (recName is String && recName.isNotEmpty) return recName;
+      }
+      return '';
+    }
+
     if (field?.type == 'selection' && field!.selection != null) {
+      // Guard first: a List/Map can never be a valid selection key.
+      if (value is List || value is Map) return '';
       final match = field.selection!
           .where((e) => e[0].toString() == value.toString())
           .firstOrNull;
@@ -1262,6 +1277,15 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   static bool _isM2OPair(dynamic val) =>
       val is List && val.length == 2 && val[0] is int && val[1] is String;
+
+  /// True if [val] looks like a Tryton reference [model_name, rec_name] pair.
+  /// Tryton model names always contain a dot ('product.product', 'res.user').
+  static bool _isReferencePair(dynamic val) =>
+      val is List &&
+      val.length == 2 &&
+      val[0] is String &&
+      (val[0] as String).contains('.') &&
+      (val[1] is String || val[1] == false || val[1] == null);
 
   static int? _safeId(dynamic val) {
     if (val is int) return val;

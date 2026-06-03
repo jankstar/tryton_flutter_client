@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import 'core/l10n/locale_provider.dart';
 import 'core/rpc/reauth_service.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
@@ -22,39 +24,6 @@ final _router = GoRouter(
   ],
 );
 
-// Border radius matching OutlineInputBorder default (4px) for visual consistency.
-const _kRadius = BorderRadius.all(Radius.circular(4));
-const _kShape = RoundedRectangleBorder(borderRadius: _kRadius);
-
-ThemeData _buildTheme(Brightness brightness) {
-  final cs = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF0055A5),
-    brightness: brightness,
-  );
-  return ThemeData(
-    colorScheme: cs,
-    useMaterial3: true,
-    inputDecorationTheme: const InputDecorationTheme(
-      border: OutlineInputBorder(),
-      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-    ),
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(shape: _kShape),
-    ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(shape: _kShape),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(shape: _kShape),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(shape: _kShape),
-    ),
-    segmentedButtonTheme: SegmentedButtonThemeData(
-      style: SegmentedButton.styleFrom(shape: _kShape),
-    ),
-  );
-}
 
 
 class TrytonFlutterClientApp extends ConsumerStatefulWidget {
@@ -112,6 +81,7 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
   @override
   Widget build(BuildContext context) {
     final locale = ref.watch(localeProvider);
+    final currentTheme = ref.watch(themeProvider);
 
     // When login completes, load the server language and persist it.
     ref.listen<AuthState>(authProvider, (prev, next) {
@@ -130,8 +100,8 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: currentTheme.buildThemeData(),
+      themeMode: ThemeMode.light,
       routerConfig: _router,
     );
   }

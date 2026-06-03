@@ -140,6 +140,23 @@ class _FormViewScreenState extends ConsumerState<FormViewScreen> {
     _triggerOnChange(fieldName);
   }
 
+  /// Converts on_change / read() Map values for many2one fields to the
+  /// expected [id, rec_name] list format so FieldWidget can display them.
+  static dynamic _sanitize(FieldDefinition fd, dynamic raw) {
+    if (raw == null || raw == false) return raw;
+    if (fd.type == 'many2one' && raw is Map) {
+      final id = (raw['id'] as num?)?.toInt();
+      if (id != null && id > 0) {
+        final name = raw['rec_name'];
+        return (name != null && name != false && name.toString().isNotEmpty)
+            ? [id, name.toString()]
+            : id;
+      }
+      return null;
+    }
+    return raw;
+  }
+
   Future<void> _triggerOnChange(String changedField) async {
     final field = _fields[changedField];
     if (field?.onChange == null || field!.onChange!.isEmpty) return;
@@ -210,7 +227,7 @@ class _FormViewScreenState extends ConsumerState<FormViewScreen> {
             for (final entry in visibleFields)
               FieldWidget(
                 field: entry.value,
-                value: _values[entry.key],
+                value: _sanitize(entry.value, _values[entry.key]),
                 onChanged: (v) => _onFieldChanged(entry.key, v),
               ),
             if (_error != null) ...[

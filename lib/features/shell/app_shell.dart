@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../tabs/model_browser_screen.dart';
+import '../tabs/model_browser_screen.dart' show ModelBrowserSidebar, UserChip;
 import '../views/dynamic_form_screen.dart';
 import '../views/list_view_screen.dart';
 import 'tab_manager.dart';
@@ -111,6 +111,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             ),
           ),
+          const UserChip(),
+          const SizedBox(width: 4),
         ],
       ),
     );

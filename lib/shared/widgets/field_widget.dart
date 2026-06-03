@@ -146,7 +146,7 @@ class FieldWidget extends ConsumerWidget {
 
       case 'text':
         return _TextInputField(
-          initialValue: value?.toString() ?? '',
+          initialValue: _safeText(value),
           decoration: _decoration(context),
           readOnly: effective,
           maxLines: 4,
@@ -169,13 +169,22 @@ class FieldWidget extends ConsumerWidget {
 
       default: // 'char' and any unknown types
         return _TextInputField(
-          initialValue: value?.toString() ?? '',
+          initialValue: _safeText(value),
           decoration: _decoration(context),
           readOnly: effective,
           onChanged: onChanged,
           onBlur: onBlur,
         );
     }
+  }
+
+  /// Converts a field value to display text, guarding against raw Map/List
+  /// objects that would otherwise show as Dart's toString() representation.
+  static String _safeText(dynamic value) {
+    if (value == null || value == false) return '';
+    if (value is String) return value;
+    if (value is List || value is Map) return '';
+    return value.toString();
   }
 
   /// Builds the input decoration.

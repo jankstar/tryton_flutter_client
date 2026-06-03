@@ -14,6 +14,8 @@ String formatNumericValue(
   bool isInteger = false,
 }) {
   if (value == null || value == false) return '';
+  // Never render raw objects — they would show as "{...}" or "[...]" in the UI.
+  if (value is List || value is Map) return '';
 
   if (isInteger) {
     int? i;
@@ -24,7 +26,7 @@ String formatNumericValue(
     } else {
       i = int.tryParse(value.toString());
     }
-    if (i == null) return value.toString();
+    if (i == null) return '';
     try {
       return NumberFormat.decimalPattern(locale).format(i);
     } catch (_) {
@@ -38,7 +40,7 @@ String formatNumericValue(
   } else {
     d = double.tryParse(value.toString());
   }
-  if (d == null) return value.toString();
+  if (d == null) return '';
 
   final decimalPlaces =
       (digits != null && digits.length > 1 && digits[1] >= 0) ? digits[1] : 2;
