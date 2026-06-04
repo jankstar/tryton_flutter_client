@@ -28,6 +28,7 @@ class EmbeddedTreeWidget extends ConsumerStatefulWidget {
   final FieldDefinition fieldDef;
   final List<int> recordIds;
   final bool readOnly;
+
   /// Called with Tryton operation lists, e.g.:
   ///   [['delete', [1, 2]]]   – mark records for deletion
   ///   []                      – no pending changes
@@ -43,8 +44,7 @@ class EmbeddedTreeWidget extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<EmbeddedTreeWidget> createState() =>
-      _EmbeddedTreeWidgetState();
+  ConsumerState<EmbeddedTreeWidget> createState() => _EmbeddedTreeWidgetState();
 }
 
 class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
@@ -60,12 +60,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
   /// IDs der markierten (nicht gelöschten) Datensätze für die Inline-Navigation.
   List<int> _inlineFormIds = [];
+
   /// Aktueller Index innerhalb von [_inlineFormIds].
   int _inlineFormIndex = 0;
 
   /// Die aktuell im Inline-Formular angezeigte ID (null = Tabelle sichtbar).
-  int? get _inlineFormId =>
-      _inlineFormIds.isEmpty ? null : _inlineFormIds[_inlineFormIndex];
+  int? get _inlineFormId => _inlineFormIds.isEmpty ? null : _inlineFormIds[_inlineFormIndex];
 
   bool _loading = false;
   String? _error;
@@ -98,20 +98,27 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
   Future<void> _loadView() async {
     if (_relModel.isEmpty) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final svc = ref.read(modelServiceProvider);
       final viewDef = await svc.fieldsViewGet(_relModel, viewType: 'tree');
       final treeDef = TreeXmlParser().parse(
         viewDef.arch,
-        viewDef.fields.map((k, v) => MapEntry(k, <String, dynamic>{
-          'string': v.label, 'type': v.type, 'selection': v.selection,
-        })),
+        viewDef.fields.map(
+          (k, v) => MapEntry(k, <String, dynamic>{'string': v.label, 'type': v.type, 'selection': v.selection}),
+        ),
       );
-      setState(() => _treeDef = TreeViewDefinition(
-            columns: treeDef.columns, fields: viewDef.fields,
-            editable: treeDef.editable,
-            visual: treeDef.visual));
+      setState(
+        () => _treeDef = TreeViewDefinition(
+          columns: treeDef.columns,
+          fields: viewDef.fields,
+          editable: treeDef.editable,
+          visual: treeDef.visual,
+        ),
+      );
       await _loadData();
     } catch (e) {
       setState(() => _error = e.toString());
@@ -123,7 +130,10 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   Future<void> _loadData() async {
     if (_relModel.isEmpty || _treeDef == null) return;
     if (widget.recordIds.isEmpty) {
-      setState(() { _rows = []; _selected.retainAll({}); });
+      setState(() {
+        _rows = [];
+        _selected.retainAll({});
+      });
       return;
     }
     try {
@@ -137,8 +147,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       }
       final rows = await svc.read(_relModel, widget.recordIds, fields);
       // Batch-resolve any Many2One IDs that came back as plain integers
-      await m2o.resolveM2ONames(svc, rows, cols,
-          Map.fromEntries(cols.map((c) => MapEntry(c, _treeDef!.fields[c]))));
+      await m2o.resolveM2ONames(svc, rows, cols, Map.fromEntries(cols.map((c) => MapEntry(c, _treeDef!.fields[c]))));
       if (mounted) {
         setState(() {
           _rows = rows;
@@ -156,9 +165,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
   Future<void> _openRecord(int id) async {
     // Alle markierten, nicht zum Löschen markierten Datensätze als Navigationsliste.
-    final ids = _selected
-        .where((i) => !_markedForDeletion.contains(i))
-        .toList();
+    final ids = _selected.where((i) => !_markedForDeletion.contains(i)).toList();
     // Fallback: nur den angeklickten Datensatz zeigen.
     final navIds = ids.isEmpty ? [id] : ids;
     final idx = navIds.indexOf(id);
@@ -205,13 +212,10 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const SizedBox(
-          height: 60,
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+      return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
     }
     if (_error != null) {
-      return Text(_error!,
-          style: const TextStyle(color: Colors.red, fontSize: 12));
+      return Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12));
     }
     if (_treeDef == null) return const SizedBox.shrink();
 
@@ -219,9 +223,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (_inlineFormId != null) {
       final hasPrev = _inlineFormIndex > 0;
       final hasNext = _inlineFormIndex < _inlineFormIds.length - 1;
-      final posLabel = _inlineFormIds.length > 1
-          ? '${_inlineFormIndex + 1} / ${_inlineFormIds.length}'
-          : null;
+      final posLabel = _inlineFormIds.length > 1 ? '${_inlineFormIndex + 1} / ${_inlineFormIds.length}' : null;
       return SizedBox(
         height: 500,
         child: DynamicFormScreen(
@@ -236,12 +238,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
             setState(() => _inlineFormIds = []);
             await _loadData();
           },
-          onPrev: hasPrev
-              ? () => setState(() => _inlineFormIndex--)
-              : null,
-          onNext: hasNext
-              ? () => setState(() => _inlineFormIndex++)
-              : null,
+          onPrev: hasPrev ? () => setState(() => _inlineFormIndex--) : null,
+          onNext: hasNext ? () => setState(() => _inlineFormIndex++) : null,
         ),
       );
     }
@@ -250,11 +248,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     final primary = Theme.of(context).colorScheme.primary;
     final errorColor = Theme.of(context).colorScheme.error;
     final hasSelection = _selected.isNotEmpty;
-    final singleSelection = _selected.length == 1;
-    final selectedAreMarked = _selected.isNotEmpty &&
-        _selected.every((id) => _markedForDeletion.contains(id));
-    final selectedHaveMarked =
-        _selected.any((id) => _markedForDeletion.contains(id));
+    final selectedAreMarked = _selected.isNotEmpty && _selected.every((id) => _markedForDeletion.contains(id));
+    final selectedHaveMarked = _selected.any((id) => _markedForDeletion.contains(id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -266,63 +261,56 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Row(children: [
-            // ── Buttons (scrollable so narrow layouts don't overflow) ─────
-            Flexible(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(children: [
-                  _TBtn(icon: Icons.refresh, tip: l.reload, onPressed: _loadView),
-                  IconButton(
-                    icon: TrytonIcon(
-                      iconName: 'tryton-switch',
-                      size: 16,
-                      color: hasSelection
-                          ? primary
-                          : Theme.of(context).disabledColor,
-                      fallback: Icons.compare_arrows,
-                    ),
-                    tooltip: l.openInForm,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    onPressed: hasSelection
-                        ? () => _openRecord(_selected.first)
-                        : null,
+          child: Row(
+            children: [
+              // ── Buttons (scrollable so narrow layouts don't overflow) ─────
+              Flexible(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _TBtn(icon: Icons.refresh, tip: l.reload, onPressed: _loadView),
+                      IconButton(
+                        icon: TrytonIcon(
+                          iconName: 'tryton-switch',
+                          size: 16,
+                          color: hasSelection ? primary : Theme.of(context).disabledColor,
+                          fallback: Icons.compare_arrows,
+                        ),
+                        tooltip: l.openInForm,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        onPressed: hasSelection ? () => _openRecord(_selected.first) : null,
+                      ),
+                      if (!widget.readOnly) ...[
+                        _TBtn(icon: Icons.add, tip: l.createNew, onPressed: _newRecord),
+                        _TBtn(
+                          icon: Icons.undo,
+                          tip: l.undelete,
+                          color: selectedHaveMarked ? Colors.green : null,
+                          onPressed: selectedHaveMarked ? _undelete : null,
+                        ),
+                        _TBtn(
+                          icon: Icons.delete_outline,
+                          tip: l.delete,
+                          color: hasSelection && !selectedAreMarked ? errorColor : null,
+                          onPressed: hasSelection && !selectedAreMarked ? _markForDeletion : null,
+                        ),
+                      ],
+                    ],
                   ),
-                  if (!widget.readOnly) ...[
-                    _TBtn(icon: Icons.add, tip: l.createNew, onPressed: _newRecord),
-                    _TBtn(
-                      icon: Icons.undo,
-                      tip: l.undelete,
-                      color: selectedHaveMarked ? Colors.green : null,
-                      onPressed: selectedHaveMarked ? _undelete : null,
-                    ),
-                    _TBtn(
-                      icon: Icons.delete_outline,
-                      tip: l.delete,
-                      color: hasSelection && !selectedAreMarked ? errorColor : null,
-                      onPressed:
-                          hasSelection && !selectedAreMarked ? _markForDeletion : null,
-                    ),
-                  ],
-                ]),
-              ),
-            ),
-            // ── Counts (pinned right) ─────────────────────────────────────
-            if (_markedForDeletion.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: Text(
-                  '${_markedForDeletion.length} ×',
-                  style: TextStyle(fontSize: 11, color: errorColor),
                 ),
               ),
-            if (_rows.isNotEmpty)
-              Text('${_rows.length}',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).colorScheme.outline)),
-          ]),
+              // ── Counts (pinned right) ─────────────────────────────────────
+              if (_markedForDeletion.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text('${_markedForDeletion.length} ×', style: TextStyle(fontSize: 11, color: errorColor)),
+                ),
+              if (_rows.isNotEmpty)
+                Text('${_rows.length}', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline)),
+            ],
+          ),
         ),
         const SizedBox(height: 4),
 
@@ -330,10 +318,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
         if (_rows.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(l.noEntries,
-                style: TextStyle(
-                    color: Theme.of(context).colorScheme.outline,
-                    fontSize: 13)),
+            child: Text(l.noEntries, style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13)),
           )
         else
           Scrollbar(
@@ -343,107 +328,104 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
               controller: _hScrollController,
               scrollDirection: Axis.horizontal,
               child: DataTable(
-              columnSpacing: 12,
-              headingRowHeight: 34,
-              dataRowMinHeight: 30,
-              dataRowMaxHeight: 44,
-              headingRowColor: WidgetStateProperty.all(
-                Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest
-                    .withAlpha(120),
-              ),
-              columns: [
-                DataColumn(
-                  label: Checkbox(
-                    tristate: true,
-                    value: _selected.length == _rows.length && _rows.isNotEmpty
-                        ? true
-                        : _selected.isEmpty
-                            ? false
-                            : null,
-                    onChanged: (_) {
-                      setState(() {
-                        if (_selected.length == _rows.length) {
-                          _selected.clear();
-                        } else {
-                          _selected.addAll(_rows.map((r) => r.id));
-                        }
-                      });
-                    },
-                  ),
+                columnSpacing: 12,
+                headingRowHeight: 34,
+                dataRowMinHeight: 30,
+                dataRowMaxHeight: 44,
+                headingRowColor: WidgetStateProperty.all(
+                  Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(120),
                 ),
-                ..._treeDef!.columns
-                      .where((c) => !c.treeInvisible)
-                      .map((c) => DataColumn(
-                            label: Text(c.label,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 11)),
-                          )),
-              ],
-              rows: _rows.map((record) {
-                final isSelected = _selected.contains(record.id);
-                final isDeleted = _markedForDeletion.contains(record.id);
-                final visual = _evalVisual(record);
-
-                return DataRow(
-                  selected: isSelected,
-                  color: WidgetStateProperty.resolveWith((states) {
-                    if (isDeleted) return errorColor.withAlpha(20);
-                    if (states.contains(WidgetState.selected)) return primary.withAlpha(40);
-                    switch (visual) {
-                      case 'success': return Colors.green.withAlpha(30);
-                      case 'warning': return Colors.orange.withAlpha(40);
-                      case 'danger':  return errorColor.withAlpha(40);
-                      default: return null;
-                    }
-                  }),
-                  cells: [
-                    DataCell(Checkbox(
-                      value: isSelected,
+                columns: [
+                  DataColumn(
+                    label: Checkbox(
+                      tristate: true,
+                      value: _selected.length == _rows.length && _rows.isNotEmpty
+                          ? true
+                          : _selected.isEmpty
+                          ? false
+                          : null,
                       onChanged: (_) {
                         setState(() {
-                          if (isSelected) {
-                            _selected.remove(record.id);
+                          if (_selected.length == _rows.length) {
+                            _selected.clear();
                           } else {
-                            _selected.add(record.id);
+                            _selected.addAll(_rows.map((r) => r.id));
                           }
                         });
                       },
-                    )),
-                    ..._treeDef!.columns.where((col) => !col.treeInvisible).map((col) {
-                      final fd = _treeDef!.fields[col.name];
-                      final isNum = fd?.type == 'float' ||
-                          fd?.type == 'numeric' ||
-                          fd?.type == 'integer';
-                      final cellStyle = TextStyle(
-                        fontSize: 12,
-                        decoration: isDeleted ? TextDecoration.lineThrough : null,
-                        decorationColor: isDeleted ? errorColor : null,
-                        color: isDeleted ? errorColor.withAlpha(160) : null,
-                      );
-                      return DataCell(
-                        isNum && fd != null
-                            ? _EmbeddedNumericCell(
-                                value: record[col.name],
-                                field: fd,
-                                record: record,
-                                style: cellStyle,
-                              )
-                            : Text(
-                                _fmt(record, col.name, fd),
-                                style: cellStyle,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                        onTap: isDeleted ? null : () => _openRecord(record.id),
-                      );
+                    ),
+                  ),
+                  ..._treeDef!.columns
+                      .where((c) => !c.treeInvisible)
+                      .map(
+                        (c) => DataColumn(
+                          label: Text(c.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                        ),
+                      ),
+                ],
+                rows: _rows.map((record) {
+                  final isSelected = _selected.contains(record.id);
+                  final isDeleted = _markedForDeletion.contains(record.id);
+                  final visual = _evalVisual(record);
+
+                  return DataRow(
+                    selected: isSelected,
+                    color: WidgetStateProperty.resolveWith((states) {
+                      if (isDeleted) return errorColor.withAlpha(20);
+                      if (states.contains(WidgetState.selected)) return primary.withAlpha(40);
+                      switch (visual) {
+                        case 'success':
+                          return Colors.green.withAlpha(30);
+                        case 'warning':
+                          return Colors.orange.withAlpha(40);
+                        case 'danger':
+                          return errorColor.withAlpha(40);
+                        default:
+                          return null;
+                      }
                     }),
-                  ],
-                );
-              }).toList(),
+                    cells: [
+                      DataCell(
+                        Checkbox(
+                          value: isSelected,
+                          onChanged: (_) {
+                            setState(() {
+                              if (isSelected) {
+                                _selected.remove(record.id);
+                              } else {
+                                _selected.add(record.id);
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                      ..._treeDef!.columns.where((col) => !col.treeInvisible).map((col) {
+                        final fd = _treeDef!.fields[col.name];
+                        final isNum = fd?.type == 'float' || fd?.type == 'numeric' || fd?.type == 'integer';
+                        final cellStyle = TextStyle(
+                          fontSize: 12,
+                          decoration: isDeleted ? TextDecoration.lineThrough : null,
+                          decorationColor: isDeleted ? errorColor : null,
+                          color: isDeleted ? errorColor.withAlpha(160) : null,
+                        );
+                        return DataCell(
+                          isNum && fd != null
+                              ? _EmbeddedNumericCell(
+                                  value: record[col.name],
+                                  field: fd,
+                                  record: record,
+                                  style: cellStyle,
+                                )
+                              : Text(_fmt(record, col.name, fd), style: cellStyle, overflow: TextOverflow.ellipsis),
+                          onTap: isDeleted ? null : () => _openRecord(record.id),
+                        );
+                      }),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-          ),  // Scrollbar
+          ), // Scrollbar
       ],
     );
   }
@@ -469,14 +451,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
     if (fd?.type == 'many2one' || _isM2OPair(val)) {
       // [id, rec_name] pair from read() — works even when fd is null
-      if (val is List && val.length > 1 && val[1] is String &&
-          (val[1] as String).isNotEmpty) {
+      if (val is List && val.length > 1 && val[1] is String && (val[1] as String).isNotEmpty) {
         return val[1] as String;
       }
       // Companion key 'col.rec_name'
       final companion = record['$colName.rec_name'];
-      if (companion != null && companion != false &&
-          companion is String && companion.isNotEmpty) {
+      if (companion != null && companion != false && companion is String && companion.isNotEmpty) {
         return companion;
       }
       // Cache from batch-resolve — guard against stale non-string entries.
@@ -484,8 +464,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       final id = _safeId(val);
       if (id != null && relModel != null && relModel.isNotEmpty) {
         final cached = m2o.m2oNameCache['$relModel,$id'];
-        if (cached != null && cached.isNotEmpty &&
-            !cached.startsWith('{') && !cached.startsWith('[')) {
+        if (cached != null && cached.isNotEmpty && !cached.startsWith('{') && !cached.startsWith('[')) {
           return cached;
         }
       }
@@ -504,9 +483,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (fd?.type == 'selection' && fd!.selection != null) {
       // Guard first: a List/Map can never be a valid selection key.
       if (val is List || val is Map) return '';
-      final match = fd.selection!
-          .where((e) => e[0].toString() == val.toString())
-          .firstOrNull;
+      final match = fd.selection!.where((e) => e[0].toString() == val.toString()).firstOrNull;
       return match?[1]?.toString() ?? val.toString();
     }
 
@@ -516,8 +493,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   }
 
   /// Returns true if [val] looks like a Tryton Many2One [id, rec_name] pair.
-  static bool _isM2OPair(dynamic val) =>
-      val is List && val.length == 2 && val[0] is int && val[1] is String;
+  static bool _isM2OPair(dynamic val) => val is List && val.length == 2 && val[0] is int && val[1] is String;
 
   /// True if [val] looks like a Tryton reference [model_name, rec_name] pair.
   static bool _isReferencePair(dynamic val) =>
@@ -544,15 +520,9 @@ class _EmbeddedNumericCell extends ConsumerStatefulWidget {
   final FieldDefinition field;
   final TrytonRecord record;
   final TextStyle? style;
-  const _EmbeddedNumericCell({
-    required this.value,
-    required this.field,
-    required this.record,
-    this.style,
-  });
+  const _EmbeddedNumericCell({required this.value, required this.field, required this.record, this.style});
   @override
-  ConsumerState<_EmbeddedNumericCell> createState() =>
-      _EmbeddedNumericCellState();
+  ConsumerState<_EmbeddedNumericCell> createState() => _EmbeddedNumericCellState();
 }
 
 class _EmbeddedNumericCellState extends ConsumerState<_EmbeddedNumericCell> {
@@ -589,7 +559,10 @@ class _EmbeddedNumericCellState extends ConsumerState<_EmbeddedNumericCell> {
     final svc = ref.read(modelServiceProvider);
     final (sym, pos) = await sym_cache.resolveSymbol(svc, relation, id);
     if (sym.isNotEmpty && mounted) {
-      setState(() { _symbol = sym; _position = pos; });
+      setState(() {
+        _symbol = sym;
+        _position = pos;
+      });
     }
   }
 
@@ -606,13 +579,10 @@ class _EmbeddedNumericCellState extends ConsumerState<_EmbeddedNumericCell> {
     final hasSuffix = _symbol.isNotEmpty && _position >= 0.5;
     final text = hasPrefix
         ? '$_symbol $formatted'
-        : hasSuffix ? '$formatted $_symbol' : formatted;
-    return Text(
-      text,
-      style: widget.style,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.end,
-    );
+        : hasSuffix
+        ? '$formatted $_symbol'
+        : formatted;
+    return Text(text, style: widget.style, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end);
   }
 }
 
@@ -627,10 +597,10 @@ class _TBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
-        icon: Icon(icon, size: 16, color: color),
-        tooltip: tip,
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      );
+    icon: Icon(icon, size: 16, color: color),
+    tooltip: tip,
+    onPressed: onPressed,
+    padding: EdgeInsets.zero,
+    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+  );
 }

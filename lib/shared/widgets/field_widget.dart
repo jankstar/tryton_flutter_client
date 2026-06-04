@@ -27,18 +27,24 @@ class FieldWidget extends ConsumerWidget {
   final bool isRequired;
   final void Function(dynamic newValue)? onChanged;
   final VoidCallback? onBlur;
+
   /// Current record values — used to evaluate PYSON in field domains.
   final Map<String, dynamic> recordValues;
+
   /// Name of the sibling field holding the currency/unit (from XML or fields_get).
   final String? symbolField;
+
   /// Relation model of the symbol field (e.g. 'res.currency').
   final String? symbolRelation;
+
   /// When set, a small × clear button appears inside the field decoration.
   /// Used in context forms so clearing a field removes its domain condition.
   final VoidCallback? onClear;
+
   /// widget= attribute from the view XML arch (overrides field.type rendering).
   /// Values: 'url', 'email', 'callto', 'sip', 'password', 'progressbar', ...
   final String? widgetOverride;
+
   /// Tryton model name — used to load dynamic selection options from the server.
   final String? model;
 
@@ -62,10 +68,7 @@ class FieldWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (field.invisible) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: _buildField(context, ref),
-    );
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: _buildField(context, ref));
   }
 
   Widget _buildField(BuildContext context, WidgetRef ref) {
@@ -96,10 +99,7 @@ class FieldWidget extends ConsumerWidget {
           onBlur: onBlur,
         );
       case 'progressbar':
-        return _ProgressBarField(
-          field: field,
-          value: value,
-        );
+        return _ProgressBarField(field: field, value: value);
     }
 
     switch (field.type) {
@@ -112,8 +112,9 @@ class FieldWidget extends ConsumerWidget {
                     style: DefaultTextStyle.of(context).style,
                     children: const [
                       TextSpan(
-                          text: ' *',
-                          style: TextStyle(color: Colors.red)),
+                        text: ' *',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ],
                   ),
                 )
@@ -151,8 +152,7 @@ class FieldWidget extends ConsumerWidget {
       case 'integer':
         final intLocale = Localizations.localeOf(context).toLanguageTag();
         return _TextInputField(
-          initialValue: formatNumericValue(value,
-              locale: intLocale, isInteger: true),
+          initialValue: formatNumericValue(value, locale: intLocale, isInteger: true),
           decoration: _decoration(context),
           readOnly: effective,
           keyboardType: TextInputType.number,
@@ -227,11 +227,9 @@ class FieldWidget extends ConsumerWidget {
         ? RichText(
             text: TextSpan(
               text: field.label,
-              style: Theme.of(context).inputDecorationTheme.labelStyle ??
-                  TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 16,
-                  ),
+              style:
+                  Theme.of(context).inputDecorationTheme.labelStyle ??
+                  TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
               children: const [
                 TextSpan(
                   text: ' *',
@@ -248,8 +246,7 @@ class FieldWidget extends ConsumerWidget {
             icon: const Icon(Icons.close, size: 16),
             tooltip: 'Löschen',
             padding: EdgeInsets.zero,
-            constraints:
-                const BoxConstraints(minWidth: 28, minHeight: 28),
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             onPressed: onClear,
           )
         : null;
@@ -264,8 +261,7 @@ class FieldWidget extends ConsumerWidget {
   }
 
   static bool _hasValue(dynamic v) =>
-      v != null && v != false && !(v is String && v.isEmpty) &&
-      !(v is List && v.isEmpty);
+      v != null && v != false && !(v is String && v.isEmpty) && !(v is List && v.isEmpty);
 }
 
 // ─── Text input field with blur-based on_change trigger ──────────────────────
@@ -289,12 +285,11 @@ class _TextInputField extends StatefulWidget {
     required this.decoration,
     required this.readOnly,
     this.keyboardType,
-    this.inputFormatters,
     this.maxLines = 1,
     this.obscureText = false,
     this.onChanged,
     this.onBlur,
-  });
+  }) : inputFormatters = null;
 
   @override
   State<_TextInputField> createState() => _TextInputFieldState();
@@ -359,8 +354,7 @@ class _DateField extends StatelessWidget {
   final bool readOnly;
   final void Function(dynamic)? onChanged;
 
-  const _DateField(
-      {required this.field, this.value, required this.readOnly, this.onChanged});
+  const _DateField({required this.field, this.value, required this.readOnly, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -412,13 +406,8 @@ class _SelectionField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = field.selection ?? [];
-    final rawKey = (value == null || value == false)
-        ? null
-        : value.toString();
-    final selValue = (rawKey != null &&
-            items.any((e) => e[0].toString() == rawKey))
-        ? rawKey
-        : null;
+    final rawKey = (value == null || value == false) ? null : value.toString();
+    final selValue = (rawKey != null && items.any((e) => e[0].toString() == rawKey)) ? rawKey : null;
 
     // If options unavailable but value is set, show as read-only text.
     if (items.isEmpty && rawKey != null) {
@@ -436,10 +425,12 @@ class _SelectionField extends StatelessWidget {
       decoration: decoration,
       isExpanded: true,
       items: items
-          .map((e) => DropdownMenuItem<String>(
-                value: e[0].toString(),
-                child: Text(e[1].toString(), overflow: TextOverflow.ellipsis),
-              ))
+          .map(
+            (e) => DropdownMenuItem<String>(
+              value: e[0].toString(),
+              child: Text(e[1].toString(), overflow: TextOverflow.ellipsis),
+            ),
+          )
           .toList(),
       onChanged: readOnly ? null : (v) => onChanged?.call(v),
     );
@@ -454,8 +445,7 @@ class _DateTimeField extends StatelessWidget {
   final bool readOnly;
   final void Function(dynamic)? onChanged;
 
-  const _DateTimeField(
-      {required this.field, this.value, required this.readOnly, this.onChanged});
+  const _DateTimeField({required this.field, this.value, required this.readOnly, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -481,13 +471,10 @@ class _DateTimeField extends StatelessWidget {
                   if (date == null || !context.mounted) return;
                   final time = await showTimePicker(
                     context: context,
-                    initialTime: value != null
-                        ? TimeOfDay.fromDateTime(value!)
-                        : TimeOfDay.now(),
+                    initialTime: value != null ? TimeOfDay.fromDateTime(value!) : TimeOfDay.now(),
                   );
                   if (time == null) return;
-                  onChanged?.call(DateTime(
-                      date.year, date.month, date.day, time.hour, time.minute));
+                  onChanged?.call(DateTime(date.year, date.month, date.day, time.hour, time.minute));
                 },
               ),
       ),
@@ -560,21 +547,19 @@ class _NumericFieldState extends ConsumerState<_NumericField> {
     if (relation == null || relation.isEmpty) return;
 
     final svc = ref.read(modelServiceProvider);
-    final (sym, pos) =
-        await sym_cache.resolveSymbol(svc, relation, currencyId);
+    final (sym, pos) = await sym_cache.resolveSymbol(svc, relation, currencyId);
     if (sym.isNotEmpty && mounted) {
-      setState(() { _symbol = sym; _position = pos; });
+      setState(() {
+        _symbol = sym;
+        _position = pos;
+      });
     }
   }
 
-  String _format(dynamic value, String locale) => formatNumericValue(
-        value,
-        digits: widget.field.digits,
-        locale: locale,
-      );
+  String _format(dynamic value, String locale) =>
+      formatNumericValue(value, digits: widget.field.digits, locale: locale);
 
-  dynamic _parse(String text, String locale) =>
-      parseNumericValue(text, locale);
+  dynamic _parse(String text, String locale) => parseNumericValue(text, locale);
 
   @override
   Widget build(BuildContext context) {
@@ -649,7 +634,10 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
         Future.delayed(const Duration(milliseconds: 150), () {
           if (mounted && !_focus.hasFocus) {
             if (_ctrl.text != _name) _ctrl.text = _name;
-            setState(() { _showSuggestions = false; _searching = false; });
+            setState(() {
+              _showSuggestions = false;
+              _searching = false;
+            });
           }
         });
       }
@@ -704,13 +692,9 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
     final relation = widget.field.relation;
     if (id == null || relation == null) return;
     try {
-      final records = await ref
-          .read(modelServiceProvider)
-          .read(relation, [id], ['rec_name']);
+      final records = await ref.read(modelServiceProvider).read(relation, [id], ['rec_name']);
       if (!mounted) return;
-      final name = records.isNotEmpty
-          ? records.first['rec_name']?.toString() ?? ''
-          : '';
+      final name = records.isNotEmpty ? records.first['rec_name']?.toString() ?? '' : '';
       if (name.isNotEmpty && _id == id) {
         setState(() {
           _name = name;
@@ -723,7 +707,11 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
   }
 
   void _startSearch() {
-    setState(() { _searching = true; _suggestions = []; _showSuggestions = false; });
+    setState(() {
+      _searching = true;
+      _suggestions = [];
+      _showSuggestions = false;
+    });
     _ctrl.clear();
     _focus.requestFocus();
     _doSearch('');
@@ -798,9 +786,7 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
       if (item is List && item.length == 3) {
         // [field, op, value] — evaluate value if it's a PYSON expression
         final val = item[2];
-        final evaled = (val is Map<String, dynamic> && val.containsKey('__class__'))
-            ? ev.eval(val)
-            : val;
+        final evaled = (val is Map<String, dynamic> && val.containsKey('__class__')) ? ev.eval(val) : val;
         return [item[0], item[1], evaled];
       }
       if (item is List) return _evalDomainList(item.cast<dynamic>(), ev);
@@ -826,7 +812,13 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
   }
 
   void _clear() {
-    setState(() { _id = null; _name = ''; _ctrl.clear(); _searching = false; _showSuggestions = false; });
+    setState(() {
+      _id = null;
+      _name = '';
+      _ctrl.clear();
+      _searching = false;
+      _showSuggestions = false;
+    });
     widget.onChanged?.call(null);
   }
 
@@ -864,18 +856,16 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
             ),
             suffixIcon: _buildSuffix(context, hasValue),
           ),
-          onTap: widget.readOnly ? null : () {
-            if (!_searching) _startSearch();
-          },
+          onTap: widget.readOnly
+              ? null
+              : () {
+                  if (!_searching) _startSearch();
+                },
           onChanged: _searching ? _onTyped : null,
         ),
         // Autocomplete-Dropdown
         if (_searching && (_showSuggestions || _loadingSuggestions))
-          _Dropdown(
-            loading: _loadingSuggestions,
-            items: _suggestions,
-            onSelect: _select,
-          ),
+          _Dropdown(loading: _loadingSuggestions, items: _suggestions, onSelect: _select),
       ],
     );
   }
@@ -885,38 +875,32 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
 
     // Primary button: open record (like SAO's "tryton-open")
     if (hasValue && widget.field.relation != null) {
-      btns.add(_IconBtn(
-        icon: Icons.open_in_new,
-        tooltip: context.l10n.openRecord,
-        onPressed: () => _open(context),
-      ));
+      btns.add(_IconBtn(icon: Icons.open_in_new, tooltip: context.l10n.openRecord, onPressed: () => _open(context)));
     }
 
     if (!widget.readOnly) {
       if (hasValue) {
         // Secondary button: clear (like SAO's "tryton-clear")
-        btns.add(_IconBtn(
-          icon: Icons.clear,
-          tooltip: context.l10n.clearField,
-          onPressed: _clear,
-        ));
+        btns.add(_IconBtn(icon: Icons.clear, tooltip: context.l10n.clearField, onPressed: _clear));
       } else if (!_searching) {
         // Secondary button: search (like SAO's "tryton-search")
-        btns.add(_IconBtn(
-          icon: Icons.search,
-          tooltip: context.l10n.searchRecord,
-          onPressed: _startSearch,
-        ));
+        btns.add(_IconBtn(icon: Icons.search, tooltip: context.l10n.searchRecord, onPressed: _startSearch));
       } else {
         // Cancel search
-        btns.add(_IconBtn(
-          icon: Icons.cancel_outlined,
-          tooltip: context.l10n.cancel,
-          onPressed: () {
-            setState(() { _searching = false; _showSuggestions = false; _ctrl.text = _name; });
-            _focus.unfocus();
-          },
-        ));
+        btns.add(
+          _IconBtn(
+            icon: Icons.cancel_outlined,
+            tooltip: context.l10n.cancel,
+            onPressed: () {
+              setState(() {
+                _searching = false;
+                _showSuggestions = false;
+                _ctrl.text = _name;
+              });
+              _focus.unfocus();
+            },
+          ),
+        );
       }
     }
 
@@ -935,12 +919,12 @@ class _IconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
-        icon: Icon(icon, size: 16),
-        tooltip: tooltip,
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      );
+    icon: Icon(icon, size: 16),
+    tooltip: tooltip,
+    onPressed: onPressed,
+    padding: EdgeInsets.zero,
+    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+  );
 }
 
 class _Dropdown extends StatelessWidget {
@@ -986,17 +970,13 @@ class _X2ManyField extends StatelessWidget {
   final dynamic value;
   final bool readOnly;
 
-  const _X2ManyField(
-      {required this.field, this.value, required this.readOnly});
+  const _X2ManyField({required this.field, this.value, required this.readOnly});
 
   @override
   Widget build(BuildContext context) {
     final count = value is List ? (value as List).length : 0;
     return InputDecorator(
-      decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
-      ),
+      decoration: InputDecoration(labelText: field.label, border: const OutlineInputBorder()),
       child: Text('$count entries', style: Theme.of(context).textTheme.bodySmall),
     );
   }
@@ -1026,9 +1006,12 @@ class _LinkField extends StatelessWidget {
   Uri? _buildUri(String text) {
     if (text.isEmpty) return null;
     switch (scheme) {
-      case 'email': return Uri.tryParse('mailto:$text');
-      case 'callto': return Uri.tryParse('tel:$text');
-      case 'sip': return Uri.tryParse('sip:$text');
+      case 'email':
+        return Uri.tryParse('mailto:$text');
+      case 'callto':
+        return Uri.tryParse('tel:$text');
+      case 'sip':
+        return Uri.tryParse('sip:$text');
       default:
         // 'url' — ensure scheme present
         if (!text.startsWith('http://') && !text.startsWith('https://')) {
@@ -1066,12 +1049,7 @@ class _LinkField extends StatelessWidget {
                   : null,
               child: Text(
                 value,
-                style: uri != null
-                    ? TextStyle(
-                        color: cs.primary,
-                        decoration: TextDecoration.underline,
-                      )
-                    : null,
+                style: uri != null ? TextStyle(color: cs.primary, decoration: TextDecoration.underline) : null,
               ),
             )
           : TextFormField(
@@ -1104,18 +1082,11 @@ class _ProgressBarField extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            borderRadius: BorderRadius.circular(4),
-          ),
+          LinearProgressIndicator(value: progress, minHeight: 8, borderRadius: BorderRadius.circular(4)),
           if (progress != null)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                '${(progress * 100).toStringAsFixed(0)} %',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              child: Text('${(progress * 100).toStringAsFixed(0)} %', style: Theme.of(context).textTheme.bodySmall),
             ),
         ],
       ),

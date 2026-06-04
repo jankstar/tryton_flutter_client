@@ -11,18 +11,11 @@ class ViewDefinition {
   /// SAO: `field_childs` in the `fields_view_get` response.
   final String? fieldChilds;
 
-  const ViewDefinition({
-    required this.arch,
-    required this.fields,
-    this.viewId,
-    required this.type,
-    this.fieldChilds,
-  });
+  const ViewDefinition({required this.arch, required this.fields, this.viewId, required this.type, this.fieldChilds});
 
   factory ViewDefinition.fromJson(Map<String, dynamic> json) {
     final rawFields = json['fields'] as Map<String, dynamic>? ?? {};
-    final fields = rawFields.map((k, v) =>
-        MapEntry(k, FieldDefinition.fromJson(k, v as Map<String, dynamic>)));
+    final fields = rawFields.map((k, v) => MapEntry(k, FieldDefinition.fromJson(k, v as Map<String, dynamic>)));
     return ViewDefinition(
       arch: json['arch'] as String? ?? '<form/>',
       fields: fields,
@@ -30,8 +23,7 @@ class ViewDefinition {
       type: json['type'] as String? ?? 'form',
       // field_childs is a field name (String) or false/null (no tree).
       // Tryton returns Python False as JSON false → do not cast to String?!
-      fieldChilds: json['field_childs'] is String &&
-              (json['field_childs'] as String).isNotEmpty
+      fieldChilds: json['field_childs'] is String && (json['field_childs'] as String).isNotEmpty
           ? json['field_childs'] as String
           : null,
     );
@@ -57,8 +49,9 @@ class FieldNode extends FormNode {
   final bool? readonly;
   final bool? required;
   final bool? invisible;
-  final String? string;  // Label override
+  final String? string; // Label override
   /// Name of the sibling field that holds the currency/unit reference.
+  // ignore: unintended_html_in_doc_comment
   /// SAO: `symbol` XML attribute on <field>. E.g. symbol="currency" means
   /// the record has a `currency` Many2One whose rec_name provides the symbol.
   final String? symbol;
@@ -97,13 +90,7 @@ class GroupNode extends FormNode {
   final int colspan;
   final bool expandable;
   final List<FormNode> children;
-  const GroupNode({
-    this.col = 4,
-    this.string,
-    this.colspan = 1,
-    this.expandable = false,
-    required this.children,
-  });
+  const GroupNode({this.col = 4, this.string, this.colspan = 1, this.expandable = false, required this.children});
 }
 
 class NotebookNode extends FormNode {
@@ -116,8 +103,10 @@ class PageNode extends FormNode {
   final String string;
   final String? name;
   final List<FormNode> children;
+
   /// Static invisible flag from `invisible="1"` XML attribute.
   final bool invisibleStatic;
+
   /// Raw PYSON states dict from `states="..."` XML attribute.
   /// Evaluated at render time against the current field values.
   final Map<String, dynamic>? statesRaw;
@@ -137,8 +126,10 @@ class ButtonNode extends FormNode {
   final int colspan;
   final String? icon;
   final String? states;
+
   /// Decoded PYSON states map – ready for PYSONEvaluator.
   final Map<String, dynamic>? statesRaw;
+
   /// Confirmation text shown before executing the button action.
   final String? confirm;
   const ButtonNode({
@@ -158,15 +149,11 @@ class TreeViewDefinition {
   final List<TreeColumn> columns;
   final Map<String, FieldDefinition> fields;
   final bool editable;
+
   /// PYSON expression for row color: evaluates to 'success', 'warning', 'danger' or ''.
   final String? visual;
 
-  const TreeViewDefinition({
-    required this.columns,
-    required this.fields,
-    this.editable = false,
-    this.visual,
-  });
+  const TreeViewDefinition({required this.columns, required this.fields, this.editable = false, this.visual});
 }
 
 class TreeColumn {
@@ -174,10 +161,13 @@ class TreeColumn {
   final String label;
   final int width; // 0 = flexible
   final String? widget;
+
   /// If true, column is hidden by default (tree_invisible="1").
   final bool treeInvisible;
+
   /// Label for the sum footer row (sum="Total").
   final String? sum;
+
   /// If true, column expands to fill available space.
   final bool expand;
   const TreeColumn({
