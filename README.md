@@ -9,17 +9,26 @@ A Flutter client for the [Tryton ERP system](https://www.tryton.org/), providing
 - Server URL and last-used database persisted across app restarts
 - Automatic session renewal on 401 — compact re-login dialog (username + password only), original request retried transparently
 - Persistent session: app reconnects on next start without requiring a full login
+- Server-side language applied after login (`reloadContext()`) — Tryton translates all field labels and selection values server-side
+
+### Shell & Multi-Tab Navigation
+- Tab-based AppShell: each menu action opens in its own tab with an independent Navigator stack (`IndexedStack`)
+- Toggleable sidebar (animated, 250 px) with the full Tryton menu tree
+- Tab close button (×); welcome screen shown when no tab is open
+- `tabsProvider` (Riverpod `StateNotifierProvider`) manages tab lifecycle with UUID-keyed `AppTab` entries
 
 ### Menu & Navigation
 - Full Tryton menu tree loaded from the server with expand/collapse
-- SVG icons from `ir.ui.icon` with Material Design fallback for LOCAL_ICONS
+- SVG icons from `ir.ui.icon` with Material Design fallback for `LOCAL_ICONS`
 - Action domain filtering via PYSON evaluation (`ir.action.act_window.pyson_domain`)
 - User info chip (top right): name, currency, avatar initials, dropdown with Preferences / Help / Sign out
 
 ### List Views (Tree)
 - Server-driven columns from `fields_view_get` with correct order and labels
 - Hierarchical tree views with lazy expand/collapse (`field_childs`)
-- Auto-detection of self-referential models when `field_childs` is not set
+  - Primary source: `field_childs` attribute from `fields_view_get`
+  - Fallback: direct query of `ir.ui.view` ordered by priority — picks the first tree view that sets `field_childs`
+  - Auto-detection of self-referential models when `field_childs` is not configured
 - Explicit search button (no request on every keystroke — like SAO)
 - SAO-style toolbar: Switch (⇄), New, Reload, Duplicate, Delete, Attachment, Action, Relate, Print, Email, Close
 - Buttons enabled only when a record is selected (except Reload, New, Close)
@@ -33,26 +42,31 @@ A Flutter client for the [Tryton ERP system](https://www.tryton.org/), providing
 - SAO-style toolbar: Prev/Next record, New, Save, Reload, Duplicate, Delete, View Logs, Attachment (badge), Note, Action, Relate, Print, Email, Close
 - Translated model name from `ir.model` shown in AppBar
 - Record position indicator (e.g. `3 / 47`)
-- Binary fields (e.g. avatar) excluded from read to avoid non-JSON responses
+- Binary fields (e.g. avatar) excluded from `read()` to avoid non-JSON responses
+- **Responsive layout**: form width scales proportionally with the window (horizontal padding = 3 % of width, clamped 12–40 px); no fixed maximum width
+- **Minimum field width** (160 px): grid columns wrap to the next line rather than shrinking below this threshold
+- **Sticky footer**: root-level form buttons (from `<button>` elements at form root) rendered in a permanently visible footer below the scroll area — PYSON `invisible`/`readonly` states evaluated per button
 
 ### Field Types
-- `char`, `text`, `integer`, `float`, `numeric` — text input; on_change RPC triggered on focus loss only (not on every keystroke, like SAO)
-- `selection` — dropdown; on_change triggered immediately
+- `char`, `text`, `integer`, `float`, `numeric` — text input; `on_change` RPC triggered on focus loss only (not on every keystroke, like SAO)
+- `selection` — dropdown; static list (`[[key, label], ...]`) or method-based (classmethod name as string); method-based options pre-loaded during form initialisation (`getSelectionOptions`); `on_change` triggered immediately
 - `date`, `datetime` — date/time pickers
 - `boolean` — checkbox
-- `many2one` — autocomplete search, open-in-form button, clear button, async rec_name loading
+- `many2one` — autocomplete search, **open-in-form button** (uses local tab Navigator, not GoRouter), clear button, async `rec_name` loading
 - `one2many`, `many2many` — inline embedded tree with Add, Switch, Undelete, Delete; strikethrough for pending deletions (committed on parent save)
 
 ### Performance
 - `on_change` RPC only on field blur (focus loss), not on every keystroke
 - `listEquals` for collection parameters in `didUpdateWidget` — prevents spurious reloads
-- Session-level caches: Many2One names, model display names, icons
+- Session-level caches: Many2One names, model display names, icons, currency symbols
 - Binary fields skipped in `read()` to avoid non-JSON server responses
+- Selection options pre-loaded with `Future.wait` in parallel during form load
 
 ### Internationalisation
 - 11 languages: English, German, French, Spanish, Portuguese, Polish, Danish, Dutch, Swedish, Finnish, Russian
 - Language selector on the login screen; persisted via `shared_preferences`
 - All UI strings via Flutter `AppLocalizations` (ARB files in `lib/l10n/`)
+- Server-side translations activated by sending the selected language in the RPC context
 
 ## Platforms
 
@@ -71,21 +85,37 @@ lib/
 │   ├── rpc/            # JSON-RPC 2.0 client (dio), ReAuthService, exception types
 │   ├── serialization/  # Tryton ↔ Dart type conversion (DateTime, Decimal, Bytes)
 │   ├── session/        # Session management, device cookie, persistence
+│   ├── theme/          # AppTheme, ThemeProvider (light/dark)
 │   └── xml/            # fields_view_get parsing, form/tree XML parser
 ├── features/
 │   ├── actions/        # Action executor (act_window, report, wizard)
 │   ├── auth/           # Login, re-login dialog, session provider, user preferences
 │   ├── model/          # ModelService CRUD, FieldDefinition, TrytonRecord, TrytonToolbar
-│   ├── tabs/           # Menu browser screen, user chip
+│   ├── shell/          # AppShell (tab bar + sidebar), TabManager (tabsProvider)
+│   ├── tabs/           # ModelBrowserSidebar, UserChip
 │   └── views/          # DynamicFormScreen, ListViewScreen, EmbeddedTreeWidget,
-│                       # navigation context (Prev/Next)
+│                       # NavigationContext (Prev/Next)
 ├── l10n/               # ARB localisation files (11 languages)
 └── shared/
-    └── widgets/        # FieldWidget, ToolbarDropdownButton, _TextInputField
+    ├── utils/          # m2o_name_cache, symbol_cache, number_format_utils
+    └── widgets/        # FieldWidget, ToolbarDropdownButton
 ```
 
-**State management:** Riverpod  
-**Navigation:** GoRouter  
+### Key providers (Riverpod)
+
+| Provider | Type | Purpose |
+|----------|------|---------|
+| `rpcClientProvider` | `Provider` | JSON-RPC 2.0 HTTP client |
+| `sessionProvider` | `Provider` | Active Tryton session (database, user, context) |
+| `modelServiceProvider` | `Provider` | CRUD + RPC calls (fieldsGet, read, write, …) |
+| `authProvider` | `StateNotifierProvider` | Login / logout / re-auth state |
+| `localeProvider` | `StateProvider` | Selected UI locale |
+| `navContextProvider` | `StateProvider` | Prev/Next record navigation state |
+| `userPreferencesProvider` | `FutureProvider` | Server-side user preferences |
+| `tabsProvider` | `StateNotifierProvider` | Open tabs, active tab index |
+
+**Navigation:** GoRouter handles top-level routes (`/login`, `/models`). Within each tab, a dedicated `Navigator` (`AppTab.navigatorKey`) handles sub-screens (`ListViewScreen` → `DynamicFormScreen`) so that each tab keeps an independent history stack.
+
 **HTTP:** dio + CookieJar  
 **SVG rendering:** flutter_svg  
 **Localisation:** flutter_localizations + gen_l10n
@@ -114,7 +144,7 @@ Error types handled: `UserError`, `UserWarning`, `ConcurrencyException`, `LoginE
 
 | Layer | Mechanism | Storage |
 |-------|-----------|---------|
-| HTTP session cookie | Short-lived, per-request | Browser / CookieJar |
+| HTTP session cookie | Short-lived, per-request | CookieJar |
 | Device cookie | Long-lived, passwordless login | `shared_preferences` |
 | Session data | `database`, `login`, `user_id` | `shared_preferences` |
 
@@ -172,14 +202,14 @@ On first launch, enter the Tryton server URL (e.g. `http://localhost:8000`), sel
 |---------|---------|
 | `dio` + `dio_cookie_manager` | HTTP client with cookie-based session |
 | `flutter_riverpod` | State management |
-| `go_router` | Declarative navigation |
+| `go_router` | Top-level declarative navigation |
 | `xml` | XML arch parsing |
 | `flutter_svg` | SVG icon rendering |
 | `shared_preferences` | Session and locale persistence |
 | `flutter_localizations` | 11-language UI |
 | `intl` | Date/number formatting |
+| `uuid` | Tab identity (UUID v4) |
 | `url_launcher` | Help link |
-| `google_fonts` | Lato typeface |
 
 ## Tryton Compatibility
 
