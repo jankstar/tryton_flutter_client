@@ -210,7 +210,7 @@ Future<void> pushFormScreen(
   required String model,
   required int recordId,
   required String title,
-  required List<dynamic> screenDomain,
+  List<dynamic> screenDomain = const [],
   bool replace = false,
 }) {
   final route = MaterialPageRoute<void>(

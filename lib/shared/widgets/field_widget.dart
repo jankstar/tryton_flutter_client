@@ -1,18 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:url_launcher/url_launcher.dart';
+
 import 'package:intl/intl.dart';
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/serialization/tryton_serializer.dart';
 import '../../features/model/field_definition.dart';
 import '../../features/model/model_service.dart';
+import '../../features/shell/app_shell.dart' show pushFormScreen;
+import '../../features/views/navigation_context.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../utils/number_format_utils.dart';
 import '../utils/symbol_cache.dart' as sym_cache;
@@ -34,6 +36,11 @@ class FieldWidget extends ConsumerWidget {
   /// When set, a small × clear button appears inside the field decoration.
   /// Used in context forms so clearing a field removes its domain condition.
   final VoidCallback? onClear;
+  /// widget= attribute from the view XML arch (overrides field.type rendering).
+  /// Values: 'url', 'email', 'callto', 'sip', 'password', 'progressbar', ...
+  final String? widgetOverride;
+  /// Tryton model name — used to load dynamic selection options from the server.
+  final String? model;
 
   const FieldWidget({
     super.key,
@@ -47,6 +54,8 @@ class FieldWidget extends ConsumerWidget {
     this.symbolField,
     this.symbolRelation,
     this.onClear,
+    this.widgetOverride,
+    this.model,
   });
 
   @override
@@ -61,6 +70,37 @@ class FieldWidget extends ConsumerWidget {
 
   Widget _buildField(BuildContext context, WidgetRef ref) {
     final effective = readOnly || field.readonly;
+
+    // widget= XML attribute overrides the default type-based rendering.
+    switch (widgetOverride) {
+      case 'url':
+      case 'email':
+      case 'callto':
+      case 'sip':
+        return _LinkField(
+          field: field,
+          value: _safeText(value),
+          scheme: widgetOverride!,
+          readOnly: effective,
+          isRequired: isRequired,
+          onChanged: onChanged,
+          onBlur: onBlur,
+        );
+      case 'password':
+        return _TextInputField(
+          initialValue: _safeText(value),
+          decoration: _decoration(context),
+          readOnly: effective,
+          obscureText: true,
+          onChanged: onChanged,
+          onBlur: onBlur,
+        );
+      case 'progressbar':
+        return _ProgressBarField(
+          field: field,
+          value: value,
+        );
+    }
 
     switch (field.type) {
       case 'boolean':
@@ -84,20 +124,12 @@ class FieldWidget extends ConsumerWidget {
         );
 
       case 'selection':
-        return DropdownButtonFormField<String>(
-          initialValue: value?.toString(),
+        return _SelectionField(
+          field: field,
+          value: value,
+          readOnly: effective,
+          onChanged: onChanged,
           decoration: _decoration(context),
-          isExpanded: true, // Prevents horizontal overflow
-          items: (field.selection ?? [])
-              .map((e) => DropdownMenuItem<String>(
-                    value: e[0].toString(),
-                    child: Text(
-                      e[1].toString(),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ))
-              .toList(),
-          onChanged: effective ? null : (v) => onChanged?.call(v),
         );
 
       case 'date':
@@ -248,6 +280,7 @@ class _TextInputField extends StatefulWidget {
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final int? maxLines;
+  final bool obscureText;
   final void Function(dynamic)? onChanged;
   final VoidCallback? onBlur;
 
@@ -258,6 +291,7 @@ class _TextInputField extends StatefulWidget {
     this.keyboardType,
     this.inputFormatters,
     this.maxLines = 1,
+    this.obscureText = false,
     this.onChanged,
     this.onBlur,
   });
@@ -309,7 +343,8 @@ class _TextInputFieldState extends State<_TextInputField> {
       readOnly: widget.readOnly,
       keyboardType: widget.keyboardType,
       inputFormatters: widget.inputFormatters,
-      maxLines: widget.maxLines,
+      maxLines: widget.obscureText ? 1 : widget.maxLines,
+      obscureText: widget.obscureText,
       // Update local state on every keystroke (no RPC)
       onChanged: (v) => widget.onChanged?.call(v),
     );
@@ -353,6 +388,60 @@ class _DateField extends StatelessWidget {
                 },
               ),
       ),
+    );
+  }
+}
+
+// ─── Selection field ──────────────────────────────────────────────────────────
+
+class _SelectionField extends StatelessWidget {
+  final FieldDefinition field;
+  final dynamic value;
+  final bool readOnly;
+  final void Function(dynamic)? onChanged;
+  final InputDecoration decoration;
+
+  const _SelectionField({
+    required this.field,
+    required this.value,
+    required this.readOnly,
+    required this.decoration,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = field.selection ?? [];
+    final rawKey = (value == null || value == false)
+        ? null
+        : value.toString();
+    final selValue = (rawKey != null &&
+            items.any((e) => e[0].toString() == rawKey))
+        ? rawKey
+        : null;
+
+    // If options unavailable but value is set, show as read-only text.
+    if (items.isEmpty && rawKey != null) {
+      return TextFormField(
+        key: ValueKey(rawKey),
+        initialValue: rawKey,
+        decoration: decoration,
+        readOnly: true,
+        enabled: false,
+      );
+    }
+
+    return DropdownButtonFormField<String>(
+      value: selValue,
+      decoration: decoration,
+      isExpanded: true,
+      items: items
+          .map((e) => DropdownMenuItem<String>(
+                value: e[0].toString(),
+                child: Text(e[1].toString(), overflow: TextOverflow.ellipsis),
+              ))
+          .toList(),
+      onChanged: readOnly ? null : (v) => onChanged?.call(v),
     );
   }
 }
@@ -743,7 +832,14 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
 
   void _open(BuildContext ctx) {
     if (_id == null || widget.field.relation == null) return;
-    ctx.push('/models/${widget.field.relation}/$_id');
+    // Clear nav context: single-record jump has no Prev/Next.
+    ref.read(navContextProvider.notifier).state = null;
+    pushFormScreen(
+      ctx,
+      model: widget.field.relation!,
+      recordId: _id!,
+      title: _name.isNotEmpty ? _name : widget.field.label,
+    );
   }
 
   @override
@@ -902,6 +998,127 @@ class _X2ManyField extends StatelessWidget {
         border: const OutlineInputBorder(),
       ),
       child: Text('$count entries', style: Theme.of(context).textTheme.bodySmall),
+    );
+  }
+}
+
+// ─── Link field (widget="url" / "email" / "callto" / "sip") ──────────────────
+
+class _LinkField extends StatelessWidget {
+  final FieldDefinition field;
+  final String value;
+  final String scheme; // 'url', 'email', 'callto', 'sip'
+  final bool readOnly;
+  final bool isRequired;
+  final void Function(dynamic)? onChanged;
+  final VoidCallback? onBlur;
+
+  const _LinkField({
+    required this.field,
+    required this.value,
+    required this.scheme,
+    required this.readOnly,
+    this.isRequired = false,
+    this.onChanged,
+    this.onBlur,
+  });
+
+  Uri? _buildUri(String text) {
+    if (text.isEmpty) return null;
+    switch (scheme) {
+      case 'email': return Uri.tryParse('mailto:$text');
+      case 'callto': return Uri.tryParse('tel:$text');
+      case 'sip': return Uri.tryParse('sip:$text');
+      default:
+        // 'url' — ensure scheme present
+        if (!text.startsWith('http://') && !text.startsWith('https://')) {
+          return Uri.tryParse('https://$text');
+        }
+        return Uri.tryParse(text);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final uri = readOnly ? _buildUri(value) : null;
+
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: field.label,
+        border: const OutlineInputBorder(),
+        suffixIcon: uri != null
+            ? IconButton(
+                icon: Icon(Icons.open_in_new, size: 16, color: cs.primary),
+                tooltip: value,
+                onPressed: () async {
+                  if (await canLaunchUrl(uri)) launchUrl(uri);
+                },
+              )
+            : null,
+      ),
+      child: readOnly
+          ? GestureDetector(
+              onTap: uri != null
+                  ? () async {
+                      if (await canLaunchUrl(uri)) launchUrl(uri);
+                    }
+                  : null,
+              child: Text(
+                value,
+                style: uri != null
+                    ? TextStyle(
+                        color: cs.primary,
+                        decoration: TextDecoration.underline,
+                      )
+                    : null,
+              ),
+            )
+          : TextFormField(
+              initialValue: value,
+              decoration: const InputDecoration.collapsed(hintText: ''),
+              onChanged: onChanged,
+            ),
+    );
+  }
+}
+
+// ─── Progress bar field (widget="progressbar") ───────────────────────────────
+
+class _ProgressBarField extends StatelessWidget {
+  final FieldDefinition field;
+  final dynamic value;
+  const _ProgressBarField({required this.field, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    double? progress;
+    if (value is num) progress = (value as num).toDouble().clamp(0.0, 1.0);
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: field.label,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          if (progress != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '${(progress * 100).toStringAsFixed(0)} %',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

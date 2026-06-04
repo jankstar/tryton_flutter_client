@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xml/xml.dart';
@@ -12,6 +14,7 @@ import '../shell/tab_manager.dart';
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/pyson/pyson_evaluator.dart';
+import '../../core/serialization/tryton_serializer.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/utils/m2o_name_cache.dart' as m2o;
@@ -63,7 +66,7 @@ final _m2oNameCache = m2o.m2oNameCache;
 class _TreeRow {
   final TrytonRecord record;
   final int depth;
-  final bool hasChildren;
+  bool hasChildren;
   bool isExpanded = false;
   bool isLoadingChildren = false;
 
@@ -92,6 +95,11 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   String? _parentField;   // Field name of the parent entry (e.g. "parent")
   bool get _isHierarchical =>
       _fieldChilds != null && _fieldChilds!.isNotEmpty;
+
+  /// PYSON visual expression from <tree visual="...">.
+  String? _treeVisual;
+  /// Parsed tree columns (with sum/expand/treeInvisible meta).
+  List<TreeColumn> _treeColumns = [];
 
   bool _loading = false;
   String? _error;
@@ -379,7 +387,6 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// Falls back to fieldsGet if no tree view is available.
   Future<void> _loadViewDefinition(ModelService svc) async {
     if (widget.displayFields.isNotEmpty) {
-      // Explicit columns provided → load field descriptions only
       _fields = await svc.fieldsGet(widget.model,
           fields: widget.displayFields);
       _columns = widget.displayFields;
@@ -387,52 +394,102 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       return;
     }
 
+    // ── Step 1: Load tree view definition ──────────────────────────────────
+    ViewDefinition? viewDef;
     try {
-      // Load server-side tree view definition
-      final viewDef =
-          await svc.fieldsViewGet(widget.model, viewType: 'tree');
+      viewDef = await svc.fieldsViewGet(widget.model, viewType: 'tree');
       _fields = viewDef.fields;
 
-      // Parse XML arch: <tree><field name="..." string="..."/></tree>
+      // field_childs is in the ir.ui.view record; extract if present.
+      if (viewDef.fieldChilds != null && viewDef.fieldChilds!.isNotEmpty) {
+        _fieldChilds = viewDef.fieldChilds;
+      }
+
+      // Parse columns from arch XML.
       final doc = XmlDocument.parse(viewDef.arch);
       final root = doc.rootElement;
 
       final cols = <String>[];
       final labels = <String, String>{};
-
+      final parsedColumns = <TreeColumn>[];
       for (final child in root.childElements) {
         if (child.name.local != 'field') continue;
         final name = child.getAttribute('name') ?? '';
         if (name.isEmpty) continue;
-        // Label: explicit 'string' attribute overrides field name
         final label = child.getAttribute('string') ??
             viewDef.fields[name]?.label ??
             name;
-        cols.add(name);
-        labels[name] = label;
+        final invisible = child.getAttribute('tree_invisible');
+        parsedColumns.add(TreeColumn(
+          name: name,
+          label: label,
+          widget: child.getAttribute('widget'),
+          treeInvisible: invisible == '1' || invisible == 'true',
+          sum: child.getAttribute('sum'),
+          expand: child.getAttribute('expand') == '1',
+        ));
+        if (invisible != '1' && invisible != 'true') {
+          cols.add(name);
+          labels[name] = label;
+        }
       }
 
       if (cols.isNotEmpty) {
         _columns = cols;
         _columnLabels = labels;
-
-        // Hierarchy: only use field_childs as defined in ir.ui.view.
-        // No auto-detection – the expand button appears only when the
-        // view explicitly defines field_childs.
-        _fieldChilds = viewDef.fieldChilds;
-        if (_fieldChilds != null && _fieldChilds!.isNotEmpty) {
-          _parentField = viewDef.fields[_fieldChilds!]?.relationField;
-        }
-        return;
+        _treeColumns = parsedColumns;
+        _treeVisual = root.getAttribute('visual');
       }
-    } catch (_) {
-      // Ignore error – fall back to fieldsGet
+    } catch (e) {
     }
 
-    // Fallback: load all fields and select the visible ones
-    _fields = await svc.fieldsGet(widget.model);
-    _columns = _visibleColumns(_fields);
-    _columnLabels = {for (final k in _columns) k: _fields[k]?.label ?? k};
+    // ── Step 2: field_childs fallback – query ir.ui.view directly ──────────
+    // fields_view_get may load a view with higher priority that has no
+    // field_childs set. We scan ALL tree views for this model and take the
+    // first one that has field_childs defined.
+    if (_fieldChilds == null) {
+      try {
+        final viewRows = await svc.searchRead(
+          'ir.ui.view',
+          domain: [
+            ['model', '=', widget.model],
+            ['type', '=', 'tree'],
+          ],
+          fields: ['field_childs', 'priority'],
+          limit: null,
+          order: [['priority', 'ASC']],
+        );
+        for (final row in viewRows) {
+          final fc = row['field_childs'];
+          if (fc is String && fc.isNotEmpty) {
+            _fieldChilds = fc;
+            break;
+          }
+        }
+      } catch (e) {
+      }
+    }
+
+    // ── Step 3: Resolve parent field for root filter / expand ───────────────
+    if (_fieldChilds != null) {
+      _parentField = _fields[_fieldChilds!]?.relationField;
+      if (_parentField == null) {
+        try {
+          final fd = await svc.fieldsGet(widget.model,
+              fields: [_fieldChilds!]);
+          _parentField = fd[_fieldChilds!]?.relationField;
+        } catch (_) {}
+      }
+    }
+
+    // ── Step 4: Fallback columns if still empty ─────────────────────────────
+    if (_columns.isEmpty) {
+      if (_fields.isEmpty) {
+        _fields = await svc.fieldsGet(widget.model);
+      }
+      _columns = _visibleColumns(_fields);
+      _columnLabels = {for (final k in _columns) k: _fields[k]?.label ?? k};
+    }
   }
 
   Future<void> _loadToolbar(ModelService svc) async {
@@ -504,7 +561,6 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     );
 
     final fieldList = ['rec_name', '_write', '_delete', ..._columns];
-    if (_fieldChilds != null) fieldList.add(_fieldChilds!);
 
     final records = await svc.searchRead(
       widget.model,
@@ -515,10 +571,13 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
     await _resolveM2ONames(svc, records);
 
+    // Batch-check which root records have children via a single extra query.
+    final withChildren = await _batchHasChildren(svc, records);
+
     final rows = records.map((r) => _TreeRow(
           record: r,
           depth: 0,
-          hasChildren: _recordHasChildren(r),
+          hasChildren: withChildren.contains(r.id),
         )).toList();
 
     setState(() {
@@ -527,10 +586,48 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     });
   }
 
-  bool _recordHasChildren(TrytonRecord r) {
-    if (_fieldChilds == null) return false;
-    final val = r[_fieldChilds!];
-    return val is List && val.isNotEmpty;
+  /// Determines which records from [rows] have at least one child.
+  /// Uses read() to read the _fieldChilds One2Many field directly.
+  /// read() reliably returns actual ID lists — unlike search_read which
+  /// may return Python False for empty One2Many fields.
+  Future<Set<int>> _batchHasChildren(
+      ModelService svc, List<TrytonRecord> rows) async {
+    if (_fieldChilds == null || rows.isEmpty) {
+      return {};
+    }
+    final ids = rows.map((r) => r.id).where((id) => id > 0).toList();
+    if (ids.isEmpty) return {};
+    try {
+      final data = await svc.read(widget.model, ids, [_fieldChilds!]);
+      final withChildren = <int>{};
+      for (final r in data) {
+        final v = r[_fieldChilds!];
+        if (v is List && v.isNotEmpty) withChildren.add(r.id);
+      }
+      return withChildren;
+    } catch (e) {
+      // Fallback: searchRead-based query if _parentField is available.
+      if (_parentField == null) return {};
+      try {
+        final childRecords = await svc.searchRead(
+          widget.model,
+          domain: [[_parentField!, 'in', ids]],
+          fields: [_parentField!],
+          limit: null,
+        );
+        final parentIds = <int>{};
+        for (final r in childRecords) {
+          final v = r[_parentField!];
+          int? pid;
+          if (v is List && v.isNotEmpty) pid = (v[0] as num?)?.toInt();
+          else if (v is int) pid = v;
+          if (pid != null) parentIds.add(pid);
+        }
+        return parentIds;
+      } catch (e2) {
+        return {};
+      }
+    }
   }
 
   Future<void> _expandRow(int index) async {
@@ -541,37 +638,66 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
     try {
       final svc = ref.read(modelServiceProvider);
-
-      // Child domain: [parent = row.id]
-      // Remove the parent filter from initialDomain (was e.g. [parent = null]
-      // for root level) to avoid conflicts.
-      final baseActionDomain = _parentField != null
-          ? _domainWithoutField(widget.initialDomain, _parentField!)
-          : widget.initialDomain;
-      final childDomain = _parentField != null
-          ? _buildCombinedDomain(baseActionDomain, [[_parentField!, '=', row.record.id]])
-          : baseActionDomain;
-
       final fieldList = ['rec_name', '_write', '_delete', ..._columns];
-      if (_fieldChilds != null) fieldList.add(_fieldChilds!);
+      List<TrytonRecord> children;
 
-      final children = await svc.searchRead(
-        widget.model,
-        domain: childDomain,
-        fields: fieldList,
-        limit: null,
-      );
+      if (_parentField != null) {
+        // Primary: domain-based load (respects action domain and ordering).
+        final baseActionDomain =
+            _domainWithoutField(widget.initialDomain, _parentField!);
+        final childDomain = _buildCombinedDomain(
+            baseActionDomain, [[_parentField!, '=', row.record.id]]);
+        children = await svc.searchRead(
+          widget.model,
+          domain: childDomain,
+          fields: fieldList,
+          limit: null,
+        );
+      } else if (_fieldChilds != null) {
+        // Fallback: read child IDs via One2Many field, then read records.
+        final parentData =
+            await svc.read(widget.model, [row.record.id], [_fieldChilds!]);
+        if (parentData.isEmpty) {
+          setState(() {
+            row.isLoadingChildren = false;
+            row.hasChildren = false;
+          });
+          return;
+        }
+        final childIds = (parentData.first[_fieldChilds!] as List?)
+                ?.whereType<int>()
+                .toList() ??
+            [];
+        if (childIds.isEmpty) {
+          setState(() {
+            row.isLoadingChildren = false;
+            row.hasChildren = false;
+          });
+          return;
+        }
+        children = await svc.read(widget.model, childIds, fieldList);
+      } else {
+        setState(() => row.isLoadingChildren = false);
+        return;
+      }
+
       await _resolveM2ONames(svc, children);
 
-      final childRows = children.map((r) => _TreeRow(
-            record: r,
-            depth: row.depth + 1,
-            hasChildren: _recordHasChildren(r),
-          )).toList();
+      // Batch-check which child records themselves have children.
+      final withChildren = await _batchHasChildren(svc, children);
+
+      final childRows = children
+          .map((r) => _TreeRow(
+                record: r,
+                depth: row.depth + 1,
+                hasChildren: withChildren.contains(r.id),
+              ))
+          .toList();
 
       setState(() {
         row.isExpanded = true;
         row.isLoadingChildren = false;
+        if (children.isEmpty) row.hasChildren = false;
         _treeRows.insertAll(index + 1, childRows);
       });
     } catch (e) {
@@ -1015,34 +1141,89 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   Widget _buildTableBody() {
     final allSelected = _selected.length == _records.length && _records.isNotEmpty;
-    return SingleChildScrollView(
-      controller: _scrollController,
-      scrollDirection: Axis.vertical,
-      child: Scrollbar(
-        controller: _hScrollController,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          controller: _hScrollController,
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-          headingRowColor: WidgetStateProperty.all(
-            Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-          columns: [
-            DataColumn(
-              label: Checkbox(
-                tristate: true,
-                value: allSelected ? true : (_selected.isEmpty ? false : null),
-                onChanged: (_) => _toggleSelectAll(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.vertical,
+            child: Scrollbar(
+              controller: _hScrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                controller: _hScrollController,
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  headingRowColor: WidgetStateProperty.all(
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                  ),
+                  columns: [
+                    DataColumn(
+                      label: Checkbox(
+                        tristate: true,
+                        value: allSelected ? true : (_selected.isEmpty ? false : null),
+                        onChanged: (_) => _toggleSelectAll(),
+                      ),
+                    ),
+                    ..._buildColumns(),
+                  ],
+                  rows: _buildRows(),
+                ),
               ),
             ),
-            ..._buildColumns(),
-          ],
-          rows: _buildRows(),
+          ),
         ),
-      ),
-      ),  // Scrollbar
+        ..._buildSumRow(),
+      ],
     );
+  }
+
+  /// Builds a sum footer row for numeric columns that have sum="..." defined.
+  List<Widget> _buildSumRow() {
+    final sumCols = _treeColumns.where((c) => c.sum != null && c.sum!.isNotEmpty).toList();
+    if (sumCols.isEmpty || _records.isEmpty) return [];
+
+    final cs = Theme.of(context).colorScheme;
+    final locale = Localizations.localeOf(context).toLanguageTag();
+
+    return [
+      Container(
+        color: cs.surfaceContainerHighest,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(children: [
+          // Checkbox column placeholder
+          const SizedBox(width: 48),
+          ..._columns.map((col) {
+            final tc = _treeColumns.firstWhere((c) => c.name == col,
+                orElse: () => TreeColumn(name: col, label: col));
+            final fd = _fields[col];
+            if (tc.sum == null || tc.sum!.isEmpty) {
+              return const Expanded(child: SizedBox.shrink());
+            }
+            // Sum numeric values
+            double total = 0;
+            for (final r in _records) {
+              final v = r[col];
+              if (v is num) total += v.toDouble();
+              else if (v is TrytonDecimal) total += v.toDouble();
+            }
+            final formatted = formatNumericValue(total,
+                digits: fd?.digits, locale: locale);
+            return Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(tc.sum!, style: TextStyle(fontSize: 10, color: cs.outline)),
+                  Text(formatted,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            );
+          }),
+        ]),
+      ),
+    ];
   }
 
   // ─── Hierarchical tree view ───────────────────────────────────────────────
@@ -1082,19 +1263,45 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     );
   }
 
+  /// Evaluates the tree's visual PYSON expression for a record row.
+  /// Returns one of: 'success', 'warning', 'danger', or '' (no colour).
+  String _evalVisual(TrytonRecord record) {
+    if (_treeVisual == null || _treeVisual!.isEmpty) return '';
+    try {
+      // visual is a Python-ternary string like "'warning' if Eval('late') else ''"
+      // Parse it as JSON to get the PYSON dict, then evaluate.
+      final decoded = jsonDecode(_treeVisual!);
+      final result = PYSONEvaluator(record.values).eval(decoded);
+      return result?.toString() ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Color? _visualRowColor(BuildContext ctx, String visual, bool isSelected) {
+    if (isSelected) {
+      return Theme.of(ctx).colorScheme.primaryContainer.withAlpha(80);
+    }
+    switch (visual) {
+      case 'success': return Colors.green.withAlpha(30);
+      case 'warning': return Colors.orange.withAlpha(40);
+      case 'danger':  return Theme.of(ctx).colorScheme.errorContainer.withAlpha(60);
+      default: return null;
+    }
+  }
+
   Widget _buildTreeRow(BuildContext ctx, int index) {
     final row = _treeRows[index];
     final record = row.record;
     final isSelected = _selected.contains(record.id);
     final indent = row.depth * 20.0;
     final primary = Theme.of(ctx).colorScheme.primary;
+    final visual = _evalVisual(record);
 
     return InkWell(
       onTap: () => _openRecord(record.id),
       child: Container(
-        color: isSelected
-            ? Theme.of(ctx).colorScheme.primaryContainer.withAlpha(80)
-            : null,
+        color: _visualRowColor(ctx, visual, isSelected),
         padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
         child: Row(
           children: [
@@ -1184,13 +1391,14 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   List<DataRow> _buildRows() {
     return _records.map((record) {
       final isSelected = _selected.contains(record.id);
+      final visual = _evalVisual(record);
       return DataRow(
         selected: isSelected,
         color: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return Theme.of(context).colorScheme.primaryContainer.withAlpha(80);
           }
-          return null;
+          return _visualRowColor(context, visual, false);
         }),
         cells: [
           DataCell(

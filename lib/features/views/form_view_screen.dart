@@ -228,6 +228,7 @@ class _FormViewScreenState extends ConsumerState<FormViewScreen> {
               FieldWidget(
                 field: entry.value,
                 value: _sanitize(entry.value, _values[entry.key]),
+                model: widget.model,
                 onChanged: (v) => _onFieldChanged(entry.key, v),
               ),
             if (_error != null) ...[

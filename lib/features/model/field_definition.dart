@@ -24,6 +24,10 @@ class FieldDefinition {
   /// Name of the sibling field carrying currency/unit (from fields_get 'symbol').
   /// SAO: field.description.symbol – e.g. 'currency' for a Numeric amount field.
   final String? symbol;
+  /// If the selection options are provided by a classmethod (not a static list),
+  /// this holds the method name (e.g. 'get_states'). The client calls
+  /// model.model_name.method_name(ctx) to obtain the [[key, label], ...] list.
+  final String? selectionFunction;
 
   const FieldDefinition({
     required this.name,
@@ -42,15 +46,20 @@ class FieldDefinition {
     this.statesRaw,
     this.domainRaw,
     this.symbol,
+    this.selectionFunction,
   });
 
   factory FieldDefinition.fromJson(String name, Map<String, dynamic> json) {
     List<List<dynamic>>? sel;
+    String? selFn;
     if (json['selection'] is List) {
       sel = (json['selection'] as List)
           .map((e) => e is List ? e : [e, e.toString()])
           .toList()
           .cast<List<dynamic>>();
+    } else if (json['selection'] is String) {
+      // Dynamic selection: Tryton returns the classmethod name.
+      selFn = json['selection'] as String;
     }
 
     // states arrives from the server as a JSON string (not a Map!):
@@ -95,8 +104,21 @@ class FieldDefinition {
       statesRaw: statesRaw,
       domainRaw: json['domain'],
       symbol: json['symbol'] as String?,
+      selectionFunction: selFn,
     );
   }
+
+  FieldDefinition copyWithSelection(List<List<dynamic>> newSelection) =>
+      FieldDefinition(
+        name: name, type: type, label: label,
+        readonly: readonly, required: required, invisible: invisible,
+        relation: relation, relationField: relationField,
+        selection: newSelection,
+        digits: digits, help: help,
+        onChange: onChange, onChangeWith: onChangeWith,
+        statesRaw: statesRaw, domainRaw: domainRaw,
+        symbol: symbol, selectionFunction: selectionFunction,
+      );
 
   bool get isRelation =>
       type == 'many2one' || type == 'one2many' || type == 'many2many';

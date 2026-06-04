@@ -139,6 +139,8 @@ class ButtonNode extends FormNode {
   final String? states;
   /// Decoded PYSON states map – ready for PYSONEvaluator.
   final Map<String, dynamic>? statesRaw;
+  /// Confirmation text shown before executing the button action.
+  final String? confirm;
   const ButtonNode({
     required this.name,
     this.string,
@@ -146,6 +148,7 @@ class ButtonNode extends FormNode {
     this.icon,
     this.states,
     this.statesRaw,
+    this.confirm,
   });
 }
 
@@ -155,11 +158,14 @@ class TreeViewDefinition {
   final List<TreeColumn> columns;
   final Map<String, FieldDefinition> fields;
   final bool editable;
+  /// PYSON expression for row color: evaluates to 'success', 'warning', 'danger' or ''.
+  final String? visual;
 
   const TreeViewDefinition({
     required this.columns,
     required this.fields,
     this.editable = false,
+    this.visual,
   });
 }
 
@@ -168,10 +174,19 @@ class TreeColumn {
   final String label;
   final int width; // 0 = flexible
   final String? widget;
+  /// If true, column is hidden by default (tree_invisible="1").
+  final bool treeInvisible;
+  /// Label for the sum footer row (sum="Total").
+  final String? sum;
+  /// If true, column expands to fill available space.
+  final bool expand;
   const TreeColumn({
     required this.name,
     required this.label,
     this.width = 0,
     this.widget,
+    this.treeInvisible = false,
+    this.sum,
+    this.expand = false,
   });
 }

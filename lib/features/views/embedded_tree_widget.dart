@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dynamic_form_screen.dart';
 
 import '../../core/icons/tryton_icon.dart';
+import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../model/field_definition.dart';
@@ -107,7 +110,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       );
       setState(() => _treeDef = TreeViewDefinition(
             columns: treeDef.columns, fields: viewDef.fields,
-            editable: treeDef.editable));
+            editable: treeDef.editable,
+            visual: treeDef.visual));
       await _loadData();
     } catch (e) {
       setState(() => _error = e.toString());
@@ -369,26 +373,30 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                     },
                   ),
                 ),
-                ..._treeDef!.columns.map((c) => DataColumn(
-                      label: Text(c.label,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 11)),
-                    )),
+                ..._treeDef!.columns
+                      .where((c) => !c.treeInvisible)
+                      .map((c) => DataColumn(
+                            label: Text(c.label,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 11)),
+                          )),
               ],
               rows: _rows.map((record) {
                 final isSelected = _selected.contains(record.id);
                 final isDeleted = _markedForDeletion.contains(record.id);
+                final visual = _evalVisual(record);
 
                 return DataRow(
                   selected: isSelected,
                   color: WidgetStateProperty.resolveWith((states) {
-                    if (isDeleted) {
-                      return errorColor.withAlpha(20);
+                    if (isDeleted) return errorColor.withAlpha(20);
+                    if (states.contains(WidgetState.selected)) return primary.withAlpha(40);
+                    switch (visual) {
+                      case 'success': return Colors.green.withAlpha(30);
+                      case 'warning': return Colors.orange.withAlpha(40);
+                      case 'danger':  return errorColor.withAlpha(40);
+                      default: return null;
                     }
-                    if (states.contains(WidgetState.selected)) {
-                      return primary.withAlpha(40);
-                    }
-                    return null;
                   }),
                   cells: [
                     DataCell(Checkbox(
@@ -403,7 +411,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                         });
                       },
                     )),
-                    ..._treeDef!.columns.map((col) {
+                    ..._treeDef!.columns.where((col) => !col.treeInvisible).map((col) {
                       final fd = _treeDef!.fields[col.name];
                       final isNum = fd?.type == 'float' ||
                           fd?.type == 'numeric' ||
@@ -438,6 +446,18 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
           ),  // Scrollbar
       ],
     );
+  }
+
+  String _evalVisual(TrytonRecord record) {
+    final visual = _treeDef?.visual;
+    if (visual == null || visual.isEmpty) return '';
+    try {
+      final decoded = jsonDecode(visual);
+      final result = PYSONEvaluator(record.values).eval(decoded);
+      return result?.toString() ?? '';
+    } catch (_) {
+      return '';
+    }
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────

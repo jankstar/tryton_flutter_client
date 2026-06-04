@@ -108,8 +108,34 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       }
 
       // 1. Load view definition
-      final viewDef = await svc.fieldsViewGet(widget.model, viewType: 'form');
-      final formRoot = FormXmlParser().parse(viewDef.arch);
+      final rawViewDef = await svc.fieldsViewGet(widget.model, viewType: 'form');
+      final formRoot = FormXmlParser().parse(rawViewDef.arch);
+
+      // Pre-load options for dynamic selection fields (method-based selections
+      // where fields_view_get returns an empty list or method name string).
+      final enrichedFields =
+          Map<String, FieldDefinition>.from(rawViewDef.fields);
+      final selectionFutures = rawViewDef.fields.entries
+          .where((e) =>
+              e.value.type == 'selection' &&
+              (e.value.selection == null || e.value.selection!.isEmpty) &&
+              e.value.selectionFunction != null)
+          .map((e) async {
+        final opts = await svc.getSelectionOptions(
+            widget.model, e.value.selectionFunction!);
+        if (opts.isNotEmpty) {
+          enrichedFields[e.key] = e.value.copyWithSelection(opts);
+        }
+      }).toList();
+      if (selectionFutures.isNotEmpty) await Future.wait(selectionFutures);
+
+      final viewDef = ViewDefinition(
+        arch: rawViewDef.arch,
+        fields: enrichedFields,
+        viewId: rawViewDef.viewId,
+        type: rawViewDef.type,
+        fieldChilds: rawViewDef.fieldChilds,
+      );
 
       // 2. Load record
       // Skip binary fields – Tryton may return raw binary data as the HTTP
@@ -421,6 +447,40 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     } catch (_) {}
   }
 
+  Future<void> _executeButton(ButtonNode node) async {
+    if (node.confirm != null && node.confirm!.isNotEmpty) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          content: Text(node.confirm!),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(context.l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    if (_isNew || widget.recordId <= 0) return;
+    setState(() { _saving = true; _error = null; });
+    try {
+      final svc = ref.read(modelServiceProvider);
+      await svc.executeButton(widget.model, node.name, [widget.recordId]);
+      if (!mounted) return;
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _duplicate() async {
     if (_isNew) return;
     try {
@@ -720,13 +780,25 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     }
     if (_formRoot == null || _viewDef == null) return const SizedBox.shrink();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900),
+    // Separate root-level buttons from field content so they stay in a
+    // sticky footer while only the fields scroll.
+    final rootChildren = _formRoot!.children;
+    final buttonNodes = rootChildren.whereType<ButtonNode>().toList();
+    final contentRoot = buttonNodes.isEmpty
+        ? _formRoot!
+        : FormRoot(
+            col: _formRoot!.col,
+            children: rootChildren.where((n) => n is! ButtonNode).toList(),
+          );
+
+    final scrollBody = LayoutBuilder(
+      builder: (context, constraints) {
+        final hPad = (constraints.maxWidth * 0.03).clamp(12.0, 40.0);
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 16),
           child: _FormRenderer(
-            root: _formRoot!,
+            model: widget.model,
+            root: contentRoot,
             viewDef: _viewDef!,
             values: _values,
             onChanged: _onFieldChanged,
@@ -734,9 +806,25 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             onChangedImmediate: _onFieldChangedImmediate,
             isReadOnly: false,
             screenDomain: widget.screenDomain,
+            onButton: _executeButton,
           ),
+        );
+      },
+    );
+
+    if (buttonNodes.isEmpty) return scrollBody;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: scrollBody),
+        _ButtonFooter(
+          nodes: buttonNodes,
+          values: _values,
+          isReadOnly: false,
+          onButton: _executeButton,
         ),
-      ),
+      ],
     );
   }
 
@@ -828,6 +916,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 // ─── Form-Renderer ────────────────────────────────────────────────────────────
 
 class _FormRenderer extends StatefulWidget {
+  final String model;
   final FormRoot root;
   final ViewDefinition viewDef;
   final Map<String, dynamic> values;
@@ -837,8 +926,11 @@ class _FormRenderer extends StatefulWidget {
   final bool isReadOnly;
   /// Screen domain from the action that opened this form (for domain_readonly).
   final List<dynamic> screenDomain;
+  /// Called when the user activates a <button> in the form.
+  final Future<void> Function(ButtonNode)? onButton;
 
   const _FormRenderer({
+    required this.model,
     required this.root,
     required this.viewDef,
     required this.values,
@@ -847,6 +939,7 @@ class _FormRenderer extends StatefulWidget {
     required this.onChangedImmediate,
     required this.isReadOnly,
     this.screenDomain = const [],
+    this.onButton,
   });
 
   @override
@@ -1007,6 +1100,9 @@ class _FormRendererState extends State<_FormRenderer> {
         // Resolve the relation model of the symbol field so _NumericField
         // can call get_symbol without hardcoding 'res.currency'.
         symbolRelation: _resolveSymbolRelation(node.symbol ?? fd.symbol),
+        // widget= override from XML arch (e.g. "url", "email", "password").
+        widgetOverride: node.widget,
+        model: widget.model,
         onChanged: isTextInput
             ? (v) => widget.onChanged(node.name, v)   // local only
             : (v) => widget.onChangedImmediate(node.name, v), // + RPC
@@ -1225,18 +1321,12 @@ class _FormRendererState extends State<_FormRenderer> {
                 fallback: Icons.play_circle_outline,
               ),
               label: Text(label),
-              onPressed: disabled ? null : () => _executeButton(node.name),
+              onPressed: disabled ? null : () => widget.onButton?.call(node),
             )
           : OutlinedButton(
-              onPressed: disabled ? null : () => _executeButton(node.name),
+              onPressed: disabled ? null : () => widget.onButton?.call(node),
               child: Text(label),
             ),
-    );
-  }
-
-  void _executeButton(String name) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Executing button "$name"…')),
     );
   }
 
@@ -1358,6 +1448,84 @@ class _FormRendererState extends State<_FormRenderer> {
 
 // ─── Grid row ─────────────────────────────────────────────────────────────────
 
+// ─── Sticky button footer ─────────────────────────────────────────────────────
+
+/// Renders root-level form buttons in a fixed footer bar that stays visible
+/// while the form content scrolls. Evaluates PYSON states per button.
+class _ButtonFooter extends StatelessWidget {
+  final List<ButtonNode> nodes;
+  final Map<String, dynamic> values;
+  final bool isReadOnly;
+  final Future<void> Function(ButtonNode)? onButton;
+
+  const _ButtonFooter({
+    required this.nodes,
+    required this.values,
+    required this.isReadOnly,
+    this.onButton,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final buttons = <Widget>[];
+
+    for (final node in nodes) {
+      final states = evaluateFieldStates(
+        statesRaw: node.statesRaw,
+        staticInvisible: false,
+        staticReadonly: false,
+        staticRequired: false,
+        values: values,
+      );
+      if (states.invisible) continue;
+
+      final label = node.string ?? node.name;
+      final disabled = isReadOnly || states.readonly;
+      final iconName = node.icon;
+
+      buttons.add(
+        iconName != null && iconName.isNotEmpty
+            ? OutlinedButton.icon(
+                icon: TrytonIcon(
+                  iconName: iconName,
+                  size: 16,
+                  color: disabled
+                      ? cs.onSurface.withAlpha(97)
+                      : cs.primary,
+                  fallback: Icons.play_circle_outline,
+                ),
+                label: Text(label),
+                onPressed: disabled ? null : () => onButton?.call(node),
+              )
+            : OutlinedButton(
+                onPressed: disabled ? null : () => onButton?.call(node),
+                child: Text(label),
+              ),
+      );
+    }
+
+    if (buttons.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        border: Border(
+          top: BorderSide(color: cs.outlineVariant),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: buttons,
+      ),
+    );
+  }
+}
+
+// ─── Grid cell / row ──────────────────────────────────────────────────────────
+
 class _Cell {
   final Widget child;
   final int colspan;
@@ -1367,28 +1535,46 @@ class _Cell {
 class _GridRow extends StatelessWidget {
   final List<_Cell> cells;
   final int totalCols;
+
+  /// Minimum pixel width per base column. When the available width divided by
+  /// totalCols falls below this value, the effective column count is reduced
+  /// so that fields wrap to the next line instead of becoming too narrow.
+  static const double _minColWidth = 160.0;
+
   const _GridRow({required this.cells, required this.totalCols});
 
   @override
   Widget build(BuildContext context) {
     if (cells.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth;
+        // How many base columns fit at the minimum width?
+        final effectiveCols =
+            (available / _minColWidth).floor().clamp(1, totalCols);
 
-    final usedCols = cells.fold(0, (sum, c) => sum + c.colspan);
+        if (effectiveCols >= totalCols) {
+          return _buildRow(cells, totalCols);
+        }
+        // Re-layout: scale each colspan to the reduced column count and wrap.
+        return _buildWrapped(cells, totalCols, effectiveCols);
+      },
+    );
+  }
 
-    // Single cell filling the whole row → return directly (no Row overhead)
-    if (cells.length == 1 && usedCols >= totalCols) {
+  Widget _buildRow(List<_Cell> rowCells, int cols) {
+    if (rowCells.isEmpty) return const SizedBox.shrink();
+    final usedCols = rowCells.fold(0, (s, c) => s + c.colspan);
+
+    if (rowCells.length == 1 && usedCols >= cols) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: cells.first.child,
+        child: rowCells.first.child,
       );
     }
 
-    // Build Row children: one Expanded per cell + optional trailing Spacer
-    // so that cells respect their proportional column width and don't stretch
-    // to fill the entire available width when the row is not full.
-    // Example: col=6, field(colspan=3) → field takes exactly 50%, not 100%.
     final children = <Widget>[];
-    for (final cell in cells) {
+    for (final cell in rowCells) {
       children.add(Expanded(
         flex: cell.colspan,
         child: Padding(
@@ -1397,14 +1583,38 @@ class _GridRow extends StatelessWidget {
         ),
       ));
     }
-    final remaining = totalCols - usedCols;
-    if (remaining > 0) {
-      children.add(Spacer(flex: remaining));
+    final remaining = cols - usedCols;
+    if (remaining > 0) children.add(Spacer(flex: remaining));
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: children);
+  }
+
+  Widget _buildWrapped(
+      List<_Cell> allCells, int origCols, int effectiveCols) {
+    final rows = <Widget>[];
+    final curRow = <_Cell>[];
+    int curUsed = 0;
+
+    void flush() {
+      if (curRow.isEmpty) return;
+      rows.add(_buildRow(List.from(curRow), effectiveCols));
+      curRow.clear();
+      curUsed = 0;
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+    for (final cell in allCells) {
+      // Scale colspan proportionally; always at least 1, at most effectiveCols.
+      final scaled =
+          ((cell.colspan * effectiveCols) / origCols).ceil().clamp(1, effectiveCols);
+      if (curUsed + scaled > effectiveCols) flush();
+      curRow.add(_Cell(child: cell.child, colspan: scaled));
+      curUsed += scaled;
+      if (curUsed >= effectiveCols) flush();
+    }
+    flush();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
     );
   }
 }

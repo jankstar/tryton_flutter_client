@@ -98,6 +98,7 @@ class FormXmlParser {
           icon: el.getAttribute('icon'),
           states: btnStatesStr,
           statesRaw: btnStatesRaw,
+          confirm: el.getAttribute('confirm'),
         );
 
       case 'hpaned':
@@ -169,6 +170,7 @@ class TreeXmlParser {
     final doc = XmlDocument.parse(arch);
     final root = doc.rootElement;
     final editable = root.getAttribute('editable') == '1';
+    final visual = root.getAttribute('visual');
 
     final columns = <TreeColumn>[];
     for (final child in root.childElements) {
@@ -179,22 +181,22 @@ class TreeXmlParser {
       final label = child.getAttribute('string') ??
           fieldDef?['string']?.toString() ??
           name;
+      final invisible = child.getAttribute('tree_invisible');
       columns.add(TreeColumn(
         name: name,
         label: label,
         widget: child.getAttribute('widget'),
+        treeInvisible: invisible == '1' || invisible == 'true',
+        sum: child.getAttribute('sum'),
+        expand: child.getAttribute('expand') == '1',
       ));
-    }
-
-    final fieldDefs = <String, dynamic>{};
-    for (final col in columns) {
-      if (fields.containsKey(col.name)) fieldDefs[col.name] = fields[col.name];
     }
 
     return TreeViewDefinition(
       columns: columns,
       fields: {},
       editable: editable,
+      visual: visual,
     );
   }
 }

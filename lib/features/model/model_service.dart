@@ -35,6 +35,19 @@ class ModelService {
     await _rpc.call(_db, method, params);
   }
 
+  /// Calls a selection classmethod on a model and returns [[key, label], ...].
+  /// Used for selection fields where `fields_get` returns the method name as a
+  /// String instead of an evaluated list.
+  Future<List<List<dynamic>>> getSelectionOptions(
+      String model, String method) async {
+    try {
+      final raw = await _call<List>('model.$model.$method', [_ctx]);
+      return raw.map((e) => e is List ? e.cast<dynamic>() : <dynamic>[e, e.toString()]).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Returns the field descriptions for a model.
   Future<Map<String, FieldDefinition>> fieldsGet(
     String model, {
@@ -142,6 +155,16 @@ class ModelService {
       [values, changedFields, _ctx],
     );
     return raw;
+  }
+
+  /// Executes a form button method on the server.
+  /// Returns the action dict if the server returns one, otherwise null.
+  Future<dynamic> executeButton(
+    String model,
+    String method,
+    List<int> ids,
+  ) async {
+    return _call<dynamic>('model.$model.$method', [ids, _ctx]);
   }
 
   /// Duplicates records and returns the new IDs.
