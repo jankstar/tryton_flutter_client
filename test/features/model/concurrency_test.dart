@@ -13,8 +13,8 @@ class _FakeRpcClient extends RpcClient {
   final calls = <(String, List<dynamic>)>[];
 
   @override
-  Future<dynamic> call(String database, String method, List<dynamic> params,
-      {int maxRetries = 5}) async {
+  Future<dynamic> call(
+      String database, String method, List<dynamic> params) async {
     calls.add((method, params));
     final ctx = params.last as Map<String, dynamic>;
     if (conflict && ctx.containsKey('_timestamp')) {

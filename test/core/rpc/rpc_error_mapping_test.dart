@@ -17,4 +17,55 @@ void main() {
       expect(e.message, isNotEmpty);
     });
   });
+
+  group('RpcClient.exceptionFromError – UserError domain', () {
+    test('[domain, fields] list is stored in both parts', () {
+      final e = RpcClient.exceptionFromError([
+        'UserError',
+        [
+          'The value is not valid.',
+          'Check the field "Code".',
+          [
+            [
+              ['code', '!=', null]
+            ],
+            {
+              'code': {'string': 'Code', 'type': 'char'}
+            }
+          ]
+        ]
+      ]) as UserError;
+      expect(e.message, 'The value is not valid.');
+      expect(e.description, 'Check the field "Code".');
+      expect(e.domain, [
+        ['code', '!=', null]
+      ]);
+      expect(e.domainFields, {
+        'code': {'string': 'Code', 'type': 'char'}
+      });
+    });
+
+    test('null domain', () {
+      final e = RpcClient.exceptionFromError(
+          ['UserError', ['msg', 'desc', null]]) as UserError;
+      expect(e.domain, isNull);
+      expect(e.domainFields, isNull);
+    });
+
+    test('without domain element', () {
+      final e = RpcClient.exceptionFromError(['UserError', ['msg', 'desc']])
+          as UserError;
+      expect(e.description, 'desc');
+      expect(e.domain, isNull);
+    });
+
+    test('a Map in the domain slot (old assumption) is ignored', () {
+      final e = RpcClient.exceptionFromError([
+        'UserError',
+        ['msg', '', {'a': 1}]
+      ]) as UserError;
+      expect(e.domain, isNull);
+      expect(e.domainFields, isNull);
+    });
+  });
 }

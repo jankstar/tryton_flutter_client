@@ -253,4 +253,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String compareTabTitle(String name) {
     return 'Vertaa: $name';
   }
+
+  @override
+  String get fieldNotSupported => 'Ei vielä tuettu';
 }

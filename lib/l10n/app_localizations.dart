@@ -571,6 +571,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Compare: {name}'**
   String compareTabTitle(String name);
+
+  /// Placeholder for field types/widgets without an own widget yet
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported yet'**
+  String get fieldNotSupported;
 }
 
 class _AppLocalizationsDelegate

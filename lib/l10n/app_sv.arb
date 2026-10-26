@@ -329,5 +329,6 @@
   "compare": "Jämför",
   "writeAnyway": "Skriv ändå",
   "concurrencyException": "Fel vid samtidig åtkomst",
-  "compareTabTitle": "Jämför: {name}"
+  "compareTabTitle": "Jämför: {name}",
+  "fieldNotSupported": "Stöds inte ännu"
 }

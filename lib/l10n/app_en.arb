@@ -352,5 +352,9 @@
         "type": "String"
       }
     }
+  },
+  "fieldNotSupported": "Not supported yet",
+  "@fieldNotSupported": {
+    "description": "Placeholder for field types/widgets without an own widget yet"
   }
 }

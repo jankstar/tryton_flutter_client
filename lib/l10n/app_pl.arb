@@ -329,5 +329,6 @@
   "compare": "Porównaj",
   "writeAnyway": "Zapisz mimo to",
   "concurrencyException": "Wyjątek współbieżności",
-  "compareTabTitle": "Porównaj: {name}"
+  "compareTabTitle": "Porównaj: {name}",
+  "fieldNotSupported": "Jeszcze nieobsługiwane"
 }

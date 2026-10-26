@@ -329,5 +329,6 @@
   "compare": "Сравнить",
   "writeAnyway": "Всё равно записать",
   "concurrencyException": "Ошибка параллельного изменения",
-  "compareTabTitle": "Сравнить: {name}"
+  "compareTabTitle": "Сравнить: {name}",
+  "fieldNotSupported": "Пока не поддерживается"
 }

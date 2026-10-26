@@ -253,4 +253,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String compareTabTitle(String name) {
     return 'Sammenlign: $name';
   }
+
+  @override
+  String get fieldNotSupported => 'Understøttes endnu ikke';
 }

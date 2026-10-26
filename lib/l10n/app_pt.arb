@@ -329,5 +329,6 @@
   "compare": "Comparar",
   "writeAnyway": "Gravar mesmo assim",
   "concurrencyException": "Exceção de concorrência",
-  "compareTabTitle": "Comparar: {name}"
+  "compareTabTitle": "Comparar: {name}",
+  "fieldNotSupported": "Ainda não suportado"
 }

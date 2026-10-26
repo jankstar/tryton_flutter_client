@@ -16,14 +16,25 @@ class RpcClient {
   String _baseUrl;
   int _requestId = 0;
 
-  RpcClient({required String baseUrl})
-      : _baseUrl = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/',
+  /// Waits before a 503 retry; replaceable in tests.
+  final Future<void> Function(Duration) _sleep;
+
+  /// HTTP 503: at most this many attempts in total (like SAO).
+  static const max503Attempts = 5;
+
+  RpcClient({
+    required String baseUrl,
+    @visibleForTesting Dio? dio,
+    @visibleForTesting Future<void> Function(Duration)? sleep,
+  })  : _baseUrl = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/',
         _cookieJar = CookieJar(),
-        _dio = Dio(BaseOptions(
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 60),
-          headers: {'Content-Type': 'application/json'},
-        )) {
+        _sleep = sleep ?? Future.delayed,
+        _dio = dio ??
+            Dio(BaseOptions(
+              connectTimeout: const Duration(seconds: 30),
+              receiveTimeout: const Duration(seconds: 60),
+              headers: {'Content-Type': 'application/json'},
+            )) {
     _dio.interceptors.add(CookieManager(_cookieJar));
   }
 
@@ -33,13 +44,16 @@ class RpcClient {
     _baseUrl = url.endsWith('/') ? url : '$url/';
   }
 
-  /// Sends a JSON-RPC 2.0 request to `{database}/rpc/`
+  /// Sends a request to `{database}/rpc/` (JSON-RPC 1.0 style: `id`,
+  /// `method`, `params` only).
+  ///
+  /// HTTP 503 is retried up to [max503Attempts] attempts in total, waiting
+  /// [retryDelay]; HTTP 401 triggers one re-login and retry.
   Future<dynamic> call(
     String database,
     String method,
-    List<dynamic> params, {
-    int maxRetries = 5,
-  }) async {
+    List<dynamic> params,
+  ) async {
     final id = ++_requestId;
     final url = '$_baseUrl$database/rpc/';
 
@@ -49,8 +63,9 @@ class RpcClient {
       'params': TrytonSerializer.encodeList(params),
     });
 
-    // Allow one extra pass for re-auth retry (attempt == maxRetries + 1)
-    for (var attempt = 0; attempt <= maxRetries + 1; attempt++) {
+    var attempts503 = 0;
+    var reAuthed = false;
+    while (true) {
       try {
         final response = await _dio.post<String>(
           url,
@@ -60,12 +75,13 @@ class RpcClient {
         return _handleResponse(response);
       } on DioException catch (e) {
         final status = e.response?.statusCode;
-        if (status == 503 && attempt < maxRetries) {
-          final retryAfter = _parseRetryAfter(e.response?.headers);
-          await Future.delayed(retryAfter);
+        if (status == 503 && ++attempts503 < max503Attempts) {
+          await _sleep(retryDelay(
+              e.response?.headers.value('retry-after'), attempts503));
           continue;
         }
-        if (status == 401 && attempt == 0) {
+        if (status == 401 && !reAuthed) {
+          reAuthed = true;
           // Session expired – like SAO's Session.renew:
           // ask the UI to show the re-login dialog and wait.
           try {
@@ -73,14 +89,21 @@ class RpcClient {
             // Re-auth successful → retry the request once
             continue;
           } catch (_) {
-            throw RpcNetworkException(
-                'Authentication required (401) – please log in again.');
+            throw const RpcHttpException(
+                401, 'Authentication required (401) – please log in again.');
           }
         }
-        throw RpcNetworkException(_friendlyError(e));
+        throw _networkError(e);
       }
     }
-    throw const RpcNetworkException('Max retries exceeded');
+  }
+
+  /// Wait time before retry number [retry] (1-based) after HTTP 503:
+  /// `Retry-After` in seconds, otherwise [retry] seconds; at most 10 s.
+  @visibleForTesting
+  static Duration retryDelay(String? retryAfter, int retry) {
+    final seconds = int.tryParse(retryAfter?.trim() ?? '') ?? retry;
+    return Duration(seconds: seconds.clamp(0, 10));
   }
 
   /// Calls `common.server.version` at the server level (no database needed).
@@ -101,7 +124,7 @@ class RpcClient {
       final result = _handleResponse(response);
       return result?.toString() ?? '';
     } on DioException catch (e) {
-      throw RpcNetworkException(_friendlyError(e));
+      throw _networkError(e);
     }
   }
 
@@ -120,8 +143,17 @@ class RpcClient {
       );
       return _handleResponse(response);
     } on DioException catch (e) {
-      throw RpcNetworkException(_friendlyError(e));
+      throw _networkError(e);
     }
+  }
+
+  /// HTTP status → [RpcHttpException]; connection problems →
+  /// [RpcNetworkException].
+  static RpcNetworkException _networkError(DioException e) {
+    final status = e.response?.statusCode;
+    return status != null
+        ? RpcHttpException(status, _friendlyError(e))
+        : RpcNetworkException(_friendlyError(e));
   }
 
   /// Converts a DioException to a short, user-readable message.
@@ -153,16 +185,17 @@ class RpcClient {
     final body = response.data;
     if (body == null || body.isEmpty) return null;
 
-    // Some Tryton endpoints (e.g. res.user avatar) return binary data
-    // as the raw HTTP body instead of a JSON-RPC response.
-    // Detect this by checking whether the body looks like JSON.
-    if (body.isNotEmpty && body[0] != '{' && body[0] != '[' &&
-        body[0] != '"' && body[0] != 'n' && body[0] != 't' && body[0] != 'f') {
-      // Not JSON (likely binary/base64 image data) – return null safely
-      return null;
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(body);
+    } on FormatException {
+      // Not JSON, e.g. an HTML error page. Never return null silently.
+      final status = response.statusCode ?? 0;
+      if (status != 200) {
+        throw RpcHttpException(status, 'HTTP error $status.');
+      }
+      throw const RpcProtocolException('Invalid response: not JSON.');
     }
-
-    final decoded = jsonDecode(body);
     // Tryton wraps results in {id, result, error}.
     // Some endpoints return bare null / true / false.
     if (decoded is! Map<String, dynamic>) return decoded;
@@ -190,11 +223,19 @@ class RpcClient {
     switch (type) {
       case 'UserError':
         final parts = payload is List ? payload : [payload, '', null];
+        // domain is `[domain, fields]` or null.
+        final domainInfo = parts.length > 2 ? parts[2] : null;
+        final hasDomain = domainInfo is List && domainInfo.isNotEmpty;
         return UserError(
           parts[0]?.toString() ?? '',
           description: parts.length > 1 ? parts[1]?.toString() ?? '' : '',
-          domain: parts.length > 2 && parts[2] is Map
-              ? Map<String, dynamic>.from(parts[2] as Map)
+          domain: hasDomain && domainInfo[0] is List
+              ? List<dynamic>.from(domainInfo[0] as List)
+              : null,
+          domainFields: hasDomain &&
+                  domainInfo.length > 1 &&
+                  domainInfo[1] is Map
+              ? Map<String, dynamic>.from(domainInfo[1] as Map)
               : null,
         );
       case 'UserWarning':
@@ -218,15 +259,6 @@ class RpcClient {
       default:
         return RpcServerException(type, payload?.toString() ?? '');
     }
-  }
-
-  Duration _parseRetryAfter(Headers? headers) {
-    final value = headers?.value('retry-after');
-    if (value != null) {
-      final seconds = int.tryParse(value);
-      if (seconds != null) return Duration(seconds: seconds.clamp(1, 60));
-    }
-    return const Duration(seconds: 10);
   }
 
   Future<void> clearCookies() => _cookieJar.deleteAll();

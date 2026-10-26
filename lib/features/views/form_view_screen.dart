@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../model/field_definition.dart';
+import '../model/field_support.dart';
 import '../model/model_service.dart';
 import '../../shared/widgets/field_widget.dart';
 import '../../core/l10n/locale_provider.dart';
@@ -75,8 +76,14 @@ class _FormViewScreenState extends ConsumerState<FormViewScreen> {
     });
     try {
       final svc = ref.read(modelServiceProvider);
+      // Never write fields without an own widget (E13).
+      final skip = unsupportedFieldNames(_fields);
+      final values = {
+        for (final e in _values.entries)
+          if (!skip.contains(e.key)) e.key: e.value,
+      };
       if (_isNew) {
-        final ids = await svc.create(widget.model, [_values]);
+        final ids = await svc.create(widget.model, [values]);
         if (ids.isNotEmpty && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Record saved.')),
@@ -87,7 +94,7 @@ class _FormViewScreenState extends ConsumerState<FormViewScreen> {
         await svc.write(
           widget.model,
           [widget.recordId],
-          _values,
+          values,
           timestamp: _timestamp,
         );
         if (mounted) {

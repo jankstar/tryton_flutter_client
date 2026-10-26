@@ -253,4 +253,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String compareTabTitle(String name) {
     return 'Сравнить: $name';
   }
+
+  @override
+  String get fieldNotSupported => 'Пока не поддерживается';
 }

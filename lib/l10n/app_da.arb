@@ -329,5 +329,6 @@
   "compare": "Sammenlign",
   "writeAnyway": "Skriv alligevel",
   "concurrencyException": "Samtidig adgang",
-  "compareTabTitle": "Sammenlign: {name}"
+  "compareTabTitle": "Sammenlign: {name}",
+  "fieldNotSupported": "Understøttes endnu ikke"
 }

@@ -329,5 +329,6 @@
   "compare": "Vergleichen",
   "writeAnyway": "Trotzdem schreiben",
   "concurrencyException": "Gleichzeitiger Zugriff",
-  "compareTabTitle": "Vergleichen: {name}"
+  "compareTabTitle": "Vergleichen: {name}",
+  "fieldNotSupported": "Wird noch nicht unterstützt"
 }

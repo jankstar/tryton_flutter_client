@@ -252,4 +252,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String compareTabTitle(String name) {
     return 'Jämför: $name';
   }
+
+  @override
+  String get fieldNotSupported => 'Stöds inte ännu';
 }

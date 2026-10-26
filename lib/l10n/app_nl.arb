@@ -329,5 +329,6 @@
   "compare": "Vergelijken",
   "writeAnyway": "Toch schrijven",
   "concurrencyException": "Fout door gelijktijdige toegang",
-  "compareTabTitle": "Vergelijken: {name}"
+  "compareTabTitle": "Vergelijken: {name}",
+  "fieldNotSupported": "Nog niet ondersteund"
 }

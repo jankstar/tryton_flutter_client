@@ -254,4 +254,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String compareTabTitle(String name) {
     return 'Comparer : $name';
   }
+
+  @override
+  String get fieldNotSupported => 'Pas encore pris en charge';
 }

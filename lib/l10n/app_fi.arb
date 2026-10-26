@@ -329,5 +329,6 @@
   "compare": "Vertaa",
   "writeAnyway": "Kirjoita silti",
   "concurrencyException": "Samanaikaisuusvirhe",
-  "compareTabTitle": "Vertaa: {name}"
+  "compareTabTitle": "Vertaa: {name}",
+  "fieldNotSupported": "Ei vielä tuettu"
 }
