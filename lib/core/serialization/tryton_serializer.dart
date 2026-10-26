@@ -49,11 +49,15 @@ class TrytonSerializer {
           v['microsecond'] as int? ?? 0,
         );
       case 'timedelta':
-        return Duration(seconds: v['seconds'] as int? ?? 0);
+        // Python's timedelta.total_seconds() – a float (3600.0, 0.5, -90.0).
+        final seconds = v['seconds'] as num? ?? 0;
+        return Duration(microseconds: (seconds * 1e6).round());
       case 'Decimal':
         return TrytonDecimal(v['decimal'] as String);
       case 'bytes':
-        return TrytonBytes(base64.decode(v['base64'] as String));
+        // The server wraps base64 in lines (e.g. res.user avatar).
+        return TrytonBytes(base64.decode(
+            (v['base64'] as String).replaceAll(RegExp(r'\s'), '')));
       default:
         return v;
     }
@@ -94,7 +98,8 @@ class TrytonSerializer {
       };
     }
     if (value is Duration) {
-      return {'__class__': 'timedelta', 'seconds': value.inSeconds};
+      // Float seconds, so fractions of a second are not lost.
+      return {'__class__': 'timedelta', 'seconds': value.inMicroseconds / 1e6};
     }
     if (value is TrytonDecimal) {
       return {'__class__': 'Decimal', 'decimal': value.value};
@@ -102,6 +107,7 @@ class TrytonSerializer {
     // Wrap TrytonBytes explicitly – do NOT automatically encode int lists as
     // bytes, otherwise ID lists would be erroneously base64-encoded.
     if (value is TrytonBytes) {
+      // dart:convert emits base64 without line breaks.
       return {'__class__': 'bytes', 'base64': base64.encode(value.bytes)};
     }
     if (value is Map) {

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/serialization/tryton_serializer.dart';
 import '../../features/model/field_definition.dart';
+import '../../features/model/field_support.dart';
 import '../../features/model/model_service.dart';
 import '../../features/shell/app_shell.dart' show pushFormScreen;
 import '../../features/views/navigation_context.dart';
@@ -72,6 +73,13 @@ class FieldWidget extends ConsumerWidget {
 
   Widget _buildField(BuildContext context, WidgetRef ref) {
     final effective = readOnly || field.readonly;
+
+    // No own widget yet (E13) → read-only placeholder, never a text input
+    // (the value would be shown/edited as garbage and written back).
+    if (isUnsupportedField(field.type, widgetOverride)) {
+      return _UnsupportedField(
+          field: field, kind: widgetOverride ?? field.type);
+    }
 
     // widget= XML attribute overrides the default type-based rendering.
     switch (widgetOverride) {
@@ -432,6 +440,33 @@ class _SelectionField extends StatelessWidget {
           )
           .toList(),
       onChanged: readOnly ? null : (v) => onChanged?.call(v),
+    );
+  }
+}
+
+// ─── Placeholder for unsupported field types / widgets ──────────────────────
+
+class _UnsupportedField extends StatelessWidget {
+  final FieldDefinition field;
+  /// Field type or widget name, e.g. "binary" or "image".
+  final String kind;
+
+  const _UnsupportedField({required this.field, required this.kind});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: field.label,
+        border: const OutlineInputBorder(),
+        enabled: false,
+        prefixIcon: const Icon(Icons.block, size: 18),
+      ),
+      child: Text(
+        '${context.l10n.fieldNotSupported} (${field.name}: $kind)',
+        style: TextStyle(color: cs.onSurfaceVariant, fontStyle: FontStyle.italic),
+      ),
     );
   }
 }

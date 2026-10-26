@@ -16,6 +16,7 @@ import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../../shared/widgets/field_widget.dart';
 import '../../shared/widgets/concurrency_dialog.dart';
 import '../model/concurrency.dart';
+import '../model/field_support.dart';
 import 'embedded_tree_widget.dart';
 import 'navigation_context.dart';
 import '../../core/l10n/locale_provider.dart';
@@ -405,7 +406,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   }
 
   Map<String, dynamic> _buildSaveValues() {
-    const neverWrite = {'id', '_timestamp', '_write', '_delete'};
+    // Fields without an own widget (E13) are never written: their value
+    // could not be edited correctly in this client.
+    final neverWrite = {
+      'id', '_timestamp', '_write', '_delete',
+      ...unsupportedFieldNames(_viewDef?.fields ?? const {}, _formRoot),
+    };
 
     if (_isNew) {
       return {

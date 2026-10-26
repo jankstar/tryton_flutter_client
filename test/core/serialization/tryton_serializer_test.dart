@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/serialization/tryton_serializer.dart';
 
@@ -147,6 +149,79 @@ void main() {
       final d = TrytonDate.fromDateTime(DateTime(2026, 12, 31, 23, 59));
       expect(TrytonSerializer.encode(d),
           {'__class__': 'date', 'year': 2026, 'month': 12, 'day': 31});
+    });
+  });
+
+  group('timedelta – float seconds', () {
+    Map<String, dynamic> td(num seconds) =>
+        {'__class__': 'timedelta', 'seconds': seconds};
+
+    for (final (seconds, expected) in [
+      (3600.0, const Duration(hours: 1)),
+      (0.5, const Duration(milliseconds: 500)),
+      (-90.0, const Duration(seconds: -90)),
+      (0, Duration.zero),
+    ]) {
+      test('$seconds round trip', () {
+        final d = TrytonSerializer.decode(td(seconds));
+        expect(d, expected);
+        final encoded = TrytonSerializer.encode(d) as Map;
+        expect(encoded['__class__'], 'timedelta');
+        expect(encoded['seconds'], seconds.toDouble());
+        expect(TrytonSerializer.decode(Map<String, dynamic>.from(encoded)),
+            expected);
+      });
+    }
+
+    test('integer seconds from the server are accepted', () {
+      expect(TrytonSerializer.decode(td(3600)), const Duration(hours: 1));
+    });
+
+    test('microseconds are kept', () {
+      const d = Duration(seconds: 1, microseconds: 1);
+      expect((TrytonSerializer.encode(d) as Map)['seconds'], 1.000001);
+      expect(TrytonSerializer.decode(td(1.000001)), d);
+    });
+  });
+
+  group('bytes', () {
+    final bytes = List<int>.generate(200, (i) => i % 256);
+
+    test('base64 with line breaks (like res.user avatar) is decoded', () {
+      // Python's base64.encodebytes wraps every 76 characters.
+      final b64 = base64.encode(bytes);
+      final wrapped = [
+        for (var i = 0; i < b64.length; i += 76)
+          b64.substring(i, i + 76 > b64.length ? b64.length : i + 76),
+      ].join('\n');
+      expect(wrapped, contains('\n'));
+      final decoded = TrytonSerializer.decode(
+          {'__class__': 'bytes', 'base64': '$wrapped\n'}) as TrytonBytes;
+      expect(decoded.bytes, bytes);
+    });
+
+    test('also tolerates \\r\\n and spaces', () {
+      final decoded = TrytonSerializer.decode(
+              {'__class__': 'bytes', 'base64': 'AAEC\r\nAwQF BgcI\n'})
+          as TrytonBytes;
+      expect(decoded.bytes, [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    });
+
+    test('encode sends base64 without line breaks and round-trips', () {
+      final encoded = TrytonSerializer.encode(TrytonBytes(bytes)) as Map;
+      expect(encoded['__class__'], 'bytes');
+      expect(encoded['base64'], isNot(matches(RegExp(r'\s'))));
+      final back = TrytonSerializer.decode(Map<String, dynamic>.from(encoded))
+          as TrytonBytes;
+      expect(back.bytes, bytes);
+    });
+
+    test('a list of integers (e.g. IDs) is NOT treated as bytes', () {
+      expect(TrytonSerializer.encode([1, 2, 3]), [1, 2, 3]);
+      expect(TrytonSerializer.encode({'ids': [7, 8]}), {
+        'ids': [7, 8]
+      });
+      expect(TrytonSerializer.decode([1, 2, 3]), [1, 2, 3]);
     });
   });
 }
