@@ -28,6 +28,10 @@ class FieldDefinition {
   /// this holds the method name (e.g. 'get_states'). The client calls
   /// model.model_name.method_name(ctx) to obtain the [[key, label], ...] list.
   final String? selectionFunction;
+  /// Fields whose current values are passed to [selectionFunction]
+  /// (`model.X.<method>(values, ctx)`); the selection is reloaded when one
+  /// of them changes (spec 5.6, SAO `selection_mixin`).
+  final List<String>? selectionChangeWith;
 
   const FieldDefinition({
     required this.name,
@@ -47,6 +51,7 @@ class FieldDefinition {
     this.domainRaw,
     this.symbol,
     this.selectionFunction,
+    this.selectionChangeWith,
   });
 
   factory FieldDefinition.fromJson(String name, Map<String, dynamic> json) {
@@ -105,6 +110,11 @@ class FieldDefinition {
       domainRaw: json['domain'],
       symbol: json['symbol'] as String?,
       selectionFunction: selFn,
+      selectionChangeWith: json['selection_change_with'] is List
+          ? (json['selection_change_with'] as List)
+              .map((e) => e.toString())
+              .toList()
+          : null,
     );
   }
 
@@ -118,6 +128,7 @@ class FieldDefinition {
         onChange: onChange, onChangeWith: onChangeWith,
         statesRaw: statesRaw, domainRaw: domainRaw,
         symbol: symbol, selectionFunction: selectionFunction,
+        selectionChangeWith: selectionChangeWith,
       );
 
   bool get isRelation =>

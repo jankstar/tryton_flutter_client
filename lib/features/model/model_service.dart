@@ -38,14 +38,21 @@ class ModelService {
   /// Calls a selection classmethod on a model and returns [[key, label], ...].
   /// Used for selection fields where `fields_get` returns the method name as a
   /// String instead of an evaluated list.
+  ///
+  /// With `selection_change_with`, [values] holds the dependency fields and
+  /// their current values: `model.X.<method>(values, ctx)`; without it the
+  /// method is called with the context only. Errors are thrown (the caller
+  /// must not cache a failed load).
   Future<List<List<dynamic>>> getSelectionOptions(
-      String model, String method) async {
-    try {
-      final raw = await _call<List>('model.$model.$method', [_ctx]);
-      return raw.map((e) => e is List ? e.cast<dynamic>() : <dynamic>[e, e.toString()]).toList();
-    } catch (_) {
-      return [];
-    }
+    String model,
+    String method, {
+    Map<String, dynamic>? values,
+  }) async {
+    final raw = await _call<List>(
+        'model.$model.$method', [?values, _ctx]);
+    return raw
+        .map((e) => e is List ? e.cast<dynamic>() : <dynamic>[e, e.toString()])
+        .toList();
   }
 
   /// Returns the field descriptions for a model.

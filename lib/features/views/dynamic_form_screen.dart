@@ -17,6 +17,7 @@ import '../../shared/widgets/field_widget.dart';
 import '../../shared/widgets/concurrency_dialog.dart';
 import '../model/concurrency.dart';
 import '../model/field_support.dart';
+import '../model/selection_loader.dart';
 import 'embedded_tree_widget.dart';
 import 'navigation_context.dart';
 import '../../core/l10n/locale_provider.dart';
@@ -91,6 +92,13 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   bool get _isNew => widget.recordId < 0;
 
+  /// Method-based selections incl. `selection_change_with`, cached per
+  /// value combination for the lifetime of this form.
+  late final SelectionLoader _selections = SelectionLoader((method, values) =>
+      ref
+          .read(modelServiceProvider)
+          .getSelectionOptions(widget.model, method, values: values));
+
   @override
   void initState() {
     super.initState();
@@ -114,37 +122,10 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       final rawViewDef = await svc.fieldsViewGet(widget.model, viewType: 'form');
       final formRoot = FormXmlParser().parse(rawViewDef.arch);
 
-      // Pre-load options for dynamic selection fields (method-based selections
-      // where fields_view_get returns an empty list or method name string).
-      final enrichedFields =
-          Map<String, FieldDefinition>.from(rawViewDef.fields);
-      final selectionFutures = rawViewDef.fields.entries
-          .where((e) =>
-              e.value.type == 'selection' &&
-              (e.value.selection == null || e.value.selection!.isEmpty) &&
-              e.value.selectionFunction != null)
-          .map((e) async {
-        final opts = await svc.getSelectionOptions(
-            widget.model, e.value.selectionFunction!);
-        if (opts.isNotEmpty) {
-          enrichedFields[e.key] = e.value.copyWithSelection(opts);
-        }
-      }).toList();
-      if (selectionFutures.isNotEmpty) await Future.wait(selectionFutures);
-
-      final viewDef = ViewDefinition(
-        arch: rawViewDef.arch,
-        fields: enrichedFields,
-        viewId: rawViewDef.viewId,
-        type: rawViewDef.type,
-        fieldChilds: rawViewDef.fieldChilds,
-      );
-
       // 2. Load record
-      // Skip binary fields – Tryton may return raw binary data as the HTTP
-      // response body for those, breaking JSON parsing (e.g. res.user avatar).
+      // Skip binary fields – not displayed yet (E13) and potentially large.
       const skipTypes = {'binary'};
-      final fieldNames = viewDef.fields.entries
+      final fieldNames = rawViewDef.fields.entries
           .where((e) => !skipTypes.contains(e.value.type))
           .map((e) => e.key)
           .toList();
@@ -167,6 +148,25 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           values['id'] = records.first.id;
         }
       }
+
+      // 3. Options of method-based selections. With selection_change_with
+      // they depend on the record values, so load after the record.
+      final enrichedFields =
+          Map<String, FieldDefinition>.from(rawViewDef.fields);
+      await Future.wait(rawViewDef.fields.values
+          .where(SelectionLoader.isDynamic)
+          .map((fd) async {
+        final opts = await _selections.load(fd, values, rawViewDef.fields);
+        enrichedFields[fd.name] = fd.copyWithSelection(opts);
+      }));
+
+      final viewDef = ViewDefinition(
+        arch: rawViewDef.arch,
+        fields: enrichedFields,
+        viewId: rawViewDef.viewId,
+        type: rawViewDef.type,
+        fieldChilds: rawViewDef.fieldChilds,
+      );
 
       setState(() {
         _viewDef = viewDef;
@@ -482,6 +482,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   void _onFieldBlur(String name) {
     _triggerOnChange(name);
+    // Text fields: reload dependent selections on blur, not per keystroke.
+    _refreshSelections([name]);
   }
 
   void _onFieldChangedImmediate(String name, dynamic value) {
@@ -490,6 +492,35 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       _modifiedFields.add(name);
     });
     _triggerOnChange(name);
+    _refreshSelections([name]);
+  }
+
+  /// Reloads selections whose `selection_change_with` contains one of
+  /// [changed] (cached per value combination). A result is dropped when the
+  /// values changed again meanwhile (like SAO's update_selection).
+  Future<void> _refreshSelections(Iterable<String> changed) async {
+    final viewDef = _viewDef;
+    if (viewDef == null) return;
+    final fields = viewDef.fields;
+    final targets = fields.values
+        .where((fd) => changed.any((c) => SelectionLoader.dependsOn(fd, c)))
+        .toList();
+    for (final fd in targets) {
+      String keyOf() => SelectionLoader.cacheKey(fd.selectionFunction!,
+          SelectionLoader.changeWithValues(fd, _values, fields));
+      final key = keyOf();
+      final opts = await _selections.load(fd, _values, fields);
+      if (!mounted || _viewDef != viewDef || keyOf() != key) continue;
+      setState(() {
+        _viewDef = ViewDefinition(
+          arch: viewDef.arch,
+          fields: {...viewDef.fields, fd.name: fd.copyWithSelection(opts)},
+          viewId: viewDef.viewId,
+          type: viewDef.type,
+          fieldChilds: viewDef.fieldChilds,
+        );
+      });
+    }
   }
 
   Future<void> _triggerOnChange(String field) async {
@@ -504,6 +535,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           // on_change results are also "modified" (like SAO's set_on_change)
           _modifiedFields.addAll(updates.keys);
         });
+        _refreshSelections(updates.keys);
       }
     } catch (_) {}
   }
