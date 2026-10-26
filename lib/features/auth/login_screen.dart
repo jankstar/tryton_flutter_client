@@ -34,7 +34,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedValues();
+    _loadSavedValues().then((_) {
+      if (mounted) ref.read(authProvider.notifier).tryRestore();
+    });
   }
 
   Future<void> _loadSavedValues() async {
@@ -43,6 +45,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final db  = prefs.getString(_keyDatabase);
     if (url != null && url.isNotEmpty) _serverCtrl.text = url;
     if (db  != null && db.isNotEmpty)  _dbCtrl.text  = db;
+    // Pre-fill the user of the stored session (token itself stays secret).
+    final stored = await ref.read(sessionProvider).storedSession();
+    if (stored != null && _userCtrl.text.isEmpty) _userCtrl.text = stored.login;
   }
 
   Future<void> _saveValues() async {
@@ -287,15 +292,9 @@ class _ServerField extends ConsumerWidget {
         suffixIcon: IconButton(
           icon: const Icon(Icons.refresh),
           tooltip: context.l10n.loadDatabases,
-          onPressed: () {
-            final dbCtrl = context
-                .findAncestorStateOfType<_LoginScreenState>()
-                ?._dbCtrl;
-            ref.read(authProvider.notifier).loadDatabases(
-                  ctrl.text.trim(),
-                  dbCtrl?.text.trim() ?? 'tryton',
-                );
-          },
+          onPressed: () => ref
+              .read(authProvider.notifier)
+              .loadDatabases(ctrl.text.trim()),
         ),
       ),
       validator: (v) => v!.isEmpty ? context.l10n.required : null,

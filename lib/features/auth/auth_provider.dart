@@ -65,13 +65,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   AuthNotifier(this._session, this._rpc) : super(const AuthState());
 
-  Future<void> loadDatabases(String serverUrl, String dbHint) async {
+  /// Loads the database list. An empty list (disabled on the server, 403)
+  /// makes the login screen show a free-text database field.
+  Future<void> loadDatabases(String serverUrl) async {
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
     try {
       _rpc.baseUrl = serverUrl;
       // Version check first – like SAO does before showing the login dialog.
       await _session.checkCompatibility();
-      final dbs = await _session.listDatabases(dbHint);
+      final dbs = await _session.listDatabases();
       state = state.copyWith(status: AuthStatus.unauthenticated, databases: dbs);
     } on VersionMismatchException catch (e) {
       state = state.copyWith(
@@ -79,11 +81,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: 'version_mismatch:${e.serverVersion}:${e.clientVersion}',
       );
     } catch (e) {
+      // Like SAO: on error fall back to the free-text field.
       state = state.copyWith(
         status: AuthStatus.error,
         errorMessage: e.toString(),
+        databases: const [],
       );
     }
+  }
+
+  /// Resumes the session stored in secure storage (task A8). On success
+  /// the state becomes authenticated (login screen navigates to the app);
+  /// otherwise the login screen stays, pre-filled by the caller.
+  Future<bool> tryRestore() async {
+    state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
+    final ok = await _session.restore();
+    state = state.copyWith(
+        status: ok ? AuthStatus.authenticated : AuthStatus.unauthenticated);
+    return ok;
   }
 
   Future<void> login(

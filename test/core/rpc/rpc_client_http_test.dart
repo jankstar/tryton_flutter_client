@@ -11,6 +11,7 @@ import 'package:tryton_flutter_client/core/rpc/rpc_exceptions.dart';
 class _FakeAdapter implements HttpClientAdapter {
   final List<(int, String, Map<String, List<String>>)> responses;
   int requests = 0;
+  final paths = <String>[];
   _FakeAdapter(this.responses);
 
   @override
@@ -19,6 +20,7 @@ class _FakeAdapter implements HttpClientAdapter {
     final (status, body, headers) =
         responses[requests < responses.length ? requests : responses.length - 1];
     requests++;
+    paths.add(options.uri.path);
     return ResponseBody.fromString(body, status, headers: headers);
   }
 
@@ -153,12 +155,37 @@ void main() {
           throwsA(isA<ConcurrencyException>()));
     });
 
-    test('sessionPost and serverVersion use the same handling', () async {
+    test('serverVersion uses the same handling', () async {
       final (rpc, _) = client([(403, _html, _htmlHeaders)]);
-      await expectLater(rpc.sessionPost('tryton', 'login', {}),
-          throwsA(isA<RpcHttpException>()));
       await expectLater(
           rpc.serverVersion(), throwsA(isA<RpcHttpException>()));
+    });
+  });
+
+  group('listDatabases (common.db.list)', () {
+    test('is sent to /rpc/ without database', () async {
+      final (rpc, adapter) =
+          client([(200, _ok(['demo', 'tryton']), _jsonHeaders)]);
+      expect(await rpc.listDatabases(), ['demo', 'tryton']);
+      expect(adapter.paths, ['/rpc/']);
+    });
+
+    test('403 = list disabled → empty list (free-text field)', () async {
+      final (rpc, _) = client([(403, _html, _htmlHeaders)]);
+      expect(await rpc.listDatabases(), isEmpty);
+    });
+
+    test('other HTTP errors are reported', () async {
+      final (rpc, _) = client([(500, _html, _htmlHeaders)]);
+      await expectLater(rpc.listDatabases(),
+          throwsA(isA<RpcHttpException>()
+              .having((e) => e.statusCode, 'statusCode', 500)));
+    });
+
+    test('serverVersion also uses /rpc/', () async {
+      final (rpc, adapter) = client([(200, _ok('8.0'), _jsonHeaders)]);
+      expect(await rpc.serverVersion(), '8.0');
+      expect(adapter.paths, ['/rpc/']);
     });
   });
 }

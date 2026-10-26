@@ -1,20 +1,33 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../serialization/tryton_serializer.dart';
 import 'reauth_service.dart';
 import 'rpc_exceptions.dart';
 
+/// Credentials of a logged-in session: `common.db.login` returns
+/// `[user_id, token, bus_url_host]` (spec 2.5.1).
+class SessionAuth {
+  final String login;
+  final int userId;
+  final String token;
+  const SessionAuth(this.login, this.userId, this.token);
+
+  /// `Authorization: Session base64(login:user_id:token)` (spec 2.5.2).
+  String get header =>
+      'Session ${base64.encode(utf8.encode('$login:$userId:$token'))}';
+}
+
 class RpcClient {
   final Dio _dio;
-  final CookieJar _cookieJar;
   String _baseUrl;
   int _requestId = 0;
+
+  /// Session sent as `Authorization` header on every request; null = none.
+  SessionAuth? auth;
 
   /// Waits before a 503 retry; replaceable in tests.
   final Future<void> Function(Duration) _sleep;
@@ -27,16 +40,21 @@ class RpcClient {
     @visibleForTesting Dio? dio,
     @visibleForTesting Future<void> Function(Duration)? sleep,
   })  : _baseUrl = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/',
-        _cookieJar = CookieJar(),
         _sleep = sleep ?? Future.delayed,
         _dio = dio ??
             Dio(BaseOptions(
               connectTimeout: const Duration(seconds: 30),
               receiveTimeout: const Duration(seconds: 60),
               headers: {'Content-Type': 'application/json'},
-            )) {
-    _dio.interceptors.add(CookieManager(_cookieJar));
-  }
+            ));
+
+  Options get _options => Options(
+        responseType: ResponseType.plain,
+        headers: {
+          'Content-Type': 'application/json',
+          if (auth != null) 'Authorization': auth!.header,
+        },
+      );
 
   String get baseUrl => _baseUrl;
 
@@ -48,14 +66,16 @@ class RpcClient {
   /// `method`, `params` only).
   ///
   /// HTTP 503 is retried up to [max503Attempts] attempts in total, waiting
-  /// [retryDelay]; HTTP 401 triggers one re-login and retry.
+  /// [retryDelay]; HTTP 401 triggers one re-login and retry unless [reAuth]
+  /// is false (login itself, session check on start, logout).
   Future<dynamic> call(
     String database,
     String method,
-    List<dynamic> params,
-  ) async {
+    List<dynamic> params, {
+    bool reAuth = true,
+  }) async {
     final id = ++_requestId;
-    final url = '$_baseUrl$database/rpc/';
+    final url = '$_baseUrl${Uri.encodeComponent(database)}/rpc/';
 
     final body = jsonEncode({
       'id': id,
@@ -70,7 +90,7 @@ class RpcClient {
         final response = await _dio.post<String>(
           url,
           data: body,
-          options: Options(responseType: ResponseType.plain),
+          options: _options,
         );
         return _handleResponse(response);
       } on DioException catch (e) {
@@ -80,7 +100,7 @@ class RpcClient {
               e.response?.headers.value('retry-after'), attempts503));
           continue;
         }
-        if (status == 401 && !reAuthed) {
+        if (status == 401 && reAuth && !reAuthed) {
           reAuthed = true;
           // Session expired – like SAO's Session.renew:
           // ask the UI to show the re-login dialog and wait.
@@ -109,37 +129,37 @@ class RpcClient {
   /// Calls `common.server.version` at the server level (no database needed).
   /// Mirrors SAO's `Sao.Session.server_version()` which posts to `rpc/`.
   Future<String> serverVersion() async {
+    final result = await _callServer('common.server.version');
+    return result?.toString() ?? '';
+  }
+
+  /// Calls `common.db.list` at `/rpc/` – the method only exists there, not
+  /// under `<db>/rpc/` (that answers 401). HTTP 403 means the list is
+  /// disabled on the server (`[database] list = False`) → empty list, the
+  /// login screen then shows a free-text field.
+  Future<List<String>> listDatabases() async {
+    try {
+      final result = await _callServer('common.db.list');
+      return result is List ? result.map((e) => e.toString()).toList() : [];
+    } on RpcHttpException catch (e) {
+      if (e.statusCode == 403) return [];
+      rethrow;
+    }
+  }
+
+  /// POST to the database-independent endpoint `/rpc/` (spec 2.1).
+  Future<dynamic> _callServer(String method) async {
     final url = '${_baseUrl}rpc/';
     final body = jsonEncode({
       'id': ++_requestId,
-      'method': 'common.server.version',
+      'method': method,
       'params': [],
     });
     try {
       final response = await _dio.post<String>(
         url,
         data: body,
-        options: Options(responseType: ResponseType.plain),
-      );
-      final result = _handleResponse(response);
-      return result?.toString() ?? '';
-    } on DioException catch (e) {
-      throw _networkError(e);
-    }
-  }
-
-  /// POST to `{database}/session/{endpoint}` (login, logout)
-  Future<dynamic> sessionPost(
-    String database,
-    String endpoint,
-    Map<String, dynamic> body,
-  ) async {
-    final url = '$_baseUrl$database/session/$endpoint';
-    try {
-      final response = await _dio.post<String>(
-        url,
-        data: jsonEncode(body),
-        options: Options(responseType: ResponseType.plain),
+        options: _options,
       );
       return _handleResponse(response);
     } on DioException catch (e) {
@@ -261,5 +281,4 @@ class RpcClient {
     }
   }
 
-  Future<void> clearCookies() => _cookieJar.deleteAll();
 }
