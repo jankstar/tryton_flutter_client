@@ -3,8 +3,6 @@ import 'dart:convert';
 
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:intl/intl.dart';
-
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,6 +14,7 @@ import '../../features/model/model_service.dart';
 import '../../features/shell/app_shell.dart' show pushFormScreen;
 import '../../features/views/navigation_context.dart';
 import '../../core/l10n/locale_provider.dart';
+import '../utils/date_format_utils.dart';
 import '../utils/number_format_utils.dart';
 import '../utils/symbol_cache.dart' as sym_cache;
 
@@ -449,8 +448,10 @@ class _DateTimeField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('yyyy-MM-dd HH:mm');
-    final formatted = value != null ? fmt.format(value!) : '';
+    // Value is local time (decoded from UTC by TrytonSerializer); the
+    // picked value is local too and is sent back as UTC on encode.
+    final local = value?.toLocal();
+    final formatted = local != null ? formatDateTimeValue(local) : '';
     return TextFormField(
       readOnly: true,
       controller: TextEditingController(text: formatted),
@@ -464,14 +465,14 @@ class _DateTimeField extends StatelessWidget {
                 onPressed: () async {
                   final date = await showDatePicker(
                     context: context,
-                    initialDate: value ?? DateTime.now(),
+                    initialDate: local ?? DateTime.now(),
                     firstDate: DateTime(1900),
                     lastDate: DateTime(2100),
                   );
                   if (date == null || !context.mounted) return;
                   final time = await showTimePicker(
                     context: context,
-                    initialTime: value != null ? TimeOfDay.fromDateTime(value!) : TimeOfDay.now(),
+                    initialTime: local != null ? TimeOfDay.fromDateTime(local) : TimeOfDay.now(),
                   );
                   if (time == null) return;
                   onChanged?.call(DateTime(date.year, date.month, date.day, time.hour, time.minute));

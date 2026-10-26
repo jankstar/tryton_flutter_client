@@ -4,6 +4,9 @@ import 'dart:convert';
 ///
 /// Tryton encodes special types with a `__class__` marker:
 /// DateTime, Date, Time, TimeDelta, Decimal, Bytes
+///
+/// `datetime` is UTC on the wire and local time in Dart; `date` and `time`
+/// carry no time zone (spec 01-rpc-session.md 2.4).
 class TrytonSerializer {
   // ─── Decode (JSON → Dart) ─────────────────────────────────────────────────
 
@@ -20,16 +23,18 @@ class TrytonSerializer {
   static dynamic _decodeTyped(String cls, Map<String, dynamic> v) {
     switch (cls) {
       case 'datetime':
-        return DateTime(
+        // Server datetimes are naive UTC (like SAO: moment.utc → local).
+        final micro = v['microsecond'] as int? ?? 0;
+        return DateTime.utc(
           v['year'] as int,
           v['month'] as int,
           v['day'] as int,
           v['hour'] as int? ?? 0,
           v['minute'] as int? ?? 0,
           v['second'] as int? ?? 0,
-          0,
-          (v['microsecond'] as int? ?? 0) ~/ 1000,
-        );
+          micro ~/ 1000,
+          micro % 1000,
+        ).toLocal();
       case 'date':
         return TrytonDate(
           v['year'] as int,
@@ -58,15 +63,17 @@ class TrytonSerializer {
 
   static dynamic encode(dynamic value) {
     if (value is DateTime) {
+      // Local → naive UTC for the server.
+      final utc = value.toUtc();
       return {
         '__class__': 'datetime',
-        'year': value.year,
-        'month': value.month,
-        'day': value.day,
-        'hour': value.hour,
-        'minute': value.minute,
-        'second': value.second,
-        'microsecond': value.millisecond * 1000,
+        'year': utc.year,
+        'month': utc.month,
+        'day': utc.day,
+        'hour': utc.hour,
+        'minute': utc.minute,
+        'second': utc.second,
+        'microsecond': utc.millisecond * 1000 + utc.microsecond,
       };
     }
     if (value is TrytonDate) {

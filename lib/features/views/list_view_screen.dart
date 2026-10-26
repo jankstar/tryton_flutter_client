@@ -18,6 +18,7 @@ import '../../core/serialization/tryton_serializer.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/utils/m2o_name_cache.dart' as m2o;
+import '../../shared/utils/date_format_utils.dart';
 import '../../shared/utils/number_format_utils.dart';
 import '../../shared/utils/symbol_cache.dart' as sym_cache;
 import '../../shared/widgets/field_widget.dart';
@@ -1487,6 +1488,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           .firstOrNull;
       return match?[1]?.toString() ?? value.toString();
     }
+    // datetime: local time without milliseconds (DateTime.toString() would
+    // show "2026-10-26 14:30:00.000").
+    if (value is DateTime) return formatDateTimeValue(value);
     // Prevent raw List/Map from leaking as toString()
     if (value is List || value is Map) return '';
     return value.toString();

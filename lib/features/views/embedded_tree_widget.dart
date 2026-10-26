@@ -14,6 +14,7 @@ import '../model/model_service.dart';
 import '../model/record.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../shared/utils/m2o_name_cache.dart' as m2o;
+import '../../shared/utils/date_format_utils.dart';
 import '../../shared/utils/number_format_utils.dart';
 import '../../shared/utils/symbol_cache.dart' as sym_cache;
 
@@ -487,6 +488,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       return match?[1]?.toString() ?? val.toString();
     }
 
+    // datetime: local time without milliseconds (DateTime.toString() would
+    // show "2026-10-26 14:30:00.000").
+    if (val is DateTime) return formatDateTimeValue(val);
     // Prevent raw List/Map from leaking as toString()
     if (val is List || val is Map) return '';
     return val.toString();
