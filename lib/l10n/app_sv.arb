@@ -323,5 +323,11 @@
   "no": "Nej",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Varning för samtidig åtkomst",
+  "concurrencyMessage": "Denna post har ändrats medan du redigerade den.\nVälj:\n• \"Avbryt\" för att avbryta sparandet;\n• \"Jämför\" för att se den ändrade versionen;\n• \"Skriv ändå\" för att spara din nuvarande version.",
+  "compare": "Jämför",
+  "writeAnyway": "Skriv ändå",
+  "concurrencyException": "Fel vid samtidig åtkomst",
+  "compareTabTitle": "Jämför: {name}"
 }

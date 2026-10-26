@@ -232,4 +232,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get no => 'Нет';
+
+  @override
+  String get concurrencyWarning => 'Предупреждение о параллельном изменении';
+
+  @override
+  String get concurrencyMessage =>
+      'Эта запись была изменена, пока вы её редактировали.\nВыберите:\n• «Отмена», чтобы отменить сохранение;\n• «Сравнить», чтобы увидеть изменённую версию;\n• «Всё равно записать», чтобы сохранить вашу версию.';
+
+  @override
+  String get compare => 'Сравнить';
+
+  @override
+  String get writeAnyway => 'Всё равно записать';
+
+  @override
+  String get concurrencyException => 'Ошибка параллельного изменения';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Сравнить: $name';
+  }
 }

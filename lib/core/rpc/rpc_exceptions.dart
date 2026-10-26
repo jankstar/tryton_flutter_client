@@ -18,9 +18,12 @@ class UserWarning extends TrytonException {
   const UserWarning(this.name, super.message, {this.description = ''});
 }
 
-/// Optimistic locking conflict – client must retry without _timestamp
+/// Optimistic locking conflict: the record was modified on the server since
+/// it was read (`_timestamp` mismatch). The payload is a plain string, e.g.
+/// `["ConcurrencyException", "Records were modified in the meanwhile"]`.
 class ConcurrencyException extends TrytonException {
-  const ConcurrencyException() : super('Concurrent modification detected');
+  const ConcurrencyException(
+      [super.message = 'Records were modified in the meanwhile']);
 }
 
 /// Server expects additional login parameters (MFA, password reset)

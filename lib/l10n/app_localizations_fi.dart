@@ -232,4 +232,25 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get no => 'Ei';
+
+  @override
+  String get concurrencyWarning => 'Samanaikaisuusvaroitus';
+
+  @override
+  String get concurrencyMessage =>
+      'Tätä tietuetta on muutettu muokkauksesi aikana.\nValitse:\n• \"Peruuta\" peruuttaaksesi tallennuksen;\n• \"Vertaa\" nähdäksesi muutetun version;\n• \"Kirjoita silti\" tallentaaksesi nykyisen versiosi.';
+
+  @override
+  String get compare => 'Vertaa';
+
+  @override
+  String get writeAnyway => 'Kirjoita silti';
+
+  @override
+  String get concurrencyException => 'Samanaikaisuusvirhe';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Vertaa: $name';
+  }
 }

@@ -232,4 +232,25 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get no => 'Nej';
+
+  @override
+  String get concurrencyWarning => 'Advarsel om samtidig adgang';
+
+  @override
+  String get concurrencyMessage =>
+      'Denne post er blevet ændret, mens du redigerede den.\nVælg:\n• \"Annuller\" for at annullere gemningen;\n• \"Sammenlign\" for at se den ændrede version;\n• \"Skriv alligevel\" for at gemme din nuværende version.';
+
+  @override
+  String get compare => 'Sammenlign';
+
+  @override
+  String get writeAnyway => 'Skriv alligevel';
+
+  @override
+  String get concurrencyException => 'Samtidig adgang';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Sammenlign: $name';
+  }
 }

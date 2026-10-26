@@ -323,5 +323,11 @@
   "no": "Nein",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Warnung: Gleichzeitiger Zugriff",
+  "concurrencyMessage": "Dieser Datensatz wurde geändert, während Sie ihn bearbeitet haben.\nWählen Sie:\n• „Abbrechen“, um das Speichern abzubrechen;\n• „Vergleichen“, um die geänderte Version anzuzeigen;\n• „Trotzdem schreiben“, um Ihre aktuelle Version zu speichern.",
+  "compare": "Vergleichen",
+  "writeAnyway": "Trotzdem schreiben",
+  "concurrencyException": "Gleichzeitiger Zugriff",
+  "compareTabTitle": "Vergleichen: {name}"
 }

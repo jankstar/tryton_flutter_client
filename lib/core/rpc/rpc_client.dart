@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../serialization/tryton_serializer.dart';
 import 'reauth_service.dart';
@@ -174,10 +175,14 @@ class RpcClient {
     return TrytonSerializer.decode(data['result']);
   }
 
-  Never _throwRpcError(dynamic error) {
+  Never _throwRpcError(dynamic error) => throw exceptionFromError(error);
+
+  /// Maps the `error` member of a response to a [TrytonException].
+  @visibleForTesting
+  static TrytonException exceptionFromError(dynamic error) {
     // error is a list: [type, payload]
     if (error is! List || error.isEmpty) {
-      throw RpcServerException('unknown', error.toString());
+      return RpcServerException('unknown', error.toString());
     }
     final type = error[0] as String;
     final payload = error.length > 1 ? error[1] : null;
@@ -185,7 +190,7 @@ class RpcClient {
     switch (type) {
       case 'UserError':
         final parts = payload is List ? payload : [payload, '', null];
-        throw UserError(
+        return UserError(
           parts[0]?.toString() ?? '',
           description: parts.length > 1 ? parts[1]?.toString() ?? '' : '',
           domain: parts.length > 2 && parts[2] is Map
@@ -194,22 +199,24 @@ class RpcClient {
         );
       case 'UserWarning':
         final parts = payload is List ? payload : [payload, payload, ''];
-        throw UserWarning(
+        return UserWarning(
           parts[0]?.toString() ?? '',
           parts[1]?.toString() ?? '',
           description: parts.length > 2 ? parts[2]?.toString() ?? '' : '',
         );
       case 'ConcurrencyException':
-        throw const ConcurrencyException();
+        return payload is String && payload.isNotEmpty
+            ? ConcurrencyException(payload)
+            : const ConcurrencyException();
       case 'LoginException':
         final parts = payload is List ? payload : [payload, payload, 'char'];
-        throw LoginException(
+        return LoginException(
           parts[0]?.toString() ?? '',
           parts[1]?.toString() ?? '',
           fieldType: parts.length > 2 ? parts[2]?.toString() ?? 'char' : 'char',
         );
       default:
-        throw RpcServerException(type, payload?.toString() ?? '');
+        return RpcServerException(type, payload?.toString() ?? '');
     }
   }
 

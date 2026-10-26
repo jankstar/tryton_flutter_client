@@ -323,5 +323,11 @@
   "no": "Não",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Aviso de concorrência",
+  "concurrencyMessage": "Este registo foi modificado enquanto o editava.\nEscolha:\n• \"Cancelar\" para cancelar a gravação;\n• \"Comparar\" para ver a versão modificada;\n• \"Gravar mesmo assim\" para guardar a sua versão atual.",
+  "compare": "Comparar",
+  "writeAnyway": "Gravar mesmo assim",
+  "concurrencyException": "Exceção de concorrência",
+  "compareTabTitle": "Comparar: {name}"
 }

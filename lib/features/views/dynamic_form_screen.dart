@@ -14,6 +14,8 @@ import '../shell/app_shell.dart';
 import '../shell/tab_manager.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../../shared/widgets/field_widget.dart';
+import '../../shared/widgets/concurrency_dialog.dart';
+import '../model/concurrency.dart';
 import 'embedded_tree_widget.dart';
 import 'navigation_context.dart';
 import '../../core/l10n/locale_provider.dart';
@@ -151,7 +153,10 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       if (_isNew) {
         values = await svc.defaultGet(widget.model, fieldNames);
       } else {
-        final records = await svc.read(widget.model, [widget.recordId], fieldNames);
+        // '_timestamp' is only returned when requested (like SAO's
+        // Record.load) – needed for the concurrency check on write/delete.
+        final records = await svc.read(
+            widget.model, [widget.recordId], [...fieldNames, '_timestamp']);
         if (records.isNotEmpty) {
           values = Map.from(records.first.values);
           timestamp = records.first.timestamp;
@@ -314,8 +319,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       } else {
         final isUserRecord = widget.model == 'res.user' &&
             widget.recordId == ref.read(sessionProvider).userId;
-        await svc.write(widget.model, [widget.recordId], saveValues,
-            timestamp: _timestamp);
+        final written = await _withConcurrencyCheck((withTimestamp) =>
+            svc.write(widget.model, [widget.recordId], saveValues,
+                timestamp: withTimestamp ? _timestamp : null));
+        if (!written) return;
+        // Record changed on the server → reload to get the new _timestamp.
+        await _loadRecordTimestamp();
         if (mounted) {
           _showSnack(context.l10n.saved);
           setState(() => _modifiedFields.clear());
@@ -331,6 +340,50 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     } finally {
       setState(() => _saving = false);
     }
+  }
+
+  /// Runs a write/delete of this record and resolves a concurrency
+  /// conflict with the user (spec 01-rpc-session.md 2.6).
+  Future<bool> _withConcurrencyCheck(
+      Future<void> Function(bool withTimestamp) action) {
+    return runWithConcurrencyCheck(
+      idCount: 1,
+      action: action,
+      ask: () async => mounted
+          ? showConcurrencyDialog(context)
+          : ConcurrencyChoice.cancel,
+      onCompare: _openCompareTab,
+      onMessage: () async {
+        if (mounted) await showConcurrencyMessage(context);
+      },
+    );
+  }
+
+  /// "Compare": opens the current server version in a new tab.
+  Future<void> _openCompareTab() async {
+    final svc = ref.read(modelServiceProvider);
+    final records =
+        await svc.read(widget.model, [widget.recordId], ['rec_name']);
+    final name = records.isNotEmpty
+        ? records.first.values['rec_name']?.toString() ?? ''
+        : '';
+    if (!mounted) return;
+    ref.read(tabsProvider.notifier).openTab(
+      title: context.l10n.compareTabTitle(name),
+      model: widget.model,
+      initialDomain: [['id', '=', widget.recordId]],
+      resId: widget.recordId,
+    );
+  }
+
+  /// Re-reads only the timestamp after a successful write, so the next
+  /// save does not run into a false concurrency conflict.
+  Future<void> _loadRecordTimestamp() async {
+    try {
+      final svc = ref.read(modelServiceProvider);
+      final records = await svc.read(widget.model, [widget.recordId], ['_timestamp']);
+      if (records.isNotEmpty) _timestamp = records.first.timestamp;
+    } catch (_) {}
   }
 
   /// Builds the dict of fields to be written.
@@ -402,8 +455,10 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (ok != true) return;
     try {
       final svc = ref.read(modelServiceProvider);
-      await svc.delete(widget.model, [widget.recordId]);
-      if (mounted) Navigator.of(context).pop();
+      final deleted = await _withConcurrencyCheck((withTimestamp) =>
+          svc.delete(widget.model, [widget.recordId],
+              timestamp: withTimestamp ? _timestamp : null));
+      if (deleted && mounted) Navigator.of(context).pop();
     } catch (e) {
       setState(() => _error = e.toString());
     }

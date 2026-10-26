@@ -232,4 +232,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get no => 'No';
+
+  @override
+  String get concurrencyWarning => 'Concurrency Warning';
+
+  @override
+  String get concurrencyMessage =>
+      'This record has been modified while you were editing it.\nChoose:\n• \"Cancel\" to cancel saving;\n• \"Compare\" to see the modified version;\n• \"Write Anyway\" to save your current version.';
+
+  @override
+  String get compare => 'Compare';
+
+  @override
+  String get writeAnyway => 'Write Anyway';
+
+  @override
+  String get concurrencyException => 'Concurrency Exception';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Compare: $name';
+  }
 }

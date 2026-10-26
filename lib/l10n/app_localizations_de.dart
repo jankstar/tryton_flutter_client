@@ -233,4 +233,25 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get no => 'Nein';
+
+  @override
+  String get concurrencyWarning => 'Warnung: Gleichzeitiger Zugriff';
+
+  @override
+  String get concurrencyMessage =>
+      'Dieser Datensatz wurde geändert, während Sie ihn bearbeitet haben.\nWählen Sie:\n• „Abbrechen“, um das Speichern abzubrechen;\n• „Vergleichen“, um die geänderte Version anzuzeigen;\n• „Trotzdem schreiben“, um Ihre aktuelle Version zu speichern.';
+
+  @override
+  String get compare => 'Vergleichen';
+
+  @override
+  String get writeAnyway => 'Trotzdem schreiben';
+
+  @override
+  String get concurrencyException => 'Gleichzeitiger Zugriff';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Vergleichen: $name';
+  }
 }

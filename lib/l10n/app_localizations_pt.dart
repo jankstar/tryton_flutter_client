@@ -232,4 +232,25 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get no => 'Não';
+
+  @override
+  String get concurrencyWarning => 'Aviso de concorrência';
+
+  @override
+  String get concurrencyMessage =>
+      'Este registo foi modificado enquanto o editava.\nEscolha:\n• \"Cancelar\" para cancelar a gravação;\n• \"Comparar\" para ver a versão modificada;\n• \"Gravar mesmo assim\" para guardar a sua versão atual.';
+
+  @override
+  String get compare => 'Comparar';
+
+  @override
+  String get writeAnyway => 'Gravar mesmo assim';
+
+  @override
+  String get concurrencyException => 'Exceção de concorrência';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Comparar: $name';
+  }
 }

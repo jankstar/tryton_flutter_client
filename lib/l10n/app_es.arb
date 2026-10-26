@@ -323,5 +323,11 @@
   "no": "No",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Aviso de concurrencia",
+  "concurrencyMessage": "Este registro ha sido modificado mientras lo editaba.\nElija:\n• «Cancelar» para cancelar el guardado;\n• «Comparar» para ver la versión modificada;\n• «Guardar de todos modos» para guardar su versión actual.",
+  "compare": "Comparar",
+  "writeAnyway": "Guardar de todos modos",
+  "concurrencyException": "Excepción de concurrencia",
+  "compareTabTitle": "Comparar: {name}"
 }

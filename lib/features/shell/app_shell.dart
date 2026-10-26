@@ -122,7 +122,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Navigator(
       key: tab.navigatorKey,
       onGenerateRoute: (settings) => MaterialPageRoute(
-        builder: (_) => ListViewScreen(
+        builder: (_) => tab.resId != null
+            ? DynamicFormScreen(
+                model: tab.model,
+                recordId: tab.resId!,
+                title: tab.title,
+                screenDomain: tab.initialDomain,
+              )
+            : ListViewScreen(
           model: tab.model,
           title: tab.title,
           initialDomain: tab.initialDomain,

@@ -231,4 +231,25 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get no => 'Nej';
+
+  @override
+  String get concurrencyWarning => 'Varning för samtidig åtkomst';
+
+  @override
+  String get concurrencyMessage =>
+      'Denna post har ändrats medan du redigerade den.\nVälj:\n• \"Avbryt\" för att avbryta sparandet;\n• \"Jämför\" för att se den ändrade versionen;\n• \"Skriv ändå\" för att spara din nuvarande version.';
+
+  @override
+  String get compare => 'Jämför';
+
+  @override
+  String get writeAnyway => 'Skriv ändå';
+
+  @override
+  String get concurrencyException => 'Fel vid samtidig åtkomst';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Jämför: $name';
+  }
 }

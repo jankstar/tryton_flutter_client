@@ -323,5 +323,11 @@
   "no": "Nej",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Advarsel om samtidig adgang",
+  "concurrencyMessage": "Denne post er blevet ændret, mens du redigerede den.\nVælg:\n• \"Annuller\" for at annullere gemningen;\n• \"Sammenlign\" for at se den ændrede version;\n• \"Skriv alligevel\" for at gemme din nuværende version.",
+  "compare": "Sammenlign",
+  "writeAnyway": "Skriv alligevel",
+  "concurrencyException": "Samtidig adgang",
+  "compareTabTitle": "Sammenlign: {name}"
 }

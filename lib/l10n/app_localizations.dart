@@ -535,6 +535,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No'**
   String get no;
+
+  /// Title of the concurrency dialog (record modified on server)
+  ///
+  /// In en, this message translates to:
+  /// **'Concurrency Warning'**
+  String get concurrencyWarning;
+
+  /// Body of the concurrency dialog
+  ///
+  /// In en, this message translates to:
+  /// **'This record has been modified while you were editing it.\nChoose:\n• \"Cancel\" to cancel saving;\n• \"Compare\" to see the modified version;\n• \"Write Anyway\" to save your current version.'**
+  String get concurrencyMessage;
+
+  /// Concurrency dialog: open the server version
+  ///
+  /// In en, this message translates to:
+  /// **'Compare'**
+  String get compare;
+
+  /// Concurrency dialog: save without timestamp
+  ///
+  /// In en, this message translates to:
+  /// **'Write Anyway'**
+  String get writeAnyway;
+
+  /// Simple message for a concurrency conflict on several records
+  ///
+  /// In en, this message translates to:
+  /// **'Concurrency Exception'**
+  String get concurrencyException;
+
+  /// Title of the tab showing the server version
+  ///
+  /// In en, this message translates to:
+  /// **'Compare: {name}'**
+  String compareTabTitle(String name);
 }
 
 class _AppLocalizationsDelegate

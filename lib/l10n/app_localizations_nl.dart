@@ -232,4 +232,25 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get no => 'Nee';
+
+  @override
+  String get concurrencyWarning => 'Waarschuwing gelijktijdige toegang';
+
+  @override
+  String get concurrencyMessage =>
+      'Dit record is gewijzigd terwijl u het bewerkte.\nKies:\n• \"Annuleren\" om het opslaan te annuleren;\n• \"Vergelijken\" om de gewijzigde versie te zien;\n• \"Toch schrijven\" om uw huidige versie op te slaan.';
+
+  @override
+  String get compare => 'Vergelijken';
+
+  @override
+  String get writeAnyway => 'Toch schrijven';
+
+  @override
+  String get concurrencyException => 'Fout door gelijktijdige toegang';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Vergelijken: $name';
+  }
 }

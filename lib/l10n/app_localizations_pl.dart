@@ -233,4 +233,25 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get no => 'Nie';
+
+  @override
+  String get concurrencyWarning => 'Ostrzeżenie o współbieżności';
+
+  @override
+  String get concurrencyMessage =>
+      'Ten rekord został zmieniony podczas jego edycji.\nWybierz:\n• „Anuluj”, aby anulować zapis;\n• „Porównaj”, aby zobaczyć zmienioną wersję;\n• „Zapisz mimo to”, aby zapisać bieżącą wersję.';
+
+  @override
+  String get compare => 'Porównaj';
+
+  @override
+  String get writeAnyway => 'Zapisz mimo to';
+
+  @override
+  String get concurrencyException => 'Wyjątek współbieżności';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Porównaj: $name';
+  }
 }

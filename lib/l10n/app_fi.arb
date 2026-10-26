@@ -323,5 +323,11 @@
   "no": "Ei",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Samanaikaisuusvaroitus",
+  "concurrencyMessage": "Tätä tietuetta on muutettu muokkauksesi aikana.\nValitse:\n• \"Peruuta\" peruuttaaksesi tallennuksen;\n• \"Vertaa\" nähdäksesi muutetun version;\n• \"Kirjoita silti\" tallentaaksesi nykyisen versiosi.",
+  "compare": "Vertaa",
+  "writeAnyway": "Kirjoita silti",
+  "concurrencyException": "Samanaikaisuusvirhe",
+  "compareTabTitle": "Vertaa: {name}"
 }

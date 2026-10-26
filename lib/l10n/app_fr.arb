@@ -323,5 +323,11 @@
   "no": "Non",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Avertissement d'accès concurrent",
+  "concurrencyMessage": "Cet enregistrement a été modifié pendant que vous l'éditiez.\nChoisissez :\n• « Annuler » pour annuler l'enregistrement ;\n• « Comparer » pour voir la version modifiée ;\n• « Écrire quand même » pour enregistrer votre version actuelle.",
+  "compare": "Comparer",
+  "writeAnyway": "Écrire quand même",
+  "concurrencyException": "Exception d'accès concurrent",
+  "compareTabTitle": "Comparer : {name}"
 }

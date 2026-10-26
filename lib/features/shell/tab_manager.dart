@@ -11,6 +11,9 @@ class AppTab {
   final String? contextModel;
   final String? contextDomain;
   final int? actionId;
+  /// When set, the tab opens this record in a form instead of a list
+  /// (SAO `mode: ['form']` with `res_id`).
+  final int? resId;
   /// Per-tab Navigator key – keeps the navigation stack alive in IndexedStack.
   final GlobalKey<NavigatorState> navigatorKey;
 
@@ -22,6 +25,7 @@ class AppTab {
     this.contextModel,
     this.contextDomain,
     this.actionId,
+    this.resId,
   }) : navigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tab-$id');
 }
 
@@ -52,6 +56,7 @@ class TabsNotifier extends StateNotifier<TabsState> {
     String? contextModel,
     String? contextDomain,
     int? actionId,
+    int? resId,
   }) {
     final tab = AppTab(
       id: _uuid.v4(),
@@ -61,6 +66,7 @@ class TabsNotifier extends StateNotifier<TabsState> {
       contextModel: contextModel,
       contextDomain: contextDomain,
       actionId: actionId,
+      resId: resId,
     );
     final newTabs = [...state.tabs, tab];
     state = state.copyWith(tabs: newTabs, activeIndex: newTabs.length - 1);

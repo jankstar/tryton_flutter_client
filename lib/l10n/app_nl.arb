@@ -323,5 +323,11 @@
   "no": "Nee",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Waarschuwing gelijktijdige toegang",
+  "concurrencyMessage": "Dit record is gewijzigd terwijl u het bewerkte.\nKies:\n• \"Annuleren\" om het opslaan te annuleren;\n• \"Vergelijken\" om de gewijzigde versie te zien;\n• \"Toch schrijven\" om uw huidige versie op te slaan.",
+  "compare": "Vergelijken",
+  "writeAnyway": "Toch schrijven",
+  "concurrencyException": "Fout door gelijktijdige toegang",
+  "compareTabTitle": "Vergelijken: {name}"
 }

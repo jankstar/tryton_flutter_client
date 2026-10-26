@@ -323,5 +323,11 @@
   "no": "Nie",
   "@no": {
     "description": "Negative answer in dialogs"
-  }
+  },
+  "concurrencyWarning": "Ostrzeżenie o współbieżności",
+  "concurrencyMessage": "Ten rekord został zmieniony podczas jego edycji.\nWybierz:\n• „Anuluj”, aby anulować zapis;\n• „Porównaj”, aby zobaczyć zmienioną wersję;\n• „Zapisz mimo to”, aby zapisać bieżącą wersję.",
+  "compare": "Porównaj",
+  "writeAnyway": "Zapisz mimo to",
+  "concurrencyException": "Wyjątek współbieżności",
+  "compareTabTitle": "Porównaj: {name}"
 }

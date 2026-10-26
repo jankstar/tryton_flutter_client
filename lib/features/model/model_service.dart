@@ -109,27 +109,35 @@ class ModelService {
     return result.cast<int>();
   }
 
+  /// Builds the context with `_timestamp` for optimistic locking.
+  Map<String, dynamic> _timestampContext(
+      String model, List<int> ids, String? timestamp) {
+    if (timestamp == null) return _ctx;
+    return {
+      ..._ctx,
+      '_timestamp': {for (final id in ids) '$model,$id': timestamp},
+    };
+  }
+
   /// Writes fields to existing records.
-  /// [timestamp] is sent for concurrency control.
+  /// [timestamp] is sent as `_timestamp` for concurrency control. A conflict
+  /// is NOT resolved here: the [ConcurrencyException] reaches the caller,
+  /// which asks the user (see `runWithConcurrencyCheck`). Calling again
+  /// without [timestamp] is "Write Anyway".
   Future<void> write(
     String model,
     List<int> ids,
     Map<String, dynamic> values, {
     String? timestamp,
   }) async {
-    final ctx = timestamp != null
-        ? {..._ctx, '_timestamp': {for (final id in ids) '$model,$id': timestamp}}
-        : _ctx;
-    try {
-      await _callVoid('model.$model.write', [ids, values, ctx]);
-    } on ConcurrencyException {
-      await _callVoid('model.$model.write', [ids, values, _ctx]);
-    }
+    await _callVoid('model.$model.write',
+        [ids, values, _timestampContext(model, ids, timestamp)]);
   }
 
-  /// Deletes records.
-  Future<void> delete(String model, List<int> ids) async {
-    await _callVoid('model.$model.delete', [ids, _ctx]);
+  /// Deletes records. [timestamp] works like in [write].
+  Future<void> delete(String model, List<int> ids, {String? timestamp}) async {
+    await _callVoid(
+        'model.$model.delete', [ids, _timestampContext(model, ids, timestamp)]);
   }
 
   /// Returns default values for a new form.

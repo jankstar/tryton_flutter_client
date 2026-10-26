@@ -233,4 +233,25 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get no => 'Non';
+
+  @override
+  String get concurrencyWarning => 'Avertissement d\'accès concurrent';
+
+  @override
+  String get concurrencyMessage =>
+      'Cet enregistrement a été modifié pendant que vous l\'éditiez.\nChoisissez :\n• « Annuler » pour annuler l\'enregistrement ;\n• « Comparer » pour voir la version modifiée ;\n• « Écrire quand même » pour enregistrer votre version actuelle.';
+
+  @override
+  String get compare => 'Comparer';
+
+  @override
+  String get writeAnyway => 'Écrire quand même';
+
+  @override
+  String get concurrencyException => 'Exception d\'accès concurrent';
+
+  @override
+  String compareTabTitle(String name) {
+    return 'Comparer : $name';
+  }
 }

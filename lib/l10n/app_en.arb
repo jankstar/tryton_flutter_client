@@ -323,5 +323,34 @@
   "no": "No",
   "@no": {
     "description": "Negative answer in dialogs"
+  },
+  "concurrencyWarning": "Concurrency Warning",
+  "@concurrencyWarning": {
+    "description": "Title of the concurrency dialog (record modified on server)"
+  },
+  "concurrencyMessage": "This record has been modified while you were editing it.\nChoose:\n• \"Cancel\" to cancel saving;\n• \"Compare\" to see the modified version;\n• \"Write Anyway\" to save your current version.",
+  "@concurrencyMessage": {
+    "description": "Body of the concurrency dialog"
+  },
+  "compare": "Compare",
+  "@compare": {
+    "description": "Concurrency dialog: open the server version"
+  },
+  "writeAnyway": "Write Anyway",
+  "@writeAnyway": {
+    "description": "Concurrency dialog: save without timestamp"
+  },
+  "concurrencyException": "Concurrency Exception",
+  "@concurrencyException": {
+    "description": "Simple message for a concurrency conflict on several records"
+  },
+  "compareTabTitle": "Compare: {name}",
+  "@compareTabTitle": {
+    "description": "Title of the tab showing the server version",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

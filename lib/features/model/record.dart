@@ -17,7 +17,7 @@ class TrytonRecord {
   factory TrytonRecord.fromJson(Map<String, dynamic> json) {
     final values = Map<String, dynamic>.from(json);
     final id = values.remove('id') as int? ?? -1;
-    final timestamp = values.remove('_timestamp') as String?;
+    final timestamp = values.remove('_timestamp')?.toString();
     final canWrite = values.remove('_write') as bool? ?? true;
     final canDelete = values.remove('_delete') as bool? ?? true;
     return TrytonRecord(
