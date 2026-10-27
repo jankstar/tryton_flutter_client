@@ -15,9 +15,10 @@ Map<String, dynamic> fieldDesc(String type,
 TrytonModel saleModel({
   Map<String, dynamic> session = const {'language': 'de', 'company': 1},
   ModelAccess access = const ModelAccess(),
+  ModelSession? modelSession,
 }) {
   final model = TrytonModel('sale.sale',
-      sessionContext: () => session, access: access);
+      session: modelSession, sessionContext: () => session, access: access);
   model.addFields({
     'name': fieldDesc('char', {'strip': true}),
     'state': fieldDesc('selection', {
@@ -90,8 +91,20 @@ Record loadedSale(RecordGroup group) {
     '_delete': true,
     'lines': [10, 11],
     'lines.': [
-      {'id': 10, 'quantity': 1.0, 'product': 3, '_timestamp': '110.0'},
-      {'id': 11, 'quantity': 2.0, 'product': 4, '_timestamp': '111.0'},
+      {
+        'id': 10,
+        'quantity': 1.0,
+        'product': 3,
+        'product.': {'rec_name': 'P3'},
+        '_timestamp': '110.0'
+      },
+      {
+        'id': 11,
+        'quantity': 2.0,
+        'product': 4,
+        'product.': {'rec_name': 'P4'},
+        '_timestamp': '111.0'
+      },
     ],
   }, modified: false);
   return sale;

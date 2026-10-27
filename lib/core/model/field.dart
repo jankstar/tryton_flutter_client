@@ -20,6 +20,30 @@ bool _valuesEqual(dynamic a, dynamic b) {
   return domainEquals(a, b);
 }
 
+/// Reads the missing `rec_name` of a many2one/reference value in the
+/// background (without error dialog; on error the name stays empty) and
+/// notifies the listeners when it arrives.
+void _fetchRecName(Record record, String field, String relation, int id,
+    dynamic expected) {
+  final rpc = record.model.session.rpc;
+  if (rpc == null) return;
+  unawaited(() async {
+    try {
+      final result = await rpc.execute(relation, 'read', [
+        [id],
+        ['rec_name']
+      ], context: record.getContext(), processException: false);
+      if (result is! List || result.isEmpty) return;
+      if (!_valuesEqual(record._values[field], expected)) return;
+      final related = record._values['$field.'];
+      if (related is Map) {
+        related['rec_name'] = '${(result.first as Map)['rec_name'] ?? ''}';
+        record.group.notifyScreens();
+      }
+    } catch (_) {}
+  }());
+}
+
 /// Base field (SAO `Sao.field.Field`). [description] is the field
 /// description from `fields_get` / `fields_view_get` (spec 5.2).
 class Field {
@@ -55,6 +79,13 @@ class Field {
 
   String get name => description['name'] as String;
 
+  /// Views showing this field (set by the screens); loading takes the
+  /// fields of the same views.
+  final Set<Object> views = {};
+
+  /// `eager` (default) or `lazy` (5.4.2).
+  String get loading => description['loading'] as String? ?? 'eager';
+
   /// Value of an unset field (SAO `_default`).
   dynamic get defaultValue => null;
 
@@ -70,40 +101,47 @@ class Field {
   bool hasChanged(dynamic previous, dynamic value) =>
       !_valuesEqual(previous, value);
 
-  /// Sets a value from the user: on a change on_change etc. are triggered
-  /// and the field is marked modified.
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  /// Sets a value from the user. On a change the field is marked modified
+  /// at once; on_change etc., validation and the modification
+  /// notification run in the record's queue. The returned future
+  /// completes after that chain and carries its errors.
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     final previous = get(record);
     set(record, value);
-    if (hasChanged(previous, get(record))) {
-      changed(record);
+    final isChanged = hasChanged(previous, get(record));
+    return _afterSetClient(record, isChanged, forceChange);
+  }
+
+  Future<void> _afterSetClient(
+      Record record, bool isChanged, bool forceChange) {
+    if (!isChanged && !forceChange) return Future.value();
+    if (isChanged) record.modifiedFields.add(name);
+    return record._enqueue(() async {
+      await changed(record);
       record.validate(softValidation: true);
-      record.setModified(name);
-    } else if (forceChange) {
-      changed(record);
-      record.validate(softValidation: true);
-      record.setModified();
-    }
+      record.setModified(isChanged ? name : null);
+    });
   }
 
   dynamic getClient(Record record) => get(record);
 
-  void setDefault(Record record, dynamic value) {
+  FutureOr<void> setDefault(Record record, dynamic value) {
     set(record, value);
     record.modifiedFields.add(name);
   }
 
-  void setOnChange(Record record, dynamic value) {
+  FutureOr<void> setOnChange(Record record, dynamic value) {
     set(record, value);
     record.modifiedFields.add(name);
   }
 
-  /// After a change: on_change, on_change_with, autocomplete (server,
-  /// STUB(D1 part 2)) and the x2many field contexts.
-  void changed(Record record) {
-    record.onChange([name]);
-    record.onChangeWith([name]);
-    record.autocompleteWith(name);
+  /// After a change: on_change, on_change_with, autocomplete and the
+  /// x2many field contexts (SAO `changed`).
+  Future<void> changed(Record record) async {
+    await record.onChange([name]);
+    await record.onChangeWith([name]);
+    await record.autocompleteWith(name);
     record.setFieldContext();
   }
 
@@ -210,6 +248,62 @@ class Field {
 
   bool isEmpty(Record record) => !PYSONEvaluator.truthy(getEval(record));
 
+  /// Validates the value (spec 5.5, SAO/Python `Field.validate`):
+  /// required (not with [softValidation]); the domain (screen domain
+  /// inverted on the field ⊕ field domain): unsatisfiable → `'domain'`, a
+  /// unique value is set and makes the field `domain_readonly` (AND
+  /// domain), otherwise the value is checked with `eval_domain`. The
+  /// result is stored as `stateAttrs['invalid']`.
+  bool validate(Record record,
+      {bool softValidation = false, List<dynamic>? preValidate}) {
+    if (description['readonly'] == true) return true;
+    final attrs = stateAttrs(record);
+    final isRequired = PYSONEvaluator.truthy(attrs['required']);
+    final isInvisible = PYSONEvaluator.truthy(attrs['invisible']);
+    dynamic invalid = false;
+    attrs['domain_readonly'] = false;
+    final domain =
+        simplify(validationDomains(record, preValidate: preValidate));
+    if (!softValidation && !checkRequired(record)) invalid = 'required';
+    if (domainEquals(domain, [
+      ['id', '=', null]
+    ])) {
+      invalid = 'domain';
+    } else {
+      final (screenDomain, _) = getDomains(record, preValidate: preValidate);
+      final (unique, leftPart, uniqueValue_) =
+          uniqueValue(domain, singleValue: singleValue);
+      final (uniqueFromScreen, _, _) =
+          uniqueValue(screenDomain, singleValue: singleValue);
+      if (isEmpty(record) &&
+          !isRequired &&
+          !isInvisible &&
+          !uniqueFromScreen) {
+        // Do nothing
+      } else if (unique) {
+        // If the inverted domain is so constraint that only one value is
+        // possible we should use it. But we must also pay attention to the
+        // fact that the original domain might be a 'OR' domain and thus
+        // not preventing the modification of fields.
+        final value = uniqueValue_ == false ? null : uniqueValue_;
+        // Like SAO/Python: the group domain unless it is empty.
+        final groupDomain = record.group.domain;
+        final original = merge(groupDomain.isNotEmpty ? groupDomain : domain);
+        final domainReadonly = original.isNotEmpty && original[0] == 'AND';
+        final idx = leftPart!.indexOf('.');
+        final setDefault = idx < 0 || leftPart.substring(idx + 1) == 'id';
+        if (setDefault && (preValidate == null || preValidate.isEmpty)) {
+          unawaited(setClient(record, value));
+          attrs['domain_readonly'] = domainReadonly;
+        }
+      }
+      if (!evalDomain(domain, evalEnvironment(record))) invalid = domain;
+    }
+    attrs['invalid'] = invalid;
+    return invalid == false;
+  }
+
+
   bool checkRequired(Record record) {
     final attrs = stateAttrs(record);
     if (PYSONEvaluator.truthy(attrs['required'])) {
@@ -261,10 +355,11 @@ class SelectionField extends Field {
   SelectionField(super.description);
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     // delete before trigger the display
     record._values.remove('$name:string');
-    super.setClient(record, value, forceChange: forceChange);
+    return super.setClient(record, value, forceChange: forceChange);
   }
 }
 
@@ -286,11 +381,12 @@ class MultiSelectionField extends SelectionField {
   dynamic getEval(Record record) => super.getEval(record) ?? <dynamic>[];
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     value ??= <dynamic>[];
     if (value is String) value = [value];
     if (value is List) value = _sorted(value);
-    super.setClient(record, value, forceChange: forceChange);
+    return super.setClient(record, value, forceChange: forceChange);
   }
 
   static List<dynamic> _sorted(List value) => [...value]
@@ -306,7 +402,8 @@ class DateTimeField extends Field {
   dynamic timeFormat(Record record) => record.exprEval(description['format']);
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     if (value is TrytonTime) {
       final current = get(record);
       value = current is DateTime ? _combine(current, value) : null;
@@ -318,7 +415,7 @@ class DateTimeField extends Field {
           : const TrytonTime(0, 0, 0, 0);
       value = _combine(value.toDateTime(), time);
     }
-    super.setClient(record, value, forceChange: forceChange);
+    return super.setClient(record, value, forceChange: forceChange);
   }
 
   static DateTime _combine(DateTime date, TrytonTime time) => DateTime(
@@ -337,9 +434,10 @@ class DateField extends Field {
   DateField(super.description);
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     if (value is DateTime) value = TrytonDate.fromDateTime(value);
-    super.setClient(record, value, forceChange: forceChange);
+    return super.setClient(record, value, forceChange: forceChange);
   }
 }
 
@@ -350,12 +448,13 @@ class TimeField extends Field {
   dynamic timeFormat(Record record) => record.exprEval(description['format']);
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     if (value is DateTime) {
       value = TrytonTime(value.hour, value.minute, value.second,
           value.millisecond * 1000 + value.microsecond);
     }
-    super.setClient(record, value, forceChange: forceChange);
+    return super.setClient(record, value, forceChange: forceChange);
   }
 }
 
@@ -404,9 +503,9 @@ class FloatField extends Field {
   }
 
   @override
-  void setClient(Record record, dynamic value,
+  Future<void> setClient(Record record, dynamic value,
       {bool forceChange = false, num factor = 1}) {
-    super.setClient(record, applyFactor(record, convert(value), factor),
+    return super.setClient(record, applyFactor(record, convert(value), factor),
         forceChange: forceChange);
   }
 
@@ -469,7 +568,8 @@ class BooleanField extends Field {
   dynamic get(Record record) => PYSONEvaluator.truthy(record._values[name]);
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) =>
+  Future<void> setClient(Record record, dynamic value,
+          {bool forceChange = false}) =>
       super.setClient(record, PYSONEvaluator.truthy(value),
           forceChange: forceChange);
 
@@ -497,8 +597,8 @@ class Many2OneField extends Field {
   }
 
   /// Sets the id. Also accepts `[id, rec_name]` (current screens).
-  /// A missing rec_name would be read from the server – STUB(D1 part 2):
-  /// it stays empty.
+  /// A missing rec_name is read in the background (SAO reads it
+  /// synchronously).
   @override
   void set(Record record, dynamic value) {
     if (value is List) {
@@ -510,10 +610,16 @@ class Many2OneField extends Field {
     final related = _related(record);
     related['rec_name'] = related['rec_name'] ?? '';
     record._values[name] = value;
+    final relation = description['relation'];
+    if (related['rec_name'] == '' && value is int && value >= 0 &&
+        relation is String) {
+      _fetchRecName(record, name, relation, value, value);
+    }
   }
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     String recName;
     if (value is List) {
       recName = value.length > 1 ? '${value[1] ?? ''}' : '';
@@ -528,7 +634,7 @@ class Many2OneField extends Field {
       recName = '';
     }
     _related(record)['rec_name'] = recName;
-    super.setClient(record, value, forceChange: forceChange);
+    return super.setClient(record, value, forceChange: forceChange);
   }
 
   @override
@@ -616,30 +722,58 @@ class One2ManyField extends Field {
     record._values[name] = group;
   }
 
-  /// [value] is a list of ids or of value dicts (defaults, on_change);
-  /// [data] are preloaded values (`<f>.`).
+  /// Names in [valuesList] that are no field of [group]'s model yet.
+  static Set<String> _unknownFields(
+          RecordGroup group, Iterable<dynamic> valuesList) =>
+      {
+        for (final v in valuesList)
+          if (v is Map)
+            for (final f in v.keys.cast<String>())
+              if (!group.model.fields.containsKey(f) &&
+                  f != 'id' &&
+                  !f.contains('.') &&
+                  !f.contains(':') &&
+                  !f.startsWith('_'))
+                f,
+      };
+
+  /// Adds the fields of [valuesList] that the child model does not know:
+  /// from the sub-views or with `fields_get` (SAO `_set_value`); new
+  /// records get their defaults. Returns the added names.
+  Future<Set<String>> _fetchFields(
+      Record record, RecordGroup group, Iterable<dynamic> valuesList) async {
+    final names = _unknownFields(group, valuesList);
+    if (names.isEmpty) return names;
+    final viewFields = _viewFields;
+    final fields = <String, dynamic>{
+      for (final n in names)
+        if (viewFields.containsKey(n)) n: viewFields[n],
+    };
+    final toFetch = [for (final n in names) if (!fields.containsKey(n)) n];
+    if (toFetch.isNotEmpty) {
+      final result = await group.model.execute('fields_get', [toFetch],
+          context: getContext(record));
+      if (result is Map) fields.addAll(result.cast<String, dynamic>());
+    }
+    if (fields.isNotEmpty) await group.addFieldsWithDefaults(fields);
+    return names;
+  }
+
+  /// [value] is a list of ids (with [data] = preloaded values `<f>.`) or of
+  /// value dicts. Synchronous: only fields of the sub-views are added
+  /// (server values from `read`).
   void _setValue(Record record, dynamic value,
-      {bool isDefault = false, bool modified = false, dynamic data}) {
+      {bool modified = false, dynamic data}) {
     final group = _group(record);
     final list = value is List ? value : const [];
     final listIds = list.isEmpty || list.first is int;
-    // Unknown fields of the values would be fetched with fields_get –
-    // STUB(D1 part 2): only fields from the sub-views are added.
-    if (!listIds || data != null) {
+    final names = _unknownFields(group, listIds ? (data as List? ?? []) : list);
+    if (names.isNotEmpty) {
       final viewFields = _viewFields;
-      final names = <String>{
-        for (final v in listIds ? (data as List? ?? const []) : list)
-          if (v is Map) ...v.keys.cast<String>(),
-      }.where((f) =>
-          !group.model.fields.containsKey(f) &&
-          !f.contains('.') &&
-          !f.contains(':') &&
-          !f.startsWith('_'));
-      final fields = {
+      group.addFields({
         for (final n in names)
           if (viewFields.containsKey(n)) n: viewFields[n],
-      };
-      if (fields.isNotEmpty) group.addFields(fields);
+      });
     }
     if (listIds) {
       final ids = list.cast<int>();
@@ -653,35 +787,60 @@ class One2ManyField extends Field {
           if (d is Map && d['id'] is int)
             d['id'] as int: d.cast<String, dynamic>(),
       };
-      group.load(ids,
-          modified: modified || isDefault, preloaded: preloaded);
+      group.load(ids, modified: modified, preloaded: preloaded);
     } else {
       for (final vals in list.cast<Map>()) {
-        final values = vals.cast<String, dynamic>();
-        Record? newRecord;
-        if (values.containsKey('id')) {
-          newRecord = group.get(values['id'] as int) ??
-              group.newRecord(id: values['id'] as int);
-        } else {
-          newRecord = group.newRecord();
-        }
-        if (isDefault) {
-          // Don't validate as parent will validate
-          newRecord.setDefault(values, validate: false, modified: false);
-          group.add(newRecord, modified: false);
-        } else {
-          newRecord.set(values, modified: false);
-          group._records.add(newRecord);
-        }
+        final record2 = _recordFor(group, vals.cast<String, dynamic>());
+        record2.set(vals.cast<String, dynamic>(), modified: false);
+        if (!group.contains(record2)) group._records.add(record2);
       }
       // Trigger modified only once
       group.recordModified();
     }
   }
 
+  /// Like [_setValue], but unknown fields are fetched (`fields_get`) and
+  /// value dicts can be defaults (`set_default`).
+  Future<void> _setValueAsync(Record record, dynamic value,
+      {bool isDefault = false, bool modified = false}) async {
+    final group = _group(record);
+    final list = value is List ? value : const [];
+    final listIds = list.isEmpty || list.first is int;
+    if (listIds) {
+      _setValue(record, list, modified: modified || isDefault);
+      return;
+    }
+    await _fetchFields(record, group, list);
+    for (final vals in list.cast<Map>()) {
+      final values = vals.cast<String, dynamic>();
+      final record2 = _recordFor(group, values);
+      if (isDefault) {
+        // Don't validate as parent will validate
+        await record2.setDefault(values, validate: false, modified: false);
+        group.add(record2, modified: false);
+      } else {
+        record2.set(values, modified: false);
+        if (!group.contains(record2)) group._records.add(record2);
+      }
+    }
+    // Trigger modified only once
+    group.recordModified();
+  }
+
+  static Record _recordFor(RecordGroup group, Map<String, dynamic> values) {
+    final id = values['id'];
+    if (id is int) return group.get(id) ?? group.newRecord(id: id);
+    return group.newRecord();
+  }
+
+  /// Replaces the child group (server values).
   @override
-  void set(Record record, dynamic value,
-      {bool isDefault = false, dynamic data}) {
+  void set(Record record, dynamic value, {dynamic data}) {
+    _resetGroup(record);
+    _setValue(record, value, data: data);
+  }
+
+  void _resetGroup(Record record) {
     final group = record._values[name];
     TrytonModel? model;
     if (group is RecordGroup) {
@@ -692,7 +851,6 @@ class One2ManyField extends Field {
     }
     record._values.remove(name);
     _setDefaultValue(record, model);
-    _setValue(record, value, isDefault: isDefault, data: data);
   }
 
   /// x2many write commands (spec 5.7): `add`, `create`, `write`,
@@ -737,7 +895,8 @@ class One2ManyField extends Field {
   }
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     // domain inversion try to set None / an id as value
     value ??= <int>[];
     if (value is int) value = [value];
@@ -746,39 +905,46 @@ class One2ManyField extends Field {
     final modified = !(newIds.every((e) => e is int) &&
         _valuesEqual(previousIds, newIds..sort()));
     _setValue(record, value, modified: modified);
-    if (modified) {
-      changed(record);
-      record.validate(softValidation: true);
-      record.setModified(name);
-    } else if (forceChange) {
-      changed(record);
-      record.validate(softValidation: true);
-      record.setModified();
-    }
+    return _afterSetClient(record, modified, forceChange);
   }
 
   @override
   RecordGroup getClient(Record record) => _group(record);
 
   @override
-  void setDefault(Record record, dynamic value) {
+  Future<void> setDefault(Record record, dynamic value) async {
     record.modifiedFields.add(name);
-    set(record, value, isDefault: true);
+    _resetGroup(record);
+    await _setValueAsync(record, value, isDefault: true);
   }
 
   /// on_change result: a list (replaces the content) or
-  /// `{remove, delete, add: [[index, values]], update: [values]}`.
+  /// `{remove, delete, add: [[index, values]], update: [values]}`; unknown
+  /// fields of add/update are fetched with `fields_get`.
   @override
-  void setOnChange(Record record, dynamic value) {
+  Future<void> setOnChange(Record record, dynamic value) async {
     record.modifiedFields.add(name);
     final group = _group(record);
     if (value is List) {
-      _setValue(record, value, modified: true);
+      await _setValueAsync(record, value, modified: true);
       return;
     }
     if (value is! Map) return;
-    // New fields of add/update would be fetched with fields_get –
-    // STUB(D1 part 2): unknown keys are ignored by Record.set_on_change.
+    final adds = [
+      for (final add in (value['add'] as List? ?? const []))
+        (
+          (add as List)[0] as int,
+          Map<String, dynamic>.from(add[1] as Map),
+        )
+    ];
+    final updates = [
+      for (final u in (value['update'] as List? ?? const []))
+        Map<String, dynamic>.from(u as Map)
+    ];
+    // Names unknown before (set after add_fields, SAO)
+    final newFields =
+        _unknownFields(group, [for (final a in adds) a.$2, ...updates]);
+
     for (final id in (value['delete'] as List? ?? const [])) {
       final r = group.get(id as int);
       if (r != null) group.remove(r, remove: false, modified: false);
@@ -787,20 +953,36 @@ class One2ManyField extends Field {
       final r = group.get(id as int);
       if (r != null) group.remove(r, remove: true, modified: false);
     }
-    for (final add in (value['add'] as List? ?? const [])) {
-      final index = (add as List)[0] as int;
-      final data = Map<String, dynamic>.from(add[1] as Map);
-      final id = data.remove('id');
-      final newRecord =
-          (id is int ? group.get(id) : null) ?? group.newRecord(id: id as int?);
-      group.add(newRecord, position: index, modified: false);
-      newRecord.setOnChange(data);
+    if (adds.isEmpty && updates.isEmpty) return;
+
+    // First set already known fields to prevent a second on_change call
+    final setFirst = <int, Set<String>>{};
+    for (final vals in updates) {
+      final r = vals['id'] is int ? group.get(vals['id'] as int) : null;
+      if (r == null) continue;
+      final known = {
+        for (final e in vals.entries)
+          if (!newFields.contains(e.key)) e.key: e.value
+      };
+      setFirst[r.id] = known.keys.toSet();
+      await r.setOnChange(known);
     }
-    for (final vals in (value['update'] as List? ?? const [])) {
-      final values = Map<String, dynamic>.from(vals as Map);
-      final id = values['id'];
-      if (id is! int) continue;
-      group.get(id)?.setOnChange(values);
+    await _fetchFields(record, group, [for (final a in adds) a.$2, ...updates]);
+    for (final (index, data) in adds) {
+      final id = data.remove('id');
+      final r = (id is int ? group.get(id) : null) ??
+          group.newRecord(id: id is int ? id : null);
+      group.add(r, position: index, modified: false);
+      await r.setOnChange(data);
+    }
+    for (final vals in updates) {
+      final r = vals['id'] is int ? group.get(vals['id'] as int) : null;
+      if (r == null) continue;
+      final rest = {
+        for (final e in vals.entries)
+          if (!(setFirst[r.id]?.contains(e.key) ?? false)) e.key: e.value
+      };
+      if (rest.isNotEmpty) await r.setOnChange(rest);
     }
   }
 
@@ -864,6 +1046,47 @@ class One2ManyField extends Field {
     super.setState(record, states: states);
   }
 
+  /// Validates the loaded children too (against the pre_validate domain
+  /// inverted on this field); an invalid child gives `'children'`.
+  @override
+  bool validate(Record record,
+      {bool softValidation = false, List<dynamic>? preValidate}) {
+    dynamic invalid = false;
+    var ldomain = localizeDomain(
+        domainInversion(record.group.clean4inversion(preValidate ?? []),
+            name, evalEnvironment(record)),
+        name);
+    if (ldomain == true) {
+      ldomain = <dynamic>[];
+    } else if (ldomain == false) {
+      ldomain = [
+        ['id', '=', null]
+      ];
+    }
+    final group = record._values[name];
+    if (group is RecordGroup) {
+      for (final r in group) {
+        if (!r.getLoaded() &&
+            r.id >= 0 &&
+            (preValidate == null || preValidate.isEmpty)) {
+          continue;
+        }
+        if (!r.validate(
+            softValidation: softValidation,
+            preValidate: ldomain as List<dynamic>)) {
+          invalid = 'children';
+        }
+      }
+    }
+    final test = super.validate(record,
+        softValidation: softValidation, preValidate: preValidate);
+    if (test && invalid != false) {
+      stateAttrs(record)['invalid'] = invalid;
+      return false;
+    }
+    return test;
+  }
+
   @override
   bool isEmpty(Record record) => getEval(record).isEmpty;
 }
@@ -911,7 +1134,8 @@ class ReferenceField extends Field {
   }
 
   @override
-  void setClient(Record record, dynamic value, {bool forceChange = false}) {
+  Future<void> setClient(Record record, dynamic value,
+      {bool forceChange = false}) {
     if (PYSONEvaluator.truthy(value)) {
       if (value is String) value = value.split(',');
       final list = value as List;
@@ -930,11 +1154,11 @@ class ReferenceField extends Field {
       _related(record)['rec_name'] = recName;
       value = [refModel, refId];
     }
-    super.setClient(record, value, forceChange: forceChange);
+    return super.setClient(record, value, forceChange: forceChange);
   }
 
-  /// Accepts `"model,id"` or `[model, id]`. A missing rec_name would be
-  /// read from the server – STUB(D1 part 2): it stays empty.
+  /// Accepts `"model,id"` or `[model, id]`. A missing rec_name is read in
+  /// the background.
   @override
   void set(Record record, dynamic value) {
     if (!PYSONEvaluator.truthy(value)) {
@@ -954,8 +1178,13 @@ class ReferenceField extends Field {
     }
     final related = _related(record);
     var recName = '${related['rec_name'] ?? ''}';
+    final fetch = recName.isEmpty &&
+        refModel != null &&
+        refModel.isNotEmpty &&
+        refId is int &&
+        refId >= 0;
     if (PYSONEvaluator.truthy(refModel) && refId is int && refId >= 0) {
-      // STUB(D1 part 2): read rec_name when missing
+      // keep the known rec_name (missing → read below)
     } else if (PYSONEvaluator.truthy(refModel)) {
       recName = '';
     } else {
@@ -963,6 +1192,9 @@ class ReferenceField extends Field {
     }
     related['rec_name'] = recName;
     record._values[name] = [refModel, refId];
+    if (fetch) {
+      _fetchRecName(record, name, refModel, refId, [refModel, refId]);
+    }
   }
 
   @override
@@ -1049,17 +1281,23 @@ class BinaryField extends Field {
     return data;
   }
 
-  /// STUB(D1 part 2): reads the content when only the size is known.
+  /// The content; when only the size was loaded it is read now.
   Future<dynamic> getData(Record record) async {
     final data = record._values[name];
     if (data is TrytonBytes || data is String || data == null) return data;
     if (record.id < 0) return data;
-    throw NotYetImplemented('BinaryField.getData');
+    final result = await record.model.execute('read', [
+      [record.id],
+      [name]
+    ], context: record.getContext());
+    final content = ((result as List).first as Map)[name];
+    set(record, content);
+    return content;
   }
 }
 
 /// `dict`: map with sorted keys; key definitions come from
-/// `schema_model` (STUB(D1 part 2)).
+/// `schema_model` (`search_get_keys` / `get_keys`).
 class DictField extends Field {
   DictField(super.description);
 
@@ -1092,11 +1330,59 @@ class DictField extends Field {
           {List<dynamic>? preValidate}) =>
       getDomains(record, preValidate: preValidate).$1;
 
-  /// STUB(D1 part 2): `schema_model.search_get_keys`.
-  Future<void> addKeys(List<String> keys, Record record) async =>
-      throw NotYetImplemented('DictField.addKeys');
+  TrytonModel _schemaModel(Record record) =>
+      record.model.related(description['schema_model'] as String);
 
-  /// STUB(D1 part 2): `schema_model.get_keys`.
-  Future<List<String>> addNewKeys(List<int> ids, Record record) async =>
-      throw NotYetImplemented('DictField.addNewKeys');
+  /// Loads the definitions of [keys] (`search_get_keys` in batches of 10).
+  Future<void> addKeys(List<String> keys, Record record) async {
+    final context = getContext(record);
+    final domain = getDomain(record);
+    final limit = record.model.session.limit;
+    final batch = math.min(10, limit);
+    for (var i = 0; i < keys.length; i += batch) {
+      final sub = keys.sublist(i, math.min(i + batch, keys.length));
+      final result = await _schemaModel(record).execute('search_get_keys', [
+        [
+          ['name', 'in', sub],
+          domain
+        ],
+        limit
+      ], context: context);
+      for (final k in (result as List? ?? const [])) {
+        final key = (k as Map).cast<String, dynamic>();
+        this.keys['${key['name']}'] = key;
+      }
+    }
+  }
+
+  /// Loads the keys with [ids] (`get_keys`); returns their names.
+  Future<List<String>> addNewKeys(List<int> ids, Record record) async {
+    final result = await _schemaModel(record)
+        .execute('get_keys', [ids], context: getContext(record));
+    final names = <String>[];
+    for (final k in (result as List? ?? const [])) {
+      final key = (k as Map).cast<String, dynamic>();
+      keys['${key['name']}'] = key;
+      names.add('${key['name']}');
+    }
+    return names;
+  }
+
+  /// Also checks the domains of the known keys against the value.
+  @override
+  bool validate(Record record,
+      {bool softValidation = false, List<dynamic>? preValidate}) {
+    final valid = super.validate(record,
+        softValidation: softValidation, preValidate: preValidate);
+    if (description['readonly'] == true) return valid;
+    final value = getEval(record) as Map<String, dynamic>;
+    final domain = <dynamic>[
+      for (final key in value.keys)
+        if (keys[key]?['domain'] case final String d when d.isNotEmpty)
+          const PYSONEvaluator({}).eval(jsonDecode(d)),
+    ];
+    final validValue = evalDomain(domain, value);
+    if (!validValue) stateAttrs(record)['invalid'] = 'domain';
+    return valid && validValue;
+  }
 }

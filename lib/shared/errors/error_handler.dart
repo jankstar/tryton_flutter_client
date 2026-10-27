@@ -1,3 +1,4 @@
+import '../../core/rpc/error_processing.dart';
 import '../../core/rpc/rpc_exceptions.dart';
 
 /// Answer to the UserWarning dialog (spec 2.6).
@@ -28,7 +29,11 @@ abstract class ErrorPresenter {
 /// [run] executes an action; errors are shown via [presenter]. A
 /// [UserWarning] asks the user; on OK/Always `res.user.warning.skip(name,
 /// always)` is called and the action is repeated.
-class ErrorHandler {
+///
+/// As [RpcErrorProcessor] (`ModelService.execute` with
+/// `processException: true`) it shows the error and throws a
+/// [HandledRpcError]; [run] and [show] do not show such an error again.
+class ErrorHandler implements RpcErrorProcessor {
   final ErrorPresenter presenter;
 
   /// Calls `model.res.user.warning.skip(name, always, ctx)`.
@@ -43,6 +48,8 @@ class ErrorHandler {
       try {
         await action();
         return true;
+      } on HandledRpcError {
+        return false; // already shown by the processor
       } on UserWarning catch (w) {
         final choice = await presenter.userWarning(w.message, w.description);
         if (choice == WarningChoice.cancel) return false;
@@ -60,9 +67,36 @@ class ErrorHandler {
     }
   }
 
-  /// Shows the dialog matching [error].
+  /// Runs [call]; an error is shown and rethrown as [HandledRpcError]
+  /// (also when the user cancels a UserWarning).
+  @override
+  Future<T> process<T>(Future<T> Function() call) async {
+    while (true) {
+      try {
+        return await call();
+      } on HandledRpcError {
+        rethrow;
+      } on UserWarning catch (w) {
+        final choice = await presenter.userWarning(w.message, w.description);
+        if (choice == WarningChoice.cancel) throw HandledRpcError(w);
+        try {
+          await skipWarning(w.name, choice == WarningChoice.always);
+        } catch (e) {
+          await show(e);
+          throw HandledRpcError(e);
+        }
+        // Repeat the original call.
+      } catch (e) {
+        await show(e);
+        throw HandledRpcError(e);
+      }
+    }
+  }
+
+  /// Shows the dialog matching [error] (nothing for a [HandledRpcError]).
   Future<void> show(Object error) {
     return switch (error) {
+      HandledRpcError() => Future<void>.value(),
       UserError(:final message, :final description) =>
         presenter.userError(message, description),
       UserWarning(:final message, :final description) =>

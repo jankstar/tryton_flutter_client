@@ -38,6 +38,13 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
   /// `screen.attributes.domain`).
   final List<List<dynamic>> screenDomains = [];
 
+  /// Messages of `on_change_notify` (`[[type, message], …]`) for the UI
+  /// (SAO `screen.record_notify`).
+  void Function(List<dynamic> notifications)? onNotify;
+
+  /// Running `read` of this group (SAO `group.prm`).
+  Future<void>? _loading;
+
   RecordGroup(this.model,
       {Map<String, dynamic>? context, Iterable<Record> records = const []})
       : _context = {...?context} {
@@ -174,11 +181,15 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
   }
 
   /// A new record (negative id unless [id] is given), not yet added
-  /// (SAO `new_`). With [defaults] true `default_get` would be called –
-  /// STUB(D1 part 2).
-  Record newRecord({int? id, bool defaults = false}) {
-    final record = Record(model, id: id, group: this);
-    if (defaults) record.defaultGet();
+  /// (SAO `new_` without default).
+  Record newRecord({int? id}) => Record(model, id: id, group: this);
+
+  /// A new record with its server defaults (SAO `new_(true, …)`):
+  /// `default_get`, [defaults] as `default_<field>` context.
+  Future<Record> newRecordWithDefaults(
+      {int? id, Map<String, dynamic>? defaults}) async {
+    final record = newRecord(id: id);
+    await record.defaultGet(defaults);
     return record;
   }
 
@@ -255,10 +266,28 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
       notifyListeners();
     } else {
       p.modifiedFields.add(childName);
-      p.model.fields[childName]?.changed(p);
-      p.validate(softValidation: true);
+      final field = p.model.fields[childName];
+      // The parent's on_change runs in the parent's queue (not awaited
+      // here: this may be called from inside a queued task).
+      if (field != null) {
+        unawaited(p._enqueue(() async {
+          await field.changed(p);
+          p.validate(softValidation: true);
+          p.group.notifyScreens();
+        }));
+      }
       p.group.recordModified();
     }
+  }
+
+  /// Notifies the listeners of the root group (display update).
+  void notifyScreens() => rootGroup.notifyListeners();
+
+  /// Hands `on_change_notify` messages to [onNotify] (of this group or,
+  /// if unset, of the root group).
+  void recordNotify(List<dynamic> notifications) {
+    final handler = onNotify ?? rootGroup.onNotify;
+    handler?.call(notifications);
   }
 
   /// Unchanged records with [ids] are reset so they are loaded again.
@@ -279,28 +308,111 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
     }
   }
 
-  /// Adds fields to the model; new records would get their defaults
-  /// (`default_get`, STUB(D1 part 2)).
+  /// Adds fields to the model (without defaults, see
+  /// [addFieldsWithDefaults]).
   List<String> addFields(Map<String, dynamic> fields) =>
       model.addFields(fields);
+
+  /// Adds fields; new records get the defaults of the added fields
+  /// (SAO `add_fields`).
+  Future<List<String>> addFieldsWithDefaults(
+      Map<String, dynamic> fields) async {
+    final added = model.addFields(fields);
+    final newRecords = [for (final r in _records) if (r.id < 0) r];
+    if (newRecords.isNotEmpty && added.isNotEmpty) {
+      final values =
+          await model.execute('default_get', [added], context: context);
+      if (values is Map && values.isNotEmpty) {
+        for (final r in newRecords) {
+          await r.setDefault(values.cast<String, dynamic>(), modified: false);
+        }
+        recordModified();
+      }
+    }
+    return added;
+  }
 
   void destroy() {
     parent?.group.children.remove(this);
     parent = null;
   }
 
-  // ── Server calls: STUB(D1 part 2) ────────────────────────────────────────
+  // ── Server calls ──────────────────────────────────────────────────────────
 
-  /// STUB(D1 part 2): `delete` with `_timestamp` (5.3).
-  Future<void> delete(List<Record> records) async =>
-      throw NotYetImplemented('RecordGroup.delete');
+  /// Deletes [records] (`delete` with `_timestamp`); on_write ids are
+  /// reloaded afterwards. A conflict goes to the session's
+  /// [ConcurrencyRunner]. Returns false when the user cancelled.
+  Future<bool> delete(List<Record> records) async {
+    final saved = [for (final r in records) if (r.id >= 0) r];
+    if (saved.isEmpty) return true;
+    final ids = [for (final r in saved) r.id];
+    final timestamps = <String, String?>{
+      for (final r in saved) ...r.getTimestamp(),
+    };
+    final root = rootGroup;
+    final reloadIds = [
+      for (final id in await root.onWriteIds(ids))
+        if (!ids.contains(id)) id
+    ];
+    Future<void> delete(bool withTimestamp) => model.execute('delete', [
+          ids
+        ], context: {
+          ...context,
+          if (withTimestamp) '_timestamp': timestamps,
+        });
+    final runner = model.session.concurrencyRunner;
+    if (runner == null) {
+      await delete(true);
+    } else if (!await runner(model.name, ids, delete)) {
+      return false;
+    }
+    for (final r in saved) {
+      r.destroy();
+    }
+    root.reload(reloadIds);
+    return true;
+  }
 
-  /// STUB(D1 part 2): save all records, delete the deleted ones.
-  Future<void> save() async => throw NotYetImplemented('RecordGroup.save');
+  /// Saves all records and deletes the deleted ones.
+  Future<bool> save() async {
+    var ok = true;
+    for (final r in [..._records]) {
+      // Deleted records are deleted below (saving would drop their
+      // timestamp).
+      if (recordDeleted.contains(r)) continue;
+      if (!await r.save(forceReload: false)) ok = false;
+    }
+    if (recordDeleted.isNotEmpty) {
+      final deleted = [...recordDeleted];
+      for (final r in deleted) {
+        _remove(r);
+      }
+      recordDeleted.clear();
+      if (!await delete(deleted)) ok = false;
+    }
+    return ok;
+  }
 
-  /// STUB(D1 part 2): on_write methods after a write.
-  Future<void> written(List<int> ids) async =>
-      throw NotYetImplemented('RecordGroup.written');
+  /// After a write: on_write methods give further ids, which are reloaded.
+  Future<void> written(List<int> ids) async {
+    final toReload = [
+      for (final id in await onWriteIds(ids))
+        if (!ids.contains(id)) id
+    ];
+    rootGroup.reload(toReload);
+  }
+
+  /// `model.X.<fnct>(ids)` for each [onWrite] method; unique ids.
+  Future<List<int>> onWriteIds(List<int> ids) async {
+    final result = <int>[];
+    for (final fnct in onWrite) {
+      final res = await model.execute(fnct, [ids], context: _context);
+      for (final id in (res as List? ?? const [])) {
+        if (id is int && !result.contains(id)) result.add(id);
+      }
+    }
+    return result;
+  }
 
   @override
   String toString() => 'RecordGroup(${model.name}, $length)';

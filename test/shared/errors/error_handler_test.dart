@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/rpc/error_processing.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_exceptions.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
@@ -41,6 +42,14 @@ class _FakeRpc extends RpcClient {
   }
 }
 
+class _ThrowingRpc extends RpcClient {
+  _ThrowingRpc() : super(baseUrl: 'http://localhost');
+  @override
+  Future<dynamic> call(String database, String method, List<dynamic> params,
+          {bool reAuth = true}) async =>
+      throw const UserError('Fehler');
+}
+
 const _warning = UserWarning('party_check_vat', 'VAT number missing',
     description: 'Save anyway?');
 
@@ -69,6 +78,64 @@ void main() {
       attempts
     );
   }
+
+  group('process (RpcErrorProcessor, ModelService processException)', () {
+    test('success returns the value without dialog', () async {
+      expect(await handler.process(() async => 42), 42);
+      expect(presenter.log, isEmpty);
+    });
+
+    test('error: shown once, rethrown as HandledRpcError', () async {
+      await expectLater(
+          handler.process<void>(() async => throw const UserError('Nein')),
+          throwsA(isA<HandledRpcError>()
+              .having((e) => e.error, 'error', isA<UserError>())));
+      expect(presenter.log, ['userError:Nein|']);
+      // run/show do not show it a second time.
+      expect(
+          await handler.run(() async {
+            await handler.process<void>(
+                () async => throw const UserError('Zwei'));
+          }),
+          isFalse);
+      expect(presenter.log, ['userError:Nein|', 'userError:Zwei|']);
+      await handler.show(const HandledRpcError(UserError('Drei')));
+      expect(presenter.log, hasLength(2));
+    });
+
+    test('UserWarning: skip and repeat; cancel → HandledRpcError', () async {
+      presenter.warningAnswers.add(WarningChoice.ok);
+      var n = 0;
+      expect(
+          await handler.process(() async {
+            if (n++ == 0) throw _warning;
+            return 'ok';
+          }),
+          'ok');
+      expect(skips, [('party_check_vat', false)]);
+      presenter.warningAnswers.add(WarningChoice.cancel);
+      await expectLater(handler.process<void>(() async => throw _warning),
+          throwsA(isA<HandledRpcError>()));
+    });
+
+    test('ModelService.execute: processException true/false', () async {
+      final rpc = _ThrowingRpc();
+      final svc = ModelService(
+          rpc: rpc, getContext: () => {}, getDatabase: () => 'db');
+      // Without processor the error reaches the caller unchanged.
+      await expectLater(svc.execute<dynamic>('x', 'm', []),
+          throwsA(isA<UserError>()));
+      svc.errorProcessor = handler;
+      await expectLater(svc.execute<dynamic>('x', 'm', []),
+          throwsA(isA<HandledRpcError>()));
+      expect(presenter.log, ['userError:Fehler|']);
+      // processException: false → no dialog, original error.
+      await expectLater(
+          svc.execute<dynamic>('x', 'm', [], processException: false),
+          throwsA(isA<UserError>()));
+      expect(presenter.log, hasLength(1));
+    });
+  });
 
   group('UserWarning: skip and repeat the original call', () {
     test('OK → skip(name, false), call repeated, success', () async {

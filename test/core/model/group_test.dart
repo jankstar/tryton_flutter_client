@@ -19,7 +19,7 @@ void main() {
   });
 
   group('child group', () {
-    test('parent / parentName / childName from the field', () {
+    test('parent / parentName / childName from the field', () async {
       expect(identical(lines.parent, sale), isTrue);
       expect(lines.parentName, 'sale');
       expect(lines.childName, 'lines');
@@ -30,7 +30,7 @@ void main() {
       expect(lines.get(10)!.modified, isFalse);
     });
 
-    test('context: session ⊕ parent ⊕ field context, over two levels', () {
+    test('context: session ⊕ parent ⊕ field context, over two levels', () async {
       expect(root.context, {'language': 'de', 'company': 1});
       expect(lines.context, {
         'language': 'de',
@@ -53,11 +53,11 @@ void main() {
         'own': true,
       });
       // The field context follows the parent values.
-      sale.fieldSetClient('state', 'done');
+      await sale.fieldSetClient('state', 'done');
       expect(details.context['sale_state'], 'done');
     });
 
-    test('_datetime from parent_datetime_field', () {
+    test('_datetime from parent_datetime_field', () async {
       final model = TrytonModel('a')
         ..addFields({
           'date': fieldDesc('date'),
@@ -65,13 +65,13 @@ void main() {
               {'relation': 'b', 'relation_field': 'a', 'datetime_field': 'date'}),
         });
       final a = RecordGroup(model).newRecord();
-      a.fieldSetClient('date', DateTime(2024, 1, 2));
+      await a.fieldSetClient('date', DateTime(2024, 1, 2));
       final group = a.fieldGetClient('lines') as RecordGroup;
       expect(group.context['_datetime'].toString(), '2024-01-02');
       expect(group.readonly, isTrue, reason: 'history is readonly');
     });
 
-    test('getEval / exprEval with _parent_ (nested)', () {
+    test('getEval / exprEval with _parent_ (nested)', () async {
       final line = lines.get(10)!;
       final details = line.fieldGetClient('details') as RecordGroup;
       final detail = details.newRecord();
@@ -85,16 +85,17 @@ void main() {
           {'_parent_line._parent_sale.state': 'draft'});
     });
 
-    test('add sets the parent field and marks the parent modified', () {
+    test('add sets the parent field and marks the parent modified', () async {
       final line = lines.newRecord();
       lines.add(line);
+      await line.idle;
       expect(line.fieldGet('sale'), sale.id);
       expect(line.modifiedFields, containsAll(['id', 'sale']));
       expect(sale.modifiedFields, contains('lines'));
       expect(lines.length, 3);
     });
 
-    test('remove / unremove', () {
+    test('remove / unremove', () async {
       final line = lines.get(10)!;
       lines.remove(line, remove: true);
       expect(lines.recordRemoved, [line]);
@@ -115,7 +116,7 @@ void main() {
       expect(lines.recordDeleted, isEmpty);
     });
 
-    test('domain: screen domains + parent field domain', () {
+    test('domain: screen domains + parent field domain', () async {
       root.screenDomains.add([
         ['party', '=', 7]
       ]);
@@ -139,15 +140,15 @@ void main() {
   group('x2many commands (5.7)', () {
     List<dynamic> commands() => sale.model.fields['lines']!.get(sale);
 
-    test('unchanged lines → no commands, get() leaves the field out', () {
+    test('unchanged lines → no commands, get() leaves the field out', () async {
       expect(commands(), isEmpty);
       expect(sale.get(), isEmpty);
     });
 
-    test('create: new lines without relation_field', () {
+    test('create: new lines without relation_field', () async {
       final line = lines.newRecord();
       lines.add(line);
-      line.fieldSetClient('quantity', 3);
+      await line.fieldSetClient('quantity', 3);
       expect(commands(), [
         [
           'create',
@@ -159,8 +160,8 @@ void main() {
       expect(sale.get(), {'lines': commands()});
     });
 
-    test('write + add: modified saved lines', () {
-      lines.get(10)!.fieldSetClient('quantity', 5);
+    test('write + add: modified saved lines', () async {
+      await lines.get(10)!.fieldSetClient('quantity', 5);
       expect(commands(), [
         ['add', [10]],
         [
@@ -171,7 +172,7 @@ void main() {
       ]);
     });
 
-    test('add only: an existing record linked to the group', () {
+    test('add only: an existing record linked to the group', () async {
       final other = Record(lines.model, id: 20)
         ..set({'quantity': 1.0}, modified: false);
       lines.add(other, modified: false);
@@ -180,7 +181,7 @@ void main() {
       ]);
     });
 
-    test('remove and delete', () {
+    test('remove and delete', () async {
       lines.remove(lines.get(10)!, remove: true);
       lines.remove(lines.get(11)!, remove: false);
       expect(commands(), [
@@ -189,11 +190,11 @@ void main() {
       ]);
     });
 
-    test('all commands together, in order', () {
+    test('all commands together, in order', () async {
       final line = lines.newRecord();
       lines.add(line);
-      line.fieldSetClient('quantity', 9);
-      lines.get(10)!.fieldSetClient('product', 99);
+      await line.fieldSetClient('quantity', 9);
+      await lines.get(10)!.fieldSetClient('product', 99);
       lines.remove(lines.get(11)!, remove: true);
       final deleted = Record(lines.model, id: 12);
       lines.add(deleted, modified: false);
@@ -216,7 +217,7 @@ void main() {
       ]);
     });
 
-    test('getEval: remaining ids without removed/deleted', () {
+    test('getEval: remaining ids without removed/deleted', () async {
       final line = lines.newRecord();
       lines.add(line);
       lines.remove(lines.get(10)!, remove: false);
@@ -225,8 +226,8 @@ void main() {
       expect(sale.getEval()['lines'], [line.id]);
     });
 
-    test('getOnChangeValue: values of the remaining lines', () {
-      lines.get(10)!.fieldSetClient('quantity', 4);
+    test('getOnChangeValue: values of the remaining lines', () async {
+      await lines.get(10)!.fieldSetClient('quantity', 4);
       lines.remove(lines.get(11)!, remove: true);
       expect(sale.model.fields['lines']!.getOnChangeValue(sale), [
         {'quantity': 4.0, 'id': 10}
@@ -237,17 +238,18 @@ void main() {
       expect(tags.getOnChangeValue(sale), [5, 6]);
     });
 
-    test('readonly one2many is still written, empty one2many left out', () {
+    test('readonly one2many is still written, empty one2many left out', () async {
       final readonlyLines =
           sale.fieldGetClient('readonly_lines') as RecordGroup;
       final line = readonlyLines.newRecord();
       readonlyLines.add(line);
+      await line.idle;
       expect(sale.get().keys, contains('readonly_lines'));
     });
 
-    test('setClient with ids: unknown records removed, new ones loaded', () {
+    test('setClient with ids: unknown records removed, new ones loaded', () async {
       final field = sale.model.fields['lines']!;
-      field.setClient(sale, [11, 12]);
+      await field.setClient(sale, [11, 12]);
       expect(lines.recordRemoved.map((r) => r.id), [10]);
       expect(lines.map((r) => r.id), [10, 11, 12]);
       expect(sale.modifiedFields, contains('lines'));
@@ -259,9 +261,9 @@ void main() {
       ]);
     });
 
-    test('defaults: list of values creates new lines', () {
+    test('defaults: list of values creates new lines', () async {
       final newSale = RecordGroup(saleModel()).newRecord();
-      newSale.setDefault({
+      await newSale.setDefault({
         'lines': [
           {'quantity': 1.0},
           {}
@@ -281,8 +283,8 @@ void main() {
       ]);
     });
 
-    test('on_change result: add / update / remove / delete', () {
-      sale.model.fields['lines']!.setOnChange(sale, {
+    test('on_change result: add / update / remove / delete', () async {
+      await sale.model.fields['lines']!.setOnChange(sale, {
         'add': [
           [
             0,
@@ -299,12 +301,12 @@ void main() {
       expect(lines.get(10)!.fieldGet('quantity'), 2.5);
       expect(lines.recordRemoved.map((r) => r.id), [11]);
       expect(sale.modifiedFields, contains('lines'));
-      sale.model.fields['lines']!.setOnChange(sale, {'delete': [10]});
+      await sale.model.fields['lines']!.setOnChange(sale, {'delete': [10]});
       expect(lines.recordDeleted.map((r) => r.id), [10]);
     });
 
-    test('on_change result: a list replaces the content', () {
-      sale.model.fields['lines']!.setOnChange(sale, [
+    test('on_change result: a list replaces the content', () async {
+      await sale.model.fields['lines']!.setOnChange(sale, [
         {'quantity': 1.0}
       ]);
       final created = lines.where((r) => r.id < 0).toList();
@@ -313,12 +315,12 @@ void main() {
   });
 
   group('timestamps (5.4.4)', () {
-    test('only the record when no child is touched', () {
+    test('only the record when no child is touched', () async {
       expect(sale.getTimestamp(), {'sale.sale,1': '100.0'});
     });
 
-    test('modified, removed and deleted children are included', () {
-      lines.get(10)!.fieldSetClient('quantity', 3);
+    test('modified, removed and deleted children are included', () async {
+      await lines.get(10)!.fieldSetClient('quantity', 3);
       expect(sale.getTimestamp(), {
         'sale.sale,1': '100.0',
         'sale.line,10': '110.0',
@@ -331,7 +333,7 @@ void main() {
       });
     });
 
-    test('grandchildren of a modified child are included', () {
+    test('grandchildren of a modified child are included', () async {
       final line = lines.get(10)!;
       line.set({
         'details': [100],
@@ -340,7 +342,7 @@ void main() {
         ],
       }, modified: false);
       final details = line.fieldGetClient('details') as RecordGroup;
-      details.get(100)!.fieldSetClient('note', 'y');
+      await details.get(100)!.fieldSetClient('note', 'y');
       expect(sale.getTimestamp(), {
         'sale.sale,1': '100.0',
         'sale.line,10': '110.0',
@@ -350,7 +352,7 @@ void main() {
   });
 
   group('root group', () {
-    test('load: placeholders, preloaded values, removed lists cleaned', () {
+    test('load: placeholders, preloaded values, removed lists cleaned', () async {
       final group = RecordGroup(saleModel());
       group.load([1, 2], preloaded: {
         2: {'name': 'Zwei'}
@@ -367,7 +369,7 @@ void main() {
       expect(group.map((r) => r.id), [1, 2, 3]);
     });
 
-    test('load(modified) marks the records and notifies', () {
+    test('load(modified) marks the records and notifies', () async {
       final group = RecordGroup(saleModel());
       var notified = 0;
       group.addListener(() => notified++);
@@ -376,22 +378,24 @@ void main() {
       expect(notified, 1);
     });
 
-    test('reload resets unchanged records only', () {
+    test('reload resets unchanged records only', () async {
       final group = RecordGroup(saleModel());
       final a = loadedSale(group);
       group.load([2], preloaded: {
         2: {'name': 'B'}
       });
       final b = group.get(2)!;
-      b.fieldSetClient('name', 'B2');
+      await b.fieldSetClient('name', 'B2');
       group.reload([1, 2]);
       expect(a.loaded, isEmpty);
       expect(b.fieldGet('name'), 'B2');
     });
 
-    test('group server methods are marked stubs', () {
-      expect(root.save(), throwsA(isA<NotYetImplemented>()));
-      expect(root.delete([sale]), throwsA(isA<NotYetImplemented>()));
+    test('without a ModelRpc server calls fail with NoModelRpc', () async {
+      await sale.fieldSetClient('name', 'Neu');
+      expect(root.save(), throwsA(isA<NoModelRpc>()));
+      expect(RecordGroup(saleModel()).delete([sale]),
+          throwsA(isA<NoModelRpc>()));
     });
   });
 }

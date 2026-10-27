@@ -1,4 +1,4 @@
-/// UI-independent data layer (spec 02-datenmodell.md 5.1–5.4, 5.6, 5.7):
+/// UI-independent data layer (spec 02-datenmodell.md 5.1–5.7):
 /// [TrytonModel], [RecordGroup], [Record] and the field classes.
 ///
 /// Port of `Sao.Model`, `Sao.Group`, `Sao.Record` and `Sao.field.*` from
@@ -7,14 +7,11 @@
 /// `tryton/gui/window/view_form/model/{group,record,field}.py` 8.0.
 ///
 /// No widgets, no Riverpod: changes are announced through
-/// [RecordGroup] (a [ChangeNotifier]).
-///
-/// Part 1 (structures) only. Everything that needs the server (loading,
-/// saving, on_change, default_get, fields_get for unknown fields,
-/// rec_name lookups, digits/symbol, dict keys) is a stub marked
-/// `STUB(D1 part 2)`.
+/// [RecordGroup] (a [ChangeNotifier]); server calls go through
+/// [ModelRpc] (implemented by the ModelService adapter).
 library;
 
+import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -30,6 +27,20 @@ part 'field.dart';
 part 'group.dart';
 part 'record.dart';
 
+/// Server access of the data layer: `model.<model>.<method>(params…, ctx)`.
+/// [context] is the complete context (it already contains the session
+/// context). With [processException] false no error dialog is shown.
+abstract interface class ModelRpc {
+  Future<dynamic> execute(String model, String method, List<dynamic> params,
+      {Map<String, dynamic>? context, bool processException = true});
+}
+
+/// Resolves a ConcurrencyException of a `write`/`delete` (A1,
+/// `runWithConcurrencyCheck`): [action] is called with `withTimestamp`;
+/// returns false when the user cancelled.
+typedef ConcurrencyRunner = Future<bool> Function(String model, List<int> ids,
+    Future<void> Function(bool withTimestamp) action);
+
 /// Access rights of a model (`ir.model.access` / SAO `MODELACCESS`).
 class ModelAccess {
   final bool read, write, create, delete;
@@ -42,36 +53,88 @@ class ModelAccess {
   });
 }
 
-/// Error of a server method that is not available before D1 part 2.
-class NotYetImplemented extends UnsupportedError {
-  NotYetImplemented(String what)
-      : super('$what needs the server – STUB(D1 part 2)');
+/// Raised when a server call is made without a [ModelRpc].
+class NoModelRpc extends StateError {
+  NoModelRpc(String what) : super('$what needs a ModelRpc');
+}
+
+/// Shared settings of all models of a session (SAO `Sao.Session` /
+/// `Sao.config`).
+class ModelSession {
+  final ModelRpc? rpc;
+
+  /// Session context, read on every use.
+  final Map<String, dynamic> Function() context;
+
+  /// Conflict handling for write/delete; null → the ConcurrencyException
+  /// reaches the caller.
+  ConcurrencyRunner? concurrencyRunner;
+
+  /// `ir.model.get_notification`: model → fields that trigger
+  /// `on_change_notify`. Loaded on first use when null.
+  Map<String, List<String>>? notificationFields;
+
+  /// Record limit for eager loading (`client.limit`).
+  int limit;
+
+  /// Rows of pre-loaded x2many records (`display_size`).
+  int displaySize;
+
+  ModelSession({
+    this.rpc,
+    Map<String, dynamic> Function()? context,
+    this.concurrencyRunner,
+    this.notificationFields,
+    this.limit = 1000,
+    this.displaySize = 20,
+  }) : context = context ?? _emptyContext;
+
+  static Map<String, dynamic> _emptyContext() => const {};
+
+  /// Fields of [model] that trigger `on_change_notify`.
+  Future<List<String>> notificationFieldsOf(String model) async {
+    var fields = notificationFields;
+    if (fields == null) {
+      try {
+        final result = await rpc?.execute('ir.model', 'get_notification', [],
+            context: context(), processException: false);
+        fields = {
+          if (result is Map)
+            for (final MapEntry(key: k, value: v) in result.entries)
+              '$k': [for (final f in (v as List? ?? const [])) '$f'],
+        };
+      } catch (_) {
+        fields = {};
+      }
+      notificationFields = fields;
+    }
+    return fields[model] ?? const [];
+  }
 }
 
 /// A Tryton model (SAO `Sao.Model`): name and field descriptions.
 class TrytonModel {
   final String name;
+  final ModelSession session;
 
   /// Field objects by name (SAO `model.fields`).
   final Map<String, Field> fields = {};
-
-  /// Session context (SAO `model.session.context`), read on every use.
-  final Map<String, dynamic> Function() sessionContext;
 
   /// Access rights (SAO `Sao.common.MODELACCESS.get(name)`).
   ModelAccess access;
 
   TrytonModel(
     this.name, {
+    ModelSession? session,
     Map<String, dynamic> Function()? sessionContext,
     this.access = const ModelAccess(),
-  }) : sessionContext = sessionContext ?? _emptyContext;
+  }) : session = session ?? ModelSession(context: sessionContext);
 
-  static Map<String, dynamic> _emptyContext() => const {};
+  /// Session context (SAO `model.session.context`).
+  Map<String, dynamic> sessionContext() => session.context();
 
   /// A model for [name] sharing this model's session (for x2many groups).
-  TrytonModel related(String name) =>
-      TrytonModel(name, sessionContext: sessionContext);
+  TrytonModel related(String name) => TrytonModel(name, session: session);
 
   /// Adds new fields; descriptions of existing fields are extended
   /// (SAO `add_fields`). Returns the names of the added fields.
@@ -94,9 +157,12 @@ class TrytonModel {
   }
 
   /// `model.<name>.<method>(params…, context)`.
-  /// STUB(D1 part 2): no server connection in the data layer yet.
   Future<dynamic> execute(String method, List<dynamic> params,
-      [Map<String, dynamic> context = const {}]) async {
-    throw NotYetImplemented('model.$name.$method');
+      {Map<String, dynamic>? context, bool processException = true}) async {
+    final rpc = session.rpc;
+    if (rpc == null) throw NoModelRpc('model.$name.$method');
+    return rpc.execute(name, method, params,
+        context: context ?? sessionContext(),
+        processException: processException);
   }
 }

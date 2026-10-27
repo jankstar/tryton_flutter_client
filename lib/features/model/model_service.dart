@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/rpc/error_processing.dart';
 import '../../core/rpc/rpc_client.dart';
 import '../../core/rpc/rpc_exceptions.dart';
 import '../../features/auth/auth_provider.dart';
@@ -21,21 +22,39 @@ class ModelService {
         _getContext = getContext,
         _getDatabase = getDatabase;
 
+  /// Central error processing for [execute] with `processException: true`
+  /// (dialogs, UserWarning repetition). Null = errors go to the caller
+  /// unchanged (current screens handle them with `ErrorHandler.run`).
+  RpcErrorProcessor? errorProcessor;
+
   String get _db => _getDatabase();
   Map<String, dynamic> get _ctx => _getContext();
+
+  /// The current session context.
+  Map<String, dynamic> sessionContext() => _getContext();
 
   /// Calls `model.<model>.<method>` (spec 2.3). The context is always
   /// appended as the last parameter: session context ⊕ [context] – keys of
   /// [context] override the session context, like SAO's
   /// `params[-1] = {...session.context, ...params[-1]}`. Callers never
   /// append a context to [params] themselves.
+  ///
+  /// With [processException] (default) an error goes through
+  /// [errorProcessor] (shown to the user, then a [HandledRpcError]); with
+  /// false no dialog is shown and the error reaches the caller unchanged
+  /// (counters, autocomplete, background loading).
   Future<T> execute<T>(
     String model,
     String method,
     List<dynamic> params, {
     Map<String, dynamic>? context,
-  }) =>
-      _execute<T>('model.$model.$method', params, context);
+    bool processException = true,
+  }) {
+    Future<T> call() => _execute<T>('model.$model.$method', params, context);
+    final processor = errorProcessor;
+    if (!processException || processor == null) return call();
+    return processor.process<T>(call);
+  }
 
   Future<T> _execute<T>(
     String fullMethod,

@@ -1,0 +1,5 @@
+tags:
+  # Tests against the Tryton test server (test/integration/). Not part of
+  # `flutter test`; run with: flutter test --run-skipped -t integration
+  integration:
+    skip: "integration test – run with --run-skipped -t integration"

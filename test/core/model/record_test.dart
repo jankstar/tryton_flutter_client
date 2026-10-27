@@ -9,7 +9,7 @@ import 'model_fixtures.dart';
 
 void main() {
   group('TrytonModel', () {
-    test('addFields adds new fields and extends existing descriptions', () {
+    test('addFields adds new fields and extends existing descriptions', () async {
       final model = TrytonModel('x');
       expect(
           model.addFields({
@@ -29,7 +29,7 @@ void main() {
       expect(model.fields['a']!.description['help'], 'Hilfe');
     });
 
-    test('a field class for every type (5.6)', () {
+    test('a field class for every type (5.6)', () async {
       final types = {
         'char': CharField,
         'text': TextField,
@@ -59,14 +59,13 @@ void main() {
       }
     });
 
-    test('server methods are marked stubs', () {
-      expect(() => TrytonModel('x').execute('read', []),
-          throwsA(isA<NotYetImplemented>()));
+    test('execute without a ModelRpc fails with NoModelRpc', () async {
+      expect(TrytonModel('x').execute('read', []), throwsA(isA<NoModelRpc>()));
     });
   });
 
   group('Record state', () {
-    test('new records get negative ids from a global counter', () {
+    test('new records get negative ids from a global counter', () async {
       final model = saleModel();
       final a = Record(model);
       final b = Record(model);
@@ -80,7 +79,7 @@ void main() {
       expect(Record(model).id, c.id - 1);
     });
 
-    test('set: values loaded, not modified; oldest _timestamp kept', () {
+    test('set: values loaded, not modified; oldest _timestamp kept', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
       expect(sale.modified, isFalse);
       expect(sale.loaded, containsAll(['name', 'state', 'party', 'lines']));
@@ -94,39 +93,39 @@ void main() {
       expect(sale.values.containsKey('unknown'), isFalse);
     });
 
-    test('setClient marks modifiedFields only on a real change', () {
+    test('setClient marks modifiedFields only on a real change', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
-      sale.fieldSetClient('name', '  S1 ');
+      await sale.fieldSetClient('name', '  S1 ');
       expect(sale.modifiedFields, isEmpty, reason: 'strip → same value');
-      sale.fieldSetClient('name', 'Neu');
+      await sale.fieldSetClient('name', 'Neu');
       expect(sale.modifiedFields, {'name'});
-      sale.fieldSetClient('party', [8, 'Eva']);
+      await sale.fieldSetClient('party', [8, 'Eva']);
       expect(sale.modifiedFields, {'name', 'party'});
-      sale.fieldSetClient('sale_date', null, forceChange: true);
+      await sale.fieldSetClient('sale_date', null, forceChange: true);
       expect(sale.modifiedFields, {'name', 'party'});
       expect(sale.modified, isTrue);
     });
 
-    test('changes notify the listeners of the root group', () {
+    test('changes notify the listeners of the root group', () async {
       final group = RecordGroup(saleModel());
       final sale = loadedSale(group);
       var notified = 0;
       group.addListener(() => notified++);
-      sale.fieldSetClient('name', 'Neu');
+      await sale.fieldSetClient('name', 'Neu');
       expect(notified, 1);
-      sale.fieldSetClient('name', 'Neu');
+      await sale.fieldSetClient('name', 'Neu');
       expect(notified, 1);
       // A change in a child line reaches the root group.
       final line = (sale.fieldGetClient('lines') as RecordGroup).get(10)!;
-      line.fieldSetClient('quantity', 5);
+      await line.fieldSetClient('quantity', 5);
       expect(notified, 2);
     });
 
-    test('get: only modified fields, no readonly, no empty x2many', () {
+    test('get: only modified fields, no readonly, no empty x2many', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
       expect(sale.get(), isEmpty);
-      sale.fieldSetClient('name', 'Neu');
-      sale.fieldSetClient('total', TrytonDecimal('9'));
+      await sale.fieldSetClient('name', 'Neu');
+      await sale.fieldSetClient('total', TrytonDecimal('9'));
       expect(sale.get(), {'name': 'Neu'});
 
       final newSale = RecordGroup(saleModel()).newRecord();
@@ -140,7 +139,7 @@ void main() {
       });
     });
 
-    test('getEval: loaded fields in eval format and id', () {
+    test('getEval: loaded fields in eval format and id', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
       expect(sale.getEval(), {
         'name': 'S1',
@@ -152,15 +151,15 @@ void main() {
       });
     });
 
-    test('getOnChangeValue: saved record only loaded and modified fields', () {
+    test('getOnChangeValue: saved record only loaded and modified fields', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
       expect(sale.getOnChangeValue(), {'id': 1});
-      sale.fieldSetClient('party', [8, 'Eva']);
+      await sale.fieldSetClient('party', [8, 'Eva']);
       expect(sale.getOnChangeValue(), {'party': 8, 'id': 1});
       expect(sale.getOnChangeValue(skip: ['party']), {'id': 1});
     });
 
-    test('rights: _write/_delete, group access, history, removed', () {
+    test('rights: _write/_delete, group access, history, removed', () async {
       final group = RecordGroup(saleModel());
       final sale = loadedSale(group);
       expect((sale.readonly, sale.deletable), (false, true));
@@ -184,9 +183,9 @@ void main() {
       expect(sale2.readonly, isTrue);
     });
 
-    test('cancel discards values and flags', () {
+    test('cancel discards values and flags', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
-      sale.fieldSetClient('name', 'Neu');
+      await sale.fieldSetClient('name', 'Neu');
       sale.exception = true;
       sale.cancel();
       expect(sale.values, isEmpty);
@@ -196,7 +195,7 @@ void main() {
       expect(sale.exception, isFalse);
     });
 
-    test('exprEval: PYSON string with record values, context, active_*', () {
+    test('exprEval: PYSON string with record values, context, active_*', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
       expect(sale.exprEval(jsonEncode(eval_('party'))), 7);
       expect(sale.exprEval(jsonEncode(eval_('context.language'))), 'de');
@@ -207,7 +206,7 @@ void main() {
       expect(sale.exprEval('{}'), isEmpty);
     });
 
-    test('setState evaluates states into stateAttrs', () {
+    test('setState evaluates states into stateAttrs', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
       final state = sale.model.fields['state']!;
       state.setState(sale);
@@ -217,7 +216,7 @@ void main() {
       expect(state.stateAttrs(sale)['readonly'], isTrue);
     });
 
-    test('getPath / getIndexPath / rootParent', () {
+    test('getPath / getIndexPath / rootParent', () async {
       final group = RecordGroup(saleModel());
       final sale = loadedSale(group);
       final lines = sale.fieldGetClient('lines') as RecordGroup;
@@ -229,15 +228,18 @@ void main() {
       expect(identical(line.rootParent, sale), isTrue);
     });
 
-    test('record server methods are marked stubs', () {
+    test('without a ModelRpc server calls fail with NoModelRpc', () async {
       final sale = loadedSale(RecordGroup(saleModel()));
-      expect(sale.save(), throwsA(isA<NotYetImplemented>()));
-      expect(sale.defaultGet(), throwsA(isA<NotYetImplemented>()));
+      await sale.fieldSetClient('name', 'Neu');
+      expect(sale.save(), throwsA(isA<NoModelRpc>()));
+      expect(sale.defaultGet(), throwsA(isA<NoModelRpc>()));
       expect(Record(sale.model, id: 9).load('name'),
-          throwsA(isA<NotYetImplemented>()));
+          throwsA(isA<NoModelRpc>()));
       // Already loaded / new records need no server.
       expect(sale.load('name'), completes);
       expect(RecordGroup(saleModel()).newRecord().reload(), completes);
+      // An unmodified saved record has nothing to save.
+      expect(await loadedSale(RecordGroup(saleModel())).save(), isTrue);
     });
   });
 }
