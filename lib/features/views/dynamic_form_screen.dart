@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/icons/tryton_icon.dart';
+import '../../core/domain/domain_inversion.dart';
+import '../../core/domain/field_domain.dart';
 import '../../core/pyson/pyson_environment.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/xml/form_xml_parser.dart';
@@ -1162,16 +1164,25 @@ class _FormRendererState extends State<_FormRenderer> {
     // Invisible fields are not rendered (no placeholder, no spacing)
     if (states.invisible) return const SizedBox.shrink();
 
-    // domain_readonly: if the merged domain (screen + field) constrains this
-    // field to a single value, auto-set it and lock it (like SAO's domain_readonly).
+    // domain_readonly: if the screen domain (inverted on this field) and the
+    // field domain allow a single value, auto-set it and lock it (domain
+    // inversion like Field.validate in the Python client / SAO).
+    final fields = widget.viewDef.fields;
     final domReadonly = evaluateDomainReadonly(
       fieldName: node.name,
+      fieldType: fd.type,
       fieldDomainRaw: fd.domainRaw,
       screenDomain: widget.screenDomain,
       environment: widget.environment,
+      fieldReadonly: fd.readonly,
+      required: states.required,
+      invisible: states.invisible,
+      isReadonlyField: (name) => fields[name]?.readonly ?? false,
     );
-    if (domReadonly.forcedValue != null &&
-        widget.values[node.name] != domReadonly.forcedValue) {
+    // Compared in get_eval format (Many2One [id, name] equals its id).
+    if (domReadonly.forced &&
+        !domainEquals(
+            widget.environment[node.name], domReadonly.forcedValue)) {
       // Defer the forced value update to avoid calling setState during build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         widget.onChangedImmediate(node.name, domReadonly.forcedValue);

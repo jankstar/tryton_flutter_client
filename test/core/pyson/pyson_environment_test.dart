@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/domain/field_domain.dart';
 import 'package:tryton_flutter_client/core/pyson/pyson_environment.dart';
 import 'package:tryton_flutter_client/core/pyson/pyson_evaluator.dart';
 
@@ -191,17 +192,22 @@ void main() {
     });
 
     test('domain_readonly with a Many2One from the form', () {
+      // Field domain of a non-relational field, evaluated with the id of
+      // a Many2One value; required, so an empty field is set.
       final r = evaluateDomainReadonly(
-        fieldName: 'company',
+        fieldName: 'company_id',
+        fieldType: 'integer',
         fieldDomainRaw: jsonEncode([
-          ['company', '=', eval_('party_company', -1)]
+          ['company_id', '=', eval_('party_company', -1)]
         ]),
         screenDomain: const [],
         environment: formEnv({
           'party_company': [2, 'ACME'],
         }),
+        required: true,
       );
       expect(r.readonly, isTrue);
+      expect(r.forced, isTrue);
       expect(r.forcedValue, 2);
     });
 

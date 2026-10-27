@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,8 +6,8 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/domain/field_domain.dart';
 import '../../core/pyson/pyson_environment.dart';
-import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/serialization/tryton_serializer.dart';
 import '../../features/model/field_definition.dart';
 import '../../features/model/field_support.dart';
@@ -785,48 +784,9 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
   /// Mirrors SAO's `record.expr_eval(this.description.domain)`:
   /// PYSON expressions like Eval('party') are resolved using recordValues.
   List<dynamic> _evalFieldDomain() {
-    final raw = widget.field.domainRaw;
-    if (raw == null) return const [];
-
-    try {
-      // Build eval context from current record values (like SAO's EvalEnvironment)
-      // Many2One values are [id, name] – expose the id for Eval('field')
-      final ev = PYSONEvaluator(formEvalValues(widget.recordValues));
-
-      List<dynamic> decoded;
-      if (raw is String && raw.isNotEmpty && raw != '[]') {
-        final d = jsonDecode(raw);
-        if (d is! List) return const [];
-        decoded = d;
-      } else if (raw is List) {
-        decoded = raw.cast<dynamic>();
-      } else {
-        return const [];
-      }
-
-      // _normalizeDomain is in pyson_evaluator.dart but not exported.
-      // Replicate the same logic: evaluate PYSON maps inside each condition.
-      return _evalDomainList(decoded, ev);
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  /// Recursively evaluates PYSON expressions inside a domain list.
-  List<dynamic> _evalDomainList(List<dynamic> domain, PYSONEvaluator ev) {
-    return domain.map((item) {
-      if (item is List && item.length == 3) {
-        // [field, op, value] — evaluate value if it's a PYSON expression
-        final val = item[2];
-        final evaled = (val is Map<String, dynamic> && val.containsKey('__class__')) ? ev.eval(val) : val;
-        return [item[0], item[1], evaled];
-      }
-      if (item is List) return _evalDomainList(item.cast<dynamic>(), ev);
-      if (item is Map<String, dynamic> && item.containsKey('__class__')) {
-        return ev.eval(item);
-      }
-      return item; // 'AND', 'OR', string operators
-    }).toList();
+    // Many2One values are [id, name] – expose the id for Eval('field')
+    return evalFieldDomain(
+        widget.field.domainRaw, formEvalValues(widget.recordValues));
   }
 
   void _select(Map<String, dynamic> record) {

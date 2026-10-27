@@ -337,38 +337,13 @@ List<dynamic> evaluateActionDomain(String? pysonDomain, Map<String, dynamic> ctx
 
     if (decoded == null) return [];
 
-    // Evaluate PYSON expressions in the result
-    final ev = PYSONEvaluator(ctx);
-    final result = ev.eval(decoded);
-
-    if (result is List) return _normalizeDomain(result, ev);
-    return [];
+    // Evaluate PYSON expressions in the result (inside out, also nested
+    // in leaves).
+    final result = PYSONEvaluator(ctx).eval(decoded);
+    return result is List ? result : [];
   } catch (_) {
     return [];
   }
-}
-
-/// Normalises a domain list and evaluates any contained PYSON expressions.
-List<dynamic> _normalizeDomain(List<dynamic> domain, PYSONEvaluator ev) {
-  return domain.map((item) {
-    if (item is List) {
-      if (item.length == 3) {
-        // Domain condition [field, operator, value]
-        final value = item[2];
-        final evaledValue = (value is Map<String, dynamic> &&
-                value.containsKey('__class__'))
-            ? ev.eval(value)
-            : value;
-        return [item[0], item[1], evaledValue];
-      }
-      // Nested domain (AND/OR)
-      return _normalizeDomain(item.cast<dynamic>(), ev);
-    }
-    if (item is Map<String, dynamic> && item.containsKey('__class__')) {
-      return ev.eval(item);
-    }
-    return item; // 'AND', 'OR', etc.
-  }).toList();
 }
 
 dynamic _jsonDecodeStr(String s) {
@@ -377,100 +352,6 @@ dynamic _jsonDecodeStr(String s) {
   } catch (_) {
     return null;
   }
-}
-
-/// Result of domain_readonly evaluation for a single field.
-/// Mirrors SAO's `state_attrs.domain_readonly` + `set_client` logic.
-class DomainReadonlyResult {
-  final bool readonly;
-  final dynamic forcedValue; // null means no forced value
-  const DomainReadonlyResult({this.readonly = false, this.forcedValue});
-}
-
-/// Evaluates the combined domain (screen domain + field domain) for a field
-/// and returns whether the field is domain-readonly and what value to force.
-///
-/// Implements SAO's `unique_value` + `domain_readonly` algorithm:
-/// if the merged domain is `[field, '=', value]` (single AND equality),
-/// the field is locked to that value and made readonly.
-///
-/// [environment] is the record's evaluation environment
-/// (`recordEnvironment`, values in `get_eval` format).
-DomainReadonlyResult evaluateDomainReadonly({
-  required String fieldName,
-  required dynamic fieldDomainRaw,   // from fields_get 'domain'
-  required List<dynamic> screenDomain, // domain from the action / URL
-  required Map<String, dynamic> environment,
-}) {
-  try {
-    final ev = PYSONEvaluator(environment);
-
-    // Evaluate field-level domain (may be PYSON string or list)
-    List<dynamic> fieldDomain = [];
-    if (fieldDomainRaw is String && fieldDomainRaw.isNotEmpty) {
-      final decoded = _jsonDecodeStr(fieldDomainRaw);
-      if (decoded is List) fieldDomain = _normalizeDomain(decoded, ev);
-    } else if (fieldDomainRaw is List) {
-      fieldDomain = _normalizeDomain(fieldDomainRaw.cast<dynamic>(), ev);
-    }
-
-    // Merge screen domain + field domain (AND logic like SAO's concat)
-    final merged = _mergeDomains(screenDomain, fieldDomain);
-    if (merged.isEmpty) return const DomainReadonlyResult();
-
-    // unique_value: domain is [[field, '=', value]] → single AND equality
-    final unique = _uniqueValue(merged, fieldName);
-    if (unique == null) return const DomainReadonlyResult();
-
-    // domain_readonly = true when the original domain uses AND (not OR)
-    final isAnd = merged.isEmpty ||
-        merged[0] == 'AND' ||
-        (merged[0] is List); // implicit AND
-    return DomainReadonlyResult(
-      readonly: isAnd,
-      forcedValue: unique,
-    );
-  } catch (_) {
-    return const DomainReadonlyResult();
-  }
-}
-
-/// Merges two domains with AND logic (like SAO's DomainInversion.concat).
-List<dynamic> _mergeDomains(List<dynamic> a, List<dynamic> b) {
-  if (a.isEmpty) return b;
-  if (b.isEmpty) return a;
-  return ['AND', ...a, ...b];
-}
-
-/// Returns the forced value if [domain] uniquely constrains [fieldName]
-/// to exactly one value via `=` or `in [value]`. Returns null otherwise.
-/// Mirrors SAO's `DomainInversion.unique_value()`.
-dynamic _uniqueValue(List<dynamic> domain, String fieldName) {
-  // Unwrap 'AND' wrapper
-  List<dynamic> conditions = domain;
-  if (conditions.isNotEmpty && conditions[0] == 'AND') {
-    conditions = conditions.sublist(1);
-  }
-
-  // Collect all equality constraints for fieldName
-  dynamic found;
-  int count = 0;
-  for (final c in conditions) {
-    if (c is! List || c.length < 3) continue;
-    final name = c[0].toString();
-    final op   = c[1].toString();
-    final val  = c[2];
-    if (name != fieldName) continue;
-    if (op == '=') {
-      found = val == false ? null : val;
-      count++;
-    } else if (op == 'in' && val is List && val.length == 1) {
-      found = val[0] == false ? null : val[0];
-      count++;
-    }
-  }
-  if (count == 1) return found;
-  return null;
 }
 
 /// Evaluates `states` (invisible/readonly/required) of a field, button or
