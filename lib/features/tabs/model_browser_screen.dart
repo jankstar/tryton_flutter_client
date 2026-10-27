@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
+import '../../core/pyson/pyson_environment.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
@@ -426,29 +426,17 @@ class _MenuNodeState extends ConsumerState<_MenuNode> {
       final name = action['name']?.toString() ?? item.name;
       if (model.isEmpty) return;
 
-      // Build evaluation context (like SAO: session.context + active_*)
-      final evalCtx = <String, dynamic>{
-        ...session.context,
-        '_user': session.userId,
-        'active_model': null,
-        'active_id': null,
-        'active_ids': <int>[],
-      };
-
-      // Evaluate pyson_context and merge into evalCtx
-      final pysonCtx = action['pyson_context']?.toString();
-      if (pysonCtx != null && pysonCtx.isNotEmpty && pysonCtx != '{}') {
-        try {
-          final ctxDecoded = _safeDecode(pysonCtx);
-          if (ctxDecoded != null) {
-            final ctxEvaluated = PYSONEvaluator(evalCtx).eval(ctxDecoded);
-            if (ctxEvaluated is Map) {
-              evalCtx.addAll(ctxEvaluated.cast<String, dynamic>());
-            }
-          }
-        } catch (_) {}
-      }
-      evalCtx['context'] = evalCtx;
+      // Build evaluation context (like SAO: active_*, session.context, _user
+      // and the evaluated pyson_context; `context` is the whole dict again.
+      // A menu opens its action like the Python client's tree_open:
+      // active_model = 'ir.ui.menu', active_id = the menu entry, no ids.
+      final evalCtx = actionEnvironment(
+        sessionContext: session.context,
+        userId: session.userId,
+        activeModel: 'ir.ui.menu',
+        activeId: item.id,
+        pysonContext: action['pyson_context']?.toString(),
+      );
 
       // Evaluate pyson_domain → concrete domain list
       final domain = evaluateActionDomain(
@@ -476,10 +464,6 @@ class _MenuNodeState extends ConsumerState<_MenuNode> {
       }
     }
   }
-}
-
-dynamic _safeDecode(String s) {
-  try { return jsonDecode(s); } catch (_) { return null; }
 }
 
 // ─── User chip (top-right like SAO) ──────────────────────────────────────────

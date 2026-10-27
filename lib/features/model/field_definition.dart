@@ -32,6 +32,9 @@ class FieldDefinition {
   /// (`model.X.<method>(values, ctx)`); the selection is reloaded when one
   /// of them changes (spec 5.6, SAO `selection_mixin`).
   final List<String>? selectionChangeWith;
+  /// `sort` from fields_get (default true): selection options are sorted by
+  /// label, like the Python client and SAO.
+  final bool selectionSort;
 
   const FieldDefinition({
     required this.name,
@@ -52,7 +55,20 @@ class FieldDefinition {
     this.symbol,
     this.selectionFunction,
     this.selectionChangeWith,
+    this.selectionSort = true,
   });
+
+  /// Selection options sorted by label (stable, like Python's
+  /// `sort(key=itemgetter(1))`).
+  static List<List<dynamic>> sortSelection(List<List<dynamic>> options) {
+    String label(List<dynamic> o) => o.length > 1 ? '${o[1] ?? ''}' : '';
+    final indexed = options.indexed.toList()
+      ..sort((a, b) {
+        final c = label(a.$2).compareTo(label(b.$2));
+        return c != 0 ? c : a.$1.compareTo(b.$1);
+      });
+    return [for (final (_, o) in indexed) o];
+  }
 
   factory FieldDefinition.fromJson(String name, Map<String, dynamic> json) {
     List<List<dynamic>>? sel;
@@ -66,6 +82,8 @@ class FieldDefinition {
       // Dynamic selection: Tryton returns the classmethod name.
       selFn = json['selection'] as String;
     }
+    final selSort = json['sort'] is bool ? json['sort'] as bool : true;
+    if (sel != null && selSort) sel = sortSelection(sel);
 
     // states arrives from the server as a JSON string (not a Map!):
     //   '{"invisible": {"__class__": "Equal", "s1": {...}, "s2": "property"}}'
@@ -115,6 +133,7 @@ class FieldDefinition {
               .map((e) => e.toString())
               .toList()
           : null,
+      selectionSort: selSort,
     );
   }
 
@@ -123,12 +142,14 @@ class FieldDefinition {
         name: name, type: type, label: label,
         readonly: readonly, required: required, invisible: invisible,
         relation: relation, relationField: relationField,
-        selection: newSelection,
+        selection:
+            selectionSort ? sortSelection(newSelection) : newSelection,
         digits: digits, help: help,
         onChange: onChange, onChangeWith: onChangeWith,
         statesRaw: statesRaw, domainRaw: domainRaw,
         symbol: symbol, selectionFunction: selectionFunction,
         selectionChangeWith: selectionChangeWith,
+        selectionSort: selectionSort,
       );
 
   bool get isRelation =>

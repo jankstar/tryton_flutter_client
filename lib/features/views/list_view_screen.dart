@@ -13,6 +13,7 @@ import '../shell/app_shell.dart';
 import '../shell/tab_manager.dart';
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
+import '../../core/pyson/pyson_environment.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/serialization/tryton_serializer.dart';
 import '../../core/xml/form_xml_parser.dart';
@@ -294,12 +295,11 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         limit: null,
         order: [['sequence', 'ASC']],
       );
-      final evalCtx = <String, dynamic>{
-        ...session.context,
-        'active_model': widget.model,
-        'active_id': null,
-        'active_ids': <int>[],
-      };
+      final evalCtx = actionEnvironment(
+        sessionContext: session.context,
+        userId: session.userId,
+        activeModel: widget.model,
+      );
       final tabs = rows
           .map((r) => TabDomain(
                 id: r.id,
@@ -1265,7 +1265,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       // visual is a Python-ternary string like "'warning' if Eval('late') else ''"
       // Parse it as JSON to get the PYSON dict, then evaluate.
       final decoded = jsonDecode(_treeVisual!);
-      final result = PYSONEvaluator(record.values).eval(decoded);
+      final result = PYSONEvaluator(recordEnvironment(
+        values: formEvalValues(record.values),
+        context: ref.read(sessionProvider).context,
+        activeModel: widget.model,
+        activeId: record.id,
+      )).eval(decoded);
       return result?.toString() ?? '';
     } catch (_) {
       return '';

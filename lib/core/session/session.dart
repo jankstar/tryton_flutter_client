@@ -122,11 +122,14 @@ class TrytonSession {
     }
   }
 
+  /// Replaces the context by the preferences, like the Python client's
+  /// `RPCContextReload`: `context_reset()` (only `client` stays) and then
+  /// the preferences, so keys no longer sent by the server disappear.
   void _mergeContext(dynamic prefs) {
     if (prefs is Map<String, dynamic>) {
       // Drop locale sub-object and rec_name keys (same filter as SAO)
       prefs.removeWhere((k, _) => k == 'locale' || k.endsWith('.rec_name'));
-      context.addAll(prefs);
+      context = {'client': clientId, ...prefs};
     }
   }
 
@@ -214,14 +217,14 @@ class TrytonSession {
   Future<void> _renewDeviceCookie(String db, String username) async {
     try {
       final cookies = await _loadAllDeviceCookies();
-      final existing = cookies[db]?[username] as String?;
+      final key = deviceCookieKey(username, rpcClient.baseUrl, db);
       final newCookie = await rpcClient.call(
         db,
         'model.res.user.device.renew',
-        [existing, context],
+        [cookies[key], context],
       );
       if (newCookie is String) {
-        cookies.putIfAbsent(db, () => {})[username] = newCookie;
+        cookies[key] = newCookie;
         await _saveAllDeviceCookies(cookies);
       }
     } catch (_) {
@@ -229,19 +232,38 @@ class TrytonSession {
     }
   }
 
-  Future<String?> _loadDeviceCookie(String db, String username) async {
-    final cookies = await _loadAllDeviceCookies();
-    return cookies[db]?[username] as String?;
+  /// Storage key of a device cookie, like the Python client:
+  /// `login@host:port/database`, so two servers with the same database
+  /// name do not share a cookie.
+  static String deviceCookieKey(String login, String baseUrl, String db) {
+    final uri = Uri.parse(baseUrl);
+    return '$login@${uri.host}:${uri.port}/$db';
   }
 
-  Future<Map<String, dynamic>> _loadAllDeviceCookies() async {
+  Future<String?> _loadDeviceCookie(String db, String username) async {
+    final cookies = await _loadAllDeviceCookies();
+    return cookies[deviceCookieKey(username, rpcClient.baseUrl, db)];
+  }
+
+  /// `{key: cookie}`. Entries of the former `{database: {login: cookie}}`
+  /// format (without the server) are discarded.
+  Future<Map<String, String>> _loadAllDeviceCookies() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_deviceCookieKey);
     if (raw == null) return {};
-    return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return {};
+      return {
+        for (final e in decoded.entries)
+          if (e.value is String) e.key.toString(): e.value as String,
+      };
+    } catch (_) {
+      return {};
+    }
   }
 
-  Future<void> _saveAllDeviceCookies(Map<String, dynamic> cookies) async {
+  Future<void> _saveAllDeviceCookies(Map<String, String> cookies) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_deviceCookieKey, jsonEncode(cookies));
   }

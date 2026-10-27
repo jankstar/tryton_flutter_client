@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/pyson/pyson_environment.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/serialization/tryton_serializer.dart';
 import '../../features/model/field_definition.dart';
@@ -789,13 +790,8 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
 
     try {
       // Build eval context from current record values (like SAO's EvalEnvironment)
-      final ctx = <String, dynamic>{};
-      for (final entry in widget.recordValues.entries) {
-        final v = entry.value;
-        // Many2One values are [id, name] – expose the id for Eval('field')
-        ctx[entry.key] = (v is List && v.isNotEmpty) ? v[0] : v;
-      }
-      final ev = PYSONEvaluator(ctx);
+      // Many2One values are [id, name] – expose the id for Eval('field')
+      final ev = PYSONEvaluator(formEvalValues(widget.recordValues));
 
       List<dynamic> decoded;
       if (raw is String && raw.isNotEmpty && raw != '[]') {

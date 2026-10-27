@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/icons/tryton_icon.dart';
+import '../../core/pyson/pyson_environment.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
@@ -93,6 +94,18 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   String? _error;
 
   bool get _isNew => widget.recordId < 0;
+
+  /// PYSON environment of the current record (SAO `record.expr_eval`).
+  Map<String, dynamic> _evalEnvironment() {
+    final fields = _viewDef?.fields ?? const <String, FieldDefinition>{};
+    return recordEnvironment(
+      values: formEvalValues(_values,
+          fieldTypes: {for (final e in fields.entries) e.key: e.value.type}),
+      context: ref.read(sessionProvider).context,
+      activeModel: widget.model,
+      activeId: widget.recordId,
+    );
+  }
 
   /// Method-based selections incl. `selection_change_with`, cached per
   /// value combination for the lifetime of this form.
@@ -893,6 +906,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             root: contentRoot,
             viewDef: _viewDef!,
             values: _values,
+            environment: _evalEnvironment(),
             onChanged: _onFieldChanged,
             onBlur: _onFieldBlur,
             onChangedImmediate: _onFieldChangedImmediate,
@@ -912,7 +926,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         Expanded(child: scrollBody),
         _ButtonFooter(
           nodes: buttonNodes,
-          values: _values,
+          environment: _evalEnvironment(),
           isReadOnly: false,
           onButton: _executeButton,
         ),
@@ -1012,6 +1026,8 @@ class _FormRenderer extends StatefulWidget {
   final FormRoot root;
   final ViewDefinition viewDef;
   final Map<String, dynamic> values;
+  /// PYSON evaluation environment of the record (states, domains).
+  final Map<String, dynamic> environment;
   final void Function(String, dynamic) onChanged;
   final void Function(String) onBlur;
   final void Function(String, dynamic) onChangedImmediate;
@@ -1026,6 +1042,7 @@ class _FormRenderer extends StatefulWidget {
     required this.root,
     required this.viewDef,
     required this.values,
+    required this.environment,
     required this.onChanged,
     required this.onBlur,
     required this.onChangedImmediate,
@@ -1139,7 +1156,7 @@ class _FormRendererState extends State<_FormRenderer> {
       staticInvisible: fd.invisible || (node.invisible ?? false),
       staticReadonly: fd.readonly || (node.readonly ?? false),
       staticRequired: fd.required || (node.required ?? false),
-      values: widget.values,
+      environment: widget.environment,
     );
 
     // Invisible fields are not rendered (no placeholder, no spacing)
@@ -1151,8 +1168,7 @@ class _FormRendererState extends State<_FormRenderer> {
       fieldName: node.name,
       fieldDomainRaw: fd.domainRaw,
       screenDomain: widget.screenDomain,
-      values: widget.values,
-      ctx: const {},
+      environment: widget.environment,
     );
     if (domReadonly.forcedValue != null &&
         widget.values[node.name] != domReadonly.forcedValue) {
@@ -1311,7 +1327,7 @@ class _FormRendererState extends State<_FormRenderer> {
           staticInvisible: fd.invisible,
           staticReadonly: fd.readonly,
           staticRequired: fd.required,
-          values: widget.values,
+          environment: widget.environment,
         );
         if (states.invisible) return const SizedBox.shrink();
       }
@@ -1391,7 +1407,7 @@ class _FormRendererState extends State<_FormRenderer> {
       staticInvisible: false,
       staticReadonly: false,
       staticRequired: false,
-      values: widget.values,
+      environment: widget.environment,
     );
 
     if (states.invisible) return const SizedBox.shrink();
@@ -1497,7 +1513,7 @@ class _FormRendererState extends State<_FormRenderer> {
         staticInvisible: false,
         staticReadonly: false,
         staticRequired: false,
-        values: widget.values,
+        environment: widget.environment,
       );
       if (result.invisible) return false;
     }
@@ -1546,13 +1562,14 @@ class _FormRendererState extends State<_FormRenderer> {
 /// while the form content scrolls. Evaluates PYSON states per button.
 class _ButtonFooter extends StatelessWidget {
   final List<ButtonNode> nodes;
-  final Map<String, dynamic> values;
+  /// PYSON evaluation environment of the record (button states).
+  final Map<String, dynamic> environment;
   final bool isReadOnly;
   final Future<void> Function(ButtonNode)? onButton;
 
   const _ButtonFooter({
     required this.nodes,
-    required this.values,
+    required this.environment,
     required this.isReadOnly,
     this.onButton,
   });
@@ -1568,7 +1585,7 @@ class _ButtonFooter extends StatelessWidget {
         staticInvisible: false,
         staticReadonly: false,
         staticRequired: false,
-        values: values,
+        environment: environment,
       );
       if (states.invisible) continue;
 

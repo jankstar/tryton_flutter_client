@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dynamic_form_screen.dart';
 
 import '../../core/icons/tryton_icon.dart';
+import '../../core/pyson/pyson_environment.dart';
+import '../auth/auth_provider.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
@@ -436,7 +438,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (visual == null || visual.isEmpty) return '';
     try {
       final decoded = jsonDecode(visual);
-      final result = PYSONEvaluator(record.values).eval(decoded);
+      final result = PYSONEvaluator(recordEnvironment(
+        values: formEvalValues(record.values),
+        context: ref.read(sessionProvider).context,
+        activeModel: widget.fieldDef.relation,
+        activeId: record.id,
+      )).eval(decoded);
       return result?.toString() ?? '';
     } catch (_) {
       return '';

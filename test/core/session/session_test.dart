@@ -44,10 +44,10 @@ class _Adapter implements HttpClientAdapter {
     requests.add(req);
     final (status, out) = handler(req);
     return ResponseBody.fromString(
-        out is String ? out : jsonEncode({'id': body['id'], 'result': out}),
+        _isHtml(out) ? out as String : jsonEncode({'id': body['id'], 'result': out}),
         status,
         headers: {
-          'content-type': [out is String ? 'text/html' : 'application/json']
+          'content-type': [_isHtml(out) ? 'text/html' : 'application/json']
         });
   }
 
@@ -137,9 +137,8 @@ void main() {
     test('device cookie alone → LoginException(password) (verified A8)',
         () async {
       SharedPreferences.setMockInitialValues({
-        'tryton_device_cookies': jsonEncode({
-          'tryton': {'admin': 'cookie-1'}
-        })
+        'tryton_device_cookies':
+            jsonEncode({'admin@127.0.0.1:8000/tryton': 'cookie-1'})
       });
       final rpc = RpcClient(
         baseUrl: 'http://127.0.0.1:8000',
@@ -157,6 +156,95 @@ void main() {
               .having((e) => e.fieldType, 'fieldType', 'password')));
       expect(session.isLoggedIn, isFalse);
       expect(store.value, isNull);
+    });
+  });
+
+  group('device cookie (key like the Python client)', () {
+    test('key is login@host:port/database', () {
+      expect(
+          TrytonSession.deviceCookieKey(
+              'admin', 'https://erp.example.com/', 'tryton'),
+          'admin@erp.example.com:443/tryton');
+      expect(
+          TrytonSession.deviceCookieKey(
+              'admin', 'http://127.0.0.1:8000/', 'tryton'),
+          'admin@127.0.0.1:8000/tryton');
+    });
+
+    test('sent on login and renewed under the server key', () async {
+      SharedPreferences.setMockInitialValues({
+        'tryton_device_cookies': jsonEncode({
+          'admin@127.0.0.1:8000/tryton': 'cookie-0',
+          'admin@other:8000/tryton': 'cookie-x',
+        })
+      });
+      final (session, adapter) = make(server);
+      await session.loginWithParams('tryton', 'admin', {'password': 'pw'});
+      final login = adapter.requests.first;
+      expect((login.params[1] as Map)['device_cookie'], 'cookie-0');
+      final renew = adapter.requests
+          .firstWhere((r) => r.method == 'model.res.user.device.renew');
+      expect(renew.params[0], 'cookie-0');
+      final prefs = await SharedPreferences.getInstance();
+      expect(jsonDecode(prefs.getString('tryton_device_cookies')!), {
+        'admin@127.0.0.1:8000/tryton': 'cookie-1',
+        'admin@other:8000/tryton': 'cookie-x',
+      });
+    });
+
+    test('entries of the old {db: {login: cookie}} format are discarded',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'tryton_device_cookies': jsonEncode({
+          'tryton': {'admin': 'old-cookie'}
+        })
+      });
+      final (session, adapter) = make(server);
+      await session.loginWithParams('tryton', 'admin', {'password': 'pw'});
+      expect((adapter.requests.first.params[1] as Map)
+          .containsKey('device_cookie'), isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(jsonDecode(prefs.getString('tryton_device_cookies')!),
+          {'admin@127.0.0.1:8000/tryton': 'cookie-1'});
+    });
+  });
+
+  group('context reload (like RPCContextReload)', () {
+    test('context is replaced: keys missing in the preferences disappear',
+        () async {
+      var prefsAnswer = <String, dynamic>{
+        'language': 'de',
+        'company': 1,
+        'employee': 5,
+        'locale': {'date': '%d.%m.%Y'},
+        'company.rec_name': 'ACME',
+      };
+      final (session, _) = make((r) => r.method ==
+              'model.res.user.get_preferences'
+          ? (200, prefsAnswer)
+          : server(r));
+      await session.loginWithParams('tryton', 'admin', {'password': 'pw'});
+      expect(session.context['employee'], 5);
+      expect(session.context.containsKey('locale'), isFalse);
+      expect(session.context.containsKey('company.rec_name'), isFalse);
+      final client = session.context['client'];
+      expect(client, isNotNull);
+
+      prefsAnswer = {'language': 'en', 'company': 1};
+      await session.reloadContext();
+      expect(session.context, {'client': client, 'language': 'en', 'company': 1});
+    });
+
+    test('a failed reload keeps the context', () async {
+      var fail = false;
+      final (session, _) = make((r) =>
+          r.method == 'model.res.user.get_preferences' && fail
+              ? (500, '<html>error</html>')
+              : server(r));
+      await session.loginWithParams('tryton', 'admin', {'password': 'pw'});
+      fail = true;
+      await session.reloadContext();
+      expect(session.context['language'], 'de');
     });
   });
 
@@ -273,3 +361,7 @@ class _ErrorAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
 }
+
+/// Fake answers: a string starting with `<` is a raw HTML body, anything
+/// else is the JSON-RPC `result`.
+bool _isHtml(Object out) => out is String && out.startsWith('<');
