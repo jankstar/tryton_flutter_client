@@ -330,5 +330,11 @@
   "writeAnyway": "Toch schrijven",
   "concurrencyException": "Fout door gelijktijdige toegang",
   "compareTabTitle": "Vergelijken: {name}",
-  "fieldNotSupported": "Nog niet ondersteund"
+  "fieldNotSupported": "Nog niet ondersteund",
+  "ok": "OK",
+  "alwaysIgnore": "Altijd negeren",
+  "applicationError": "Toepassingsfout",
+  "details": "Details",
+  "httpError": "Fout: \"[{code}] {text}\". Probeer het later opnieuw.",
+  "networkError": "Server niet bereikbaar. {details}"
 }

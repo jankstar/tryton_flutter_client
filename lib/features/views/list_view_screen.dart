@@ -18,6 +18,8 @@ import '../../core/serialization/tryton_serializer.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/utils/m2o_name_cache.dart' as m2o;
+import '../../shared/errors/error_dialogs.dart';
+import '../../shared/errors/error_handler.dart';
 import '../../shared/utils/date_format_utils.dart';
 import '../../shared/utils/number_format_utils.dart';
 import '../../shared/utils/symbol_cache.dart' as sym_cache;
@@ -378,7 +380,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       }
       if (_tabDomains.isNotEmpty) _loadTabCounts();
     } catch (e) {
-      setState(() => _error = e.toString());
+      // Dialog via the central handler; the page keeps a short text + Retry.
+      if (mounted) errorHandlerOf(context, ref).show(e);
+      setState(() => _error = ErrorHandler.describe(e));
     } finally {
       setState(() => _loading = false);
     }
@@ -838,34 +842,23 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
-    try {
-      final svc = ref.read(modelServiceProvider);
-      await svc.delete(widget.model, _selected.toList());
-      _load(reset: true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Fehler: $e')));
-      }
-    }
+    if (confirmed != true || !mounted) return;
+    final ok = await errorHandlerOf(context, ref).run(() => ref
+        .read(modelServiceProvider)
+        .delete(widget.model, _selected.toList()));
+    if (ok) _load(reset: true);
   }
 
   Future<void> _copySelected() async {
     if (_selected.isEmpty) return;
-    try {
-      final svc = ref.read(modelServiceProvider);
-      await svc.copy(widget.model, _selected.toList());
-      _load(reset: true);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.l10n.recordCreated)));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Fehler: $e')));
-      }
+    final ok = await errorHandlerOf(context, ref).run(() => ref
+        .read(modelServiceProvider)
+        .copy(widget.model, _selected.toList()));
+    if (!ok) return;
+    _load(reset: true);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.recordCreated)));
     }
   }
 

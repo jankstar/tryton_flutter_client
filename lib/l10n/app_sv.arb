@@ -330,5 +330,11 @@
   "writeAnyway": "Skriv ändå",
   "concurrencyException": "Fel vid samtidig åtkomst",
   "compareTabTitle": "Jämför: {name}",
-  "fieldNotSupported": "Stöds inte ännu"
+  "fieldNotSupported": "Stöds inte ännu",
+  "ok": "OK",
+  "alwaysIgnore": "Ignorera alltid",
+  "applicationError": "Programfel",
+  "details": "Detaljer",
+  "httpError": "Fel: \"[{code}] {text}\". Försök igen senare.",
+  "networkError": "Kan inte nå servern. {details}"
 }

@@ -577,6 +577,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not supported yet'**
   String get fieldNotSupported;
+
+  /// OK button in dialogs
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// UserWarning dialog: do not show this warning again
+  ///
+  /// In en, this message translates to:
+  /// **'Always ignore'**
+  String get alwaysIgnore;
+
+  /// Title of the dialog for unexpected server exceptions
+  ///
+  /// In en, this message translates to:
+  /// **'Application Error'**
+  String get applicationError;
+
+  /// Expandable details (traceback) in the application error dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get details;
+
+  /// HTTP error message
+  ///
+  /// In en, this message translates to:
+  /// **'Error: \"[{code}] {text}\". Try again later.'**
+  String httpError(int code, String text);
+
+  /// Server cannot be reached (connection error)
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to reach the server. {details}'**
+  String networkError(String details);
 }
 
 class _AppLocalizationsDelegate

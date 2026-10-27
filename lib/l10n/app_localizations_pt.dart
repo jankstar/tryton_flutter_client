@@ -256,4 +256,26 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Ainda não suportado';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Ignorar sempre';
+
+  @override
+  String get applicationError => 'Erro da aplicação';
+
+  @override
+  String get details => 'Detalhes';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Erro: \"[$code] $text\". Tente novamente mais tarde.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Não é possível contactar o servidor. $details';
+  }
 }

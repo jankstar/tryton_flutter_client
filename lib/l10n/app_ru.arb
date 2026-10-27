@@ -330,5 +330,11 @@
   "writeAnyway": "Всё равно записать",
   "concurrencyException": "Ошибка параллельного изменения",
   "compareTabTitle": "Сравнить: {name}",
-  "fieldNotSupported": "Пока не поддерживается"
+  "fieldNotSupported": "Пока не поддерживается",
+  "ok": "OK",
+  "alwaysIgnore": "Всегда игнорировать",
+  "applicationError": "Ошибка приложения",
+  "details": "Подробности",
+  "httpError": "Ошибка: «[{code}] {text}». Повторите попытку позже.",
+  "networkError": "Не удаётся связаться с сервером. {details}"
 }

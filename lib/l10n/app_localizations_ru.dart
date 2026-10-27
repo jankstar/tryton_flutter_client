@@ -256,4 +256,26 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Пока не поддерживается';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Всегда игнорировать';
+
+  @override
+  String get applicationError => 'Ошибка приложения';
+
+  @override
+  String get details => 'Подробности';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Ошибка: «[$code] $text». Повторите попытку позже.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Не удаётся связаться с сервером. $details';
+  }
 }

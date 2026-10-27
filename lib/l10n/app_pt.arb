@@ -330,5 +330,11 @@
   "writeAnyway": "Gravar mesmo assim",
   "concurrencyException": "Exceção de concorrência",
   "compareTabTitle": "Comparar: {name}",
-  "fieldNotSupported": "Ainda não suportado"
+  "fieldNotSupported": "Ainda não suportado",
+  "ok": "OK",
+  "alwaysIgnore": "Ignorar sempre",
+  "applicationError": "Erro da aplicação",
+  "details": "Detalhes",
+  "httpError": "Erro: \"[{code}] {text}\". Tente novamente mais tarde.",
+  "networkError": "Não é possível contactar o servidor. {details}"
 }

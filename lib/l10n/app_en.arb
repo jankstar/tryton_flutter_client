@@ -356,5 +356,42 @@
   "fieldNotSupported": "Not supported yet",
   "@fieldNotSupported": {
     "description": "Placeholder for field types/widgets without an own widget yet"
+  },
+  "ok": "OK",
+  "@ok": {
+    "description": "OK button in dialogs"
+  },
+  "alwaysIgnore": "Always ignore",
+  "@alwaysIgnore": {
+    "description": "UserWarning dialog: do not show this warning again"
+  },
+  "applicationError": "Application Error",
+  "@applicationError": {
+    "description": "Title of the dialog for unexpected server exceptions"
+  },
+  "details": "Details",
+  "@details": {
+    "description": "Expandable details (traceback) in the application error dialog"
+  },
+  "httpError": "Error: \"[{code}] {text}\". Try again later.",
+  "@httpError": {
+    "description": "HTTP error message",
+    "placeholders": {
+      "code": {
+        "type": "int"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "networkError": "Unable to reach the server. {details}",
+  "@networkError": {
+    "description": "Server cannot be reached (connection error)",
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
   }
 }

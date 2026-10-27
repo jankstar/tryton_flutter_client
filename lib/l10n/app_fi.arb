@@ -330,5 +330,11 @@
   "writeAnyway": "Kirjoita silti",
   "concurrencyException": "Samanaikaisuusvirhe",
   "compareTabTitle": "Vertaa: {name}",
-  "fieldNotSupported": "Ei vielä tuettu"
+  "fieldNotSupported": "Ei vielä tuettu",
+  "ok": "OK",
+  "alwaysIgnore": "Ohita aina",
+  "applicationError": "Sovellusvirhe",
+  "details": "Tiedot",
+  "httpError": "Virhe: \"[{code}] {text}\". Yritä myöhemmin uudelleen.",
+  "networkError": "Palvelimeen ei saada yhteyttä. {details}"
 }

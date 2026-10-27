@@ -256,4 +256,26 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Ei vielä tuettu';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Ohita aina';
+
+  @override
+  String get applicationError => 'Sovellusvirhe';
+
+  @override
+  String get details => 'Tiedot';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Virhe: \"[$code] $text\". Yritä myöhemmin uudelleen.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Palvelimeen ei saada yhteyttä. $details';
+  }
 }

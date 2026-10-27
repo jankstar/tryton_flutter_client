@@ -256,4 +256,26 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Aún no compatible';
+
+  @override
+  String get ok => 'Aceptar';
+
+  @override
+  String get alwaysIgnore => 'Ignorar siempre';
+
+  @override
+  String get applicationError => 'Error de la aplicación';
+
+  @override
+  String get details => 'Detalles';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Error: «[$code] $text». Inténtelo de nuevo más tarde.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'No se puede conectar con el servidor. $details';
+  }
 }

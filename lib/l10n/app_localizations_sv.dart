@@ -255,4 +255,26 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Stöds inte ännu';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Ignorera alltid';
+
+  @override
+  String get applicationError => 'Programfel';
+
+  @override
+  String get details => 'Detaljer';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Fel: \"[$code] $text\". Försök igen senare.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Kan inte nå servern. $details';
+  }
 }

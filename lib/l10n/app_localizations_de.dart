@@ -257,4 +257,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Wird noch nicht unterstützt';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Immer ignorieren';
+
+  @override
+  String get applicationError => 'Anwendungsfehler';
+
+  @override
+  String get details => 'Details';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Fehler: „[$code] $text“. Bitte später erneut versuchen.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Server nicht erreichbar. $details';
+  }
 }

@@ -256,4 +256,26 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Nog niet ondersteund';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Altijd negeren';
+
+  @override
+  String get applicationError => 'Toepassingsfout';
+
+  @override
+  String get details => 'Details';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Fout: \"[$code] $text\". Probeer het later opnieuw.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Server niet bereikbaar. $details';
+  }
 }

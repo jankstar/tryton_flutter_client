@@ -330,5 +330,11 @@
   "writeAnyway": "Écrire quand même",
   "concurrencyException": "Exception d'accès concurrent",
   "compareTabTitle": "Comparer : {name}",
-  "fieldNotSupported": "Pas encore pris en charge"
+  "fieldNotSupported": "Pas encore pris en charge",
+  "ok": "OK",
+  "alwaysIgnore": "Toujours ignorer",
+  "applicationError": "Erreur de l'application",
+  "details": "Détails",
+  "httpError": "Erreur : « [{code}] {text} ». Réessayez plus tard.",
+  "networkError": "Impossible de joindre le serveur. {details}"
 }

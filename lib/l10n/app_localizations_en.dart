@@ -256,4 +256,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Not supported yet';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Always ignore';
+
+  @override
+  String get applicationError => 'Application Error';
+
+  @override
+  String get details => 'Details';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Error: \"[$code] $text\". Try again later.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Unable to reach the server. $details';
+  }
 }

@@ -330,5 +330,11 @@
   "writeAnyway": "Skriv alligevel",
   "concurrencyException": "Samtidig adgang",
   "compareTabTitle": "Sammenlign: {name}",
-  "fieldNotSupported": "Understøttes endnu ikke"
+  "fieldNotSupported": "Understøttes endnu ikke",
+  "ok": "OK",
+  "alwaysIgnore": "Ignorer altid",
+  "applicationError": "Programfejl",
+  "details": "Detaljer",
+  "httpError": "Fejl: \"[{code}] {text}\". Prøv igen senere.",
+  "networkError": "Kan ikke nå serveren. {details}"
 }

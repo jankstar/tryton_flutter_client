@@ -14,6 +14,8 @@ import '../shell/app_shell.dart';
 import '../shell/tab_manager.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../../shared/widgets/field_widget.dart';
+import '../../shared/errors/error_dialogs.dart';
+import '../../shared/errors/error_handler.dart';
 import '../../shared/widgets/concurrency_dialog.dart';
 import '../model/concurrency.dart';
 import '../model/field_support.dart';
@@ -179,7 +181,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       // Load toolbar, attachment count and translated model name in background
       _loadSideData(svc);  // also called for new records to get model display name
     } catch (e) {
-      setState(() => _error = e.toString());
+      // Dialog via the central handler; the page keeps a short text + Reload.
+      if (mounted) errorHandlerOf(context, ref).show(e);
+      setState(() => _error = ErrorHandler.describe(e));
     } finally {
       setState(() => _loading = false);
     }
@@ -297,9 +301,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   // ─── Save ────────────────────────────────────────────────────────────────
 
-  Future<void> _save() async {
-    setState(() { _saving = true; _error = null; });
-    try {
+  /// Saves the record. Returns true when it was written; errors are shown
+  /// by the central [ErrorHandler] (a UserWarning repeats the save).
+  Future<bool> _save() async {
+    setState(() => _saving = true);
+    var saved = false;
+    await errorHandlerOf(context, ref).run(() async {
       final svc = ref.read(modelServiceProvider);
 
       // Like SAO: send only actually modified fields.
@@ -309,6 +316,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
       if (_isNew) {
         final ids = await svc.create(widget.model, [saveValues]);
+        saved = true;
         if (mounted) {
           _showSnack(context.l10n.recordCreated);
           if (widget.embedded) {
@@ -324,6 +332,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             svc.write(widget.model, [widget.recordId], saveValues,
                 timestamp: withTimestamp ? _timestamp : null));
         if (!written) return;
+        saved = true;
         // Record changed on the server → reload to get the new _timestamp.
         await _loadRecordTimestamp();
         if (mounted) {
@@ -336,11 +345,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           await _reloadUserContext();
         }
       }
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      setState(() => _saving = false);
-    }
+    });
+    if (mounted) setState(() => _saving = false);
+    return saved;
   }
 
   /// Runs a write/delete of this record and resolves a concurrency
@@ -458,16 +465,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         ],
       ),
     );
-    if (ok != true) return;
-    try {
+    if (ok != true || !mounted) return;
+    await errorHandlerOf(context, ref).run(() async {
       final svc = ref.read(modelServiceProvider);
       final deleted = await _withConcurrencyCheck((withTimestamp) =>
           svc.delete(widget.model, [widget.recordId],
               timestamp: withTimestamp ? _timestamp : null));
       if (deleted && mounted) Navigator.of(context).pop();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    }
+    });
   }
 
   /// Called by every field when its value changes (like SAO's set_client).
@@ -561,22 +566,19 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       if (confirmed != true || !mounted) return;
     }
     if (_isNew || widget.recordId <= 0) return;
-    setState(() { _saving = true; _error = null; });
-    try {
-      final svc = ref.read(modelServiceProvider);
-      await svc.executeButton(widget.model, node.name, [widget.recordId]);
-      if (!mounted) return;
-      await _load();
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+    setState(() => _saving = true);
+    final ok = await errorHandlerOf(context, ref).run(() =>
+        ref
+            .read(modelServiceProvider)
+            .executeButton(widget.model, node.name, [widget.recordId]));
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) await _load();
   }
 
   Future<void> _duplicate() async {
     if (_isNew) return;
-    try {
+    await errorHandlerOf(context, ref).run(() async {
       final svc = ref.read(modelServiceProvider);
       final newIds = await svc.copy(widget.model, [widget.recordId]);
       if (newIds.isNotEmpty && mounted) {
@@ -587,9 +589,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             screenDomain: widget.screenDomain,
             replace: true);
       }
-    } catch (e) {
-      if (mounted) _showSnack('Error: $e');
-    }
+    });
   }
 
   Future<void> _viewLogs() async {
@@ -642,9 +642,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     );
     if (result == 'cancel' || result == null) return false;
     if (result == 'yes') {
-      await _save();
-      // If save failed (error set), stay in form
-      if (_error != null) return false;
+      // If save failed or was cancelled, stay in form
+      if (!await _save()) return false;
     }
     return true; // 'no' or successful save
   }

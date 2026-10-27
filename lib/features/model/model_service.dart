@@ -24,16 +24,35 @@ class ModelService {
   String get _db => _getDatabase();
   Map<String, dynamic> get _ctx => _getContext();
 
-  Future<T> _call<T>(String method, List<dynamic> params) async {
-    final result = await _rpc.call(_db, method, params);
+  /// Calls `model.<model>.<method>` (spec 2.3). The context is always
+  /// appended as the last parameter: session context ⊕ [context] – keys of
+  /// [context] override the session context, like SAO's
+  /// `params[-1] = {...session.context, ...params[-1]}`. Callers never
+  /// append a context to [params] themselves.
+  Future<T> execute<T>(
+    String model,
+    String method,
+    List<dynamic> params, {
+    Map<String, dynamic>? context,
+  }) =>
+      _execute<T>('model.$model.$method', params, context);
+
+  Future<T> _execute<T>(
+    String fullMethod,
+    List<dynamic> params,
+    Map<String, dynamic>? context,
+  ) async {
+    final result = await _rpc.call(_db, fullMethod, [
+      ...params,
+      mergeContext(_ctx, context),
+    ]);
     return result as T;
   }
 
-  /// Like _call, but without casting the return value.
-  /// For write/delete which sometimes return null instead of true.
-  Future<void> _callVoid(String method, List<dynamic> params) async {
-    await _rpc.call(_db, method, params);
-  }
+  /// Session context ⊕ [context]; [context] wins on equal keys.
+  static Map<String, dynamic> mergeContext(
+          Map<String, dynamic> session, Map<String, dynamic>? context) =>
+      {...session, ...?context};
 
   /// Calls a selection classmethod on a model and returns [[key, label], ...].
   /// Used for selection fields where `fields_get` returns the method name as a
@@ -48,8 +67,7 @@ class ModelService {
     String method, {
     Map<String, dynamic>? values,
   }) async {
-    final raw = await _call<List>(
-        'model.$model.$method', [?values, _ctx]);
+    final raw = await execute<List>(model, method, [?values]);
     return raw
         .map((e) => e is List ? e.cast<dynamic>() : <dynamic>[e, e.toString()])
         .toList();
@@ -60,10 +78,8 @@ class ModelService {
     String model, {
     List<String>? fields,
   }) async {
-    final raw = await _call<Map<String, dynamic>>(
-      'model.$model.fields_get',
-      [fields ?? [], _ctx],
-    );
+    final raw = await execute<Map<String, dynamic>>(
+        model, 'fields_get', [fields ?? []]);
     return raw.map((k, v) =>
         MapEntry(k, FieldDefinition.fromJson(k, v as Map<String, dynamic>)));
   }
@@ -78,10 +94,8 @@ class ModelService {
     int? limit = 50,
     List<List<String>>? order,
   }) async {
-    final raw = await _call<List>(
-      'model.$model.search_read',
-      [domain, offset, limit, order, fields, _ctx],
-    );
+    final raw = await execute<List>(
+        model, 'search_read', [domain, offset, limit, order, fields]);
     return raw
         .cast<Map<String, dynamic>>()
         .map(TrytonRecord.fromJson)
@@ -94,10 +108,7 @@ class ModelService {
     List<int> ids,
     List<String> fields,
   ) async {
-    final raw = await _call<List>(
-      'model.$model.read',
-      [ids, fields, _ctx],
-    );
+    final raw = await execute<List>(model, 'read', [ids, fields]);
     return raw
         .cast<Map<String, dynamic>>()
         .map(TrytonRecord.fromJson)
@@ -109,19 +120,15 @@ class ModelService {
     String model,
     List<Map<String, dynamic>> valuesList,
   ) async {
-    final result = await _call<List>(
-      'model.$model.create',
-      [valuesList, _ctx],
-    );
+    final result = await execute<List>(model, 'create', [valuesList]);
     return result.cast<int>();
   }
 
-  /// Builds the context with `_timestamp` for optimistic locking.
-  Map<String, dynamic> _timestampContext(
+  /// `_timestamp` context for optimistic locking (null = none).
+  static Map<String, dynamic>? _timestampContext(
       String model, List<int> ids, String? timestamp) {
-    if (timestamp == null) return _ctx;
+    if (timestamp == null) return null;
     return {
-      ..._ctx,
       '_timestamp': {for (final id in ids) '$model,$id': timestamp},
     };
   }
@@ -137,14 +144,15 @@ class ModelService {
     Map<String, dynamic> values, {
     String? timestamp,
   }) async {
-    await _callVoid('model.$model.write',
-        [ids, values, _timestampContext(model, ids, timestamp)]);
+    // write/delete sometimes return null instead of true → no cast.
+    await execute<dynamic>(model, 'write', [ids, values],
+        context: _timestampContext(model, ids, timestamp));
   }
 
   /// Deletes records. [timestamp] works like in [write].
   Future<void> delete(String model, List<int> ids, {String? timestamp}) async {
-    await _callVoid(
-        'model.$model.delete', [ids, _timestampContext(model, ids, timestamp)]);
+    await execute<dynamic>(model, 'delete', [ids],
+        context: _timestampContext(model, ids, timestamp));
   }
 
   /// Returns default values for a new form.
@@ -152,10 +160,8 @@ class ModelService {
     String model,
     List<String> fields,
   ) async {
-    final raw = await _call<Map<String, dynamic>>(
-      'model.$model.default_get',
-      [fields, _ctx],
-    );
+    final raw = await execute<Map<String, dynamic>>(
+        model, 'default_get', [fields]);
     return raw;
   }
 
@@ -165,10 +171,8 @@ class ModelService {
     Map<String, dynamic> values,
     List<String> changedFields,
   ) async {
-    final raw = await _call<Map<String, dynamic>>(
-      'model.$model.on_change',
-      [values, changedFields, _ctx],
-    );
+    final raw = await execute<Map<String, dynamic>>(
+        model, 'on_change', [values, changedFields]);
     return raw;
   }
 
@@ -179,15 +183,12 @@ class ModelService {
     String method,
     List<int> ids,
   ) async {
-    return _call<dynamic>('model.$model.$method', [ids, _ctx]);
+    return execute<dynamic>(model, method, [ids]);
   }
 
   /// Duplicates records and returns the new IDs.
   Future<List<int>> copy(String model, List<int> ids) async {
-    final result = await _call<List>(
-      'model.$model.copy',
-      [ids, {}, _ctx],
-    );
+    final result = await execute<List>(model, 'copy', [ids, {}]);
     return result.cast<int>();
   }
 
@@ -198,42 +199,34 @@ class ModelService {
     String viewType = 'form',
     int? viewId,
   }) async {
-    final raw = await _call<Map<String, dynamic>>(
-      'model.$model.fields_view_get',
-      [viewId, viewType, _ctx],
-    );
+    final raw = await execute<Map<String, dynamic>>(
+        model, 'fields_view_get', [viewId, viewType]);
     return ViewDefinition.fromJson(raw);
   }
 
   /// Returns the current user's preferences (context fields only).
   /// context_only=true avoids avatar binary data in the response.
   Future<dynamic> getUserPreferences() async {
-    return _call<dynamic>('model.res.user.get_preferences', [true, _ctx]);
+    return execute<dynamic>('res.user', 'get_preferences', [true]);
   }
 
   /// Returns the toolbar actions (actions, reports, relations, email templates)
   /// for a model. Corresponds to `view_toolbar_get` in SAO.
   Future<TrytonToolbar> viewToolbarGet(String model) async {
-    final raw = await _call<Map<String, dynamic>>(
-      'model.$model.view_toolbar_get',
-      [_ctx],
-    );
+    final raw = await execute<Map<String, dynamic>>(
+        model, 'view_toolbar_get', []);
     return TrytonToolbar.fromJson(raw);
   }
 
   /// Returns the attachment count for a resource.
   Future<int> attachmentCount(String model, int id) async {
-    final raw = await _call<List>(
-      'model.ir.attachment.search_read',
-      [
-        [['resource', '=', '$model,$id']],
-        0,
-        1,
-        null,
-        ['id'],
-        _ctx,
-      ],
-    );
+    final raw = await execute<List>('ir.attachment', 'search_read', [
+      [['resource', '=', '$model,$id']],
+      0,
+      1,
+      null,
+      ['id'],
+    ]);
     // For the real count without a limit search again – here only an existence check
     return raw.length;
   }
@@ -244,13 +237,13 @@ class ModelService {
     List<int> ids,
     String model,
   ) async {
-    final result = await _call<List>(
+    final result = await _execute<List>(
       'report.$reportName.execute',
       [
         ids,
         {'ids': ids, 'model': model},
-        _ctx,
       ],
+      null,
     );
     return result;
   }
@@ -261,10 +254,8 @@ class ModelService {
   /// Returns `[symbol, position]` where position < 0.5 = prefix, ≥ 0.5 = suffix.
   Future<(String, double)> getSymbol(String relation, int id, int sign) async {
     try {
-      final result = await _call<List>(
-        'model.$relation.get_symbol',
-        [id, sign, _ctx],
-      );
+      final result =
+          await execute<List>(relation, 'get_symbol', [id, sign]);
       final symbol = result.isNotEmpty ? result[0]?.toString() ?? '' : '';
       final pos = result.length > 1 ? (result[1] as num).toDouble() : 1.0;
       return (symbol, pos);
@@ -276,10 +267,8 @@ class ModelService {
   /// Returns the number of records matching [domain].
   /// Mirrors SAO: model.execute('search_count', [domain, 0, null], context).
   Future<int> searchCount(String model, {List<dynamic> domain = const []}) async {
-    final result = await _call<int>(
-      'model.$model.search_count',
-      [domain, 0, null, _ctx],
-    );
+    final result =
+        await execute<int>(model, 'search_count', [domain, 0, null]);
     return result;
   }
 
@@ -290,17 +279,13 @@ class ModelService {
     List<dynamic> domain = const [],
     int limit = 10,
   }) async {
-    final raw = await _call<List>(
-      'model.$model.search_read',
-      [
-        [if (query.isNotEmpty) ['rec_name', 'ilike', '%$query%'], ...domain],
-        0,
-        limit,
-        null,
-        ['rec_name'],
-        _ctx,
-      ],
-    );
+    final raw = await execute<List>(model, 'search_read', [
+      [if (query.isNotEmpty) ['rec_name', 'ilike', '%$query%'], ...domain],
+      0,
+      limit,
+      null,
+      ['rec_name'],
+    ]);
     return raw.cast<Map<String, dynamic>>();
   }
 }

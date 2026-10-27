@@ -330,5 +330,11 @@
   "writeAnyway": "Trotzdem schreiben",
   "concurrencyException": "Gleichzeitiger Zugriff",
   "compareTabTitle": "Vergleichen: {name}",
-  "fieldNotSupported": "Wird noch nicht unterstützt"
+  "fieldNotSupported": "Wird noch nicht unterstützt",
+  "ok": "OK",
+  "alwaysIgnore": "Immer ignorieren",
+  "applicationError": "Anwendungsfehler",
+  "details": "Details",
+  "httpError": "Fehler: „[{code}] {text}“. Bitte später erneut versuchen.",
+  "networkError": "Server nicht erreichbar. {details}"
 }

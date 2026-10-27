@@ -256,4 +256,26 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get fieldNotSupported => 'Understøttes endnu ikke';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysIgnore => 'Ignorer altid';
+
+  @override
+  String get applicationError => 'Programfejl';
+
+  @override
+  String get details => 'Detaljer';
+
+  @override
+  String httpError(int code, String text) {
+    return 'Fejl: \"[$code] $text\". Prøv igen senere.';
+  }
+
+  @override
+  String networkError(String details) {
+    return 'Kan ikke nå serveren. $details';
+  }
 }
