@@ -428,5 +428,26 @@
   },
   "@invalidRecordTitle": {
     "description": "Title of the dialog listing invalid fields before saving"
+  },
+  "selectAction": "Select your action",
+  "@selectAction": {
+    "description": "Title of the dialog choosing one of several actions of a keyword"
+  },
+  "noActionDefined": "No action defined.",
+  "@noActionDefined": {
+    "description": "Message when a keyword has no action"
+  },
+  "preValidation": "Pre-validation",
+  "@preValidation": {
+    "description": "Title of the warning when a button pre-validation fails"
+  },
+  "buttonClickedBy": "By: {users}",
+  "@buttonClickedBy": {
+    "description": "Tooltip of a button rule counter: users who clicked",
+    "placeholders": {
+      "users": {
+        "type": "String"
+      }
+    }
   }
 }

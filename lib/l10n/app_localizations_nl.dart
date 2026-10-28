@@ -299,4 +299,18 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Record niet geldig';
+
+  @override
+  String get selectAction => 'Kies uw actie';
+
+  @override
+  String get noActionDefined => 'Geen actie gedefinieerd.';
+
+  @override
+  String get preValidation => 'Voorafgaande validatie';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Door: $users';
+  }
 }

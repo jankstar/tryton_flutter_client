@@ -300,4 +300,18 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Rekord nieprawidłowy';
+
+  @override
+  String get selectAction => 'Wybierz akcję';
+
+  @override
+  String get noActionDefined => 'Nie zdefiniowano akcji.';
+
+  @override
+  String get preValidation => 'Wstępna walidacja';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Przez: $users';
+  }
 }

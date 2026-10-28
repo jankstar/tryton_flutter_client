@@ -299,4 +299,18 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Posten er ikke gyldig';
+
+  @override
+  String get selectAction => 'Vælg handling';
+
+  @override
+  String get noActionDefined => 'Ingen handling defineret.';
+
+  @override
+  String get preValidation => 'Forhåndsvalidering';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Af: $users';
+  }
 }

@@ -341,5 +341,9 @@
   "invalidRequired": "\"{field}\" on pakollinen.",
   "invalidDomain": "\"{field}\" ei ole kelvollinen toimialueensa mukaan.",
   "invalidChildren": "Kentän \"{field}\" arvot eivät ole kelvollisia.",
-  "invalidRecordTitle": "Tietue ei ole kelvollinen"
+  "invalidRecordTitle": "Tietue ei ole kelvollinen",
+  "selectAction": "Valitse toiminto",
+  "noActionDefined": "Toimintoa ei ole määritetty.",
+  "preValidation": "Esitarkistus",
+  "buttonClickedBy": "Käyttäjät: {users}"
 }

@@ -341,5 +341,9 @@
   "invalidRequired": "\"{field}\" is verplicht.",
   "invalidDomain": "\"{field}\" is niet geldig volgens het domein.",
   "invalidChildren": "De waarden van \"{field}\" zijn niet geldig.",
-  "invalidRecordTitle": "Record niet geldig"
+  "invalidRecordTitle": "Record niet geldig",
+  "selectAction": "Kies uw actie",
+  "noActionDefined": "Geen actie gedefinieerd.",
+  "preValidation": "Voorafgaande validatie",
+  "buttonClickedBy": "Door: {users}"
 }

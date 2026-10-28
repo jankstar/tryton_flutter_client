@@ -300,4 +300,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Enregistrement non valide';
+
+  @override
+  String get selectAction => 'Sélectionnez votre action';
+
+  @override
+  String get noActionDefined => 'Aucune action définie.';
+
+  @override
+  String get preValidation => 'Pré-validation';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Par : $users';
+  }
 }

@@ -19,6 +19,17 @@ class FormXmlParser {
     return raw < 1 ? defaultValue : raw;
   }
 
+  /// A JSON attribute (PYSON encoded by the server); null if absent or
+  /// not JSON.
+  static dynamic _json(String? value) {
+    if (value == null || value.isEmpty) return null;
+    try {
+      return jsonDecode(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
   int _colspan(XmlElement el) {
     final raw = int.tryParse(el.getAttribute('colspan') ?? '') ?? 1;
     return raw < 1 ? 1 : raw;
@@ -99,6 +110,10 @@ class FormXmlParser {
           states: btnStatesStr,
           statesRaw: btnStatesRaw,
           confirm: el.getAttribute('confirm'),
+          keyword: el.getAttribute('keyword'),
+          type: el.getAttribute('type'),
+          change: _json(el.getAttribute('change')),
+          rule: (int.tryParse(el.getAttribute('rule') ?? '') ?? 0) != 0,
         );
 
       case 'hpaned':

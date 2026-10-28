@@ -11,7 +11,7 @@ import '../../core/theme/theme_provider.dart';
 import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/model_service.dart';
-import '../actions/act_window.dart';
+import '../actions/action_service.dart';
 import '../shell/tab_manager.dart';
 
 // ─── Data model ──────────────────────────────────────────────────────────────
@@ -35,10 +35,6 @@ class MenuItem {
   });
 
   bool get hasAction => action != null && action!.isNotEmpty;
-
-  /// Load model name from an act_window action – resolved separately.
-  bool get isActWindow =>
-      action?.startsWith('ir.action.act_window') ?? false;
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -393,41 +389,21 @@ class _MenuNodeState extends ConsumerState<_MenuNode> {
     );
   }
 
+  /// Menu activation like the Python client's `menu_row_activate`: the
+  /// `tree_open` keyword of the menu entry (no ids → no name suffix,
+  /// no warning without action); one action runs, several are offered.
   Future<void> _openAction(BuildContext context, MenuItem item) async {
-    if (!item.isActWindow) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Action "${item.action}" is not yet supported.')),
-      );
-      return;
-    }
-
-    final parts = item.action!.split(',');
-    if (parts.length < 2) return;
-    final actionId = int.tryParse(parts[1]);
-    if (actionId == null) return;
-
     try {
-      final svc = ref.read(modelServiceProvider);
-      final session = ref.read(sessionProvider);
-
-      // Load act_window with everything the screen needs (views, domains,
-      // order, …), like the Python client's exec_action. A menu opens its
-      // action like tree_open: active_model = 'ir.ui.menu', the menu entry
-      // as active_id, no ids.
-      final actions = await svc.read(
-          'ir.action.act_window', [actionId], actWindowFields);
-      if (actions.isEmpty || !context.mounted) return;
-      openActWindow(
-        ref.read(tabsProvider.notifier),
-        session,
-        actions.first.values,
-        data: {'model': 'ir.ui.menu', 'id': item.id, 'ids': const <int>[]},
-        title: actions.first['name']?.toString() ?? item.name,
-      );
+      await ref.read(actionServiceProvider).execKeyword(
+            'tree_open',
+            {'model': 'ir.ui.menu', 'id': item.id},
+            warning: false,
+            ui: DialogActionUi(context),
+          );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Fehler: $e')));
+            .showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }

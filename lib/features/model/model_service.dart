@@ -184,16 +184,6 @@ class ModelService {
     return raw;
   }
 
-  /// Executes a form button method on the server.
-  /// Returns the action dict if the server returns one, otherwise null.
-  Future<dynamic> executeButton(
-    String model,
-    String method,
-    List<int> ids,
-  ) async {
-    return execute<dynamic>(model, method, [ids]);
-  }
-
   /// Duplicates records and returns the new IDs.
   Future<List<int>> copy(String model, List<int> ids) async {
     final result = await execute<List>(model, 'copy', [ids, {}]);

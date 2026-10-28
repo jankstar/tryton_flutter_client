@@ -341,5 +341,9 @@
   "invalidRequired": "„{field}“ ist erforderlich.",
   "invalidDomain": "„{field}“ ist laut Domain nicht gültig.",
   "invalidChildren": "Die Werte von „{field}“ sind nicht gültig.",
-  "invalidRecordTitle": "Datensatz nicht gültig"
+  "invalidRecordTitle": "Datensatz nicht gültig",
+  "selectAction": "Aktion auswählen",
+  "noActionDefined": "Keine Aktion definiert.",
+  "preValidation": "Vorabprüfung",
+  "buttonClickedBy": "Von: {users}"
 }

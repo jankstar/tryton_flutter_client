@@ -136,6 +136,22 @@ class ButtonNode extends FormNode {
 
   /// Confirmation text shown before executing the button action.
   final String? confirm;
+
+  /// Toolbar menu the button also appears in (`action`, `relate`,
+  /// `print`; SAO: `keyword || 'action'`).
+  final String? keyword;
+
+  /// `instance` (values of [change] sent, changes applied without saving)
+  /// or `class` (default: save, then `model.X.<name>(ids)`).
+  final String? type;
+
+  /// Fields sent to an instance button (decoded PYSON, evaluated with the
+  /// record).
+  final dynamic change;
+
+  /// Button with click rules (`ir.model.button.rule`): counter of clicks.
+  final bool rule;
+
   const ButtonNode({
     required this.name,
     this.string,
@@ -144,7 +160,13 @@ class ButtonNode extends FormNode {
     this.states,
     this.statesRaw,
     this.confirm,
+    this.keyword,
+    this.type,
+    this.change,
+    this.rule = false,
   });
+
+  bool get isInstance => type == 'instance';
 }
 
 // ─── TreeColumn (for tree views) ──────────────────────────────────────────────

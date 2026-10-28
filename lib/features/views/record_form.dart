@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/icons/tryton_icon.dart';
+import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/xml/view_definition.dart';
@@ -333,37 +334,11 @@ class _RecordFormState extends State<RecordForm> {
     return inner;
   }
 
-  Widget _buildButton(ButtonNode node) {
-    // Evaluate PYSON states against current record values – like SAO's
-    // Button.set_state(record) which calls record.expr_eval(attributes.states).
-    final states = _nodeStates(node.statesRaw);
-    if (states.invisible) return const SizedBox.shrink();
-
-    final label = node.string ?? node.name;
-    final iconName = node.icon;
-    final disabled = widget.isReadOnly || states.readonly;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: (iconName != null && iconName.isNotEmpty)
-          ? OutlinedButton.icon(
-              icon: TrytonIcon(
-                iconName: iconName,
-                size: 16,
-                color: disabled
-                    ? Theme.of(context).colorScheme.onSurface.withAlpha(97)
-                    : Theme.of(context).colorScheme.primary,
-                fallback: Icons.play_circle_outline,
-              ),
-              label: Text(label),
-              onPressed: disabled ? null : () => widget.onButton?.call(node),
-            )
-          : OutlinedButton(
-              onPressed: disabled ? null : () => widget.onButton?.call(node),
-              child: Text(label),
-            ),
-    );
-  }
+  Widget _buildButton(ButtonNode node) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: RecordButton(
+            node: node, record: _record, onPressed: widget.onButton),
+      );
 
   Widget _buildNotebook(NotebookNode node) {
     // Filter pages based on their states/invisible conditions
@@ -475,58 +450,28 @@ class _RecordFormState extends State<RecordForm> {
 // ─── Sticky button footer ─────────────────────────────────────────────────────
 
 /// Renders root-level form buttons in a fixed footer bar that stays visible
-/// while the form content scrolls. Evaluates PYSON states per button.
+/// while the form content scrolls.
 class FormButtonFooter extends StatelessWidget {
   final List<ButtonNode> nodes;
   /// The record whose values the button states use.
   final Record record;
-  final bool isReadOnly;
   final Future<void> Function(ButtonNode)? onButton;
 
   const FormButtonFooter({
+    super.key,
     required this.nodes,
     required this.record,
-    required this.isReadOnly,
     this.onButton,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final buttons = <Widget>[];
-
-    for (final node in nodes) {
-      final evaluated = node.statesRaw == null
-          ? const {}
-          : record.exprEval(node.statesRaw);
-      final states = evaluated is Map ? evaluated : const {};
-      if (PYSONEvaluator.truthy(states['invisible'])) continue;
-
-      final label = node.string ?? node.name;
-      final disabled = isReadOnly || PYSONEvaluator.truthy(states['readonly']);
-      final iconName = node.icon;
-
-      buttons.add(
-        iconName != null && iconName.isNotEmpty
-            ? OutlinedButton.icon(
-                icon: TrytonIcon(
-                  iconName: iconName,
-                  size: 16,
-                  color: disabled
-                      ? cs.onSurface.withAlpha(97)
-                      : cs.primary,
-                  fallback: Icons.play_circle_outline,
-                ),
-                label: Text(label),
-                onPressed: disabled ? null : () => onButton?.call(node),
-              )
-            : OutlinedButton(
-                onPressed: disabled ? null : () => onButton?.call(node),
-                child: Text(label),
-              ),
-      );
-    }
-
+    final buttons = [
+      for (final node in nodes)
+        if (!RecordButton.statesOf(node, record).invisible)
+          RecordButton(node: node, record: record, onPressed: onButton),
+    ];
     if (buttons.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -542,6 +487,104 @@ class FormButtonFooter extends StatelessWidget {
         runSpacing: 4,
         children: buttons,
       ),
+    );
+  }
+}
+
+/// A `<button>` of a form (SAO `Sao.common.Button.set_state`): `states`
+/// evaluated with the record (invisible, readonly, icon); class buttons
+/// are disabled while a parent record is unsaved; with `rule` a badge
+/// shows the number of clicks (tooltip with the users).
+class RecordButton extends StatelessWidget {
+  final ButtonNode node;
+  final Record record;
+  final Future<void> Function(ButtonNode)? onPressed;
+
+  const RecordButton(
+      {super.key, required this.node, required this.record, this.onPressed});
+
+  static ({bool invisible, bool readonly, String? icon}) statesOf(
+      ButtonNode node, Record record) {
+    final evaluated = node.statesRaw == null
+        ? const {}
+        : record.exprEval(node.statesRaw);
+    final states = evaluated is Map ? evaluated : const {};
+    final icon = states['icon'];
+    return (
+      invisible: PYSONEvaluator.truthy(states['invisible']),
+      readonly: PYSONEvaluator.truthy(states['readonly']),
+      icon: icon is String && icon.isNotEmpty ? icon : node.icon,
+    );
+  }
+
+  /// A parent record (of an x2many sub-form) is modified.
+  static bool _parentModified(Record record) {
+    var parent = record.group.parent;
+    while (parent != null) {
+      if (parent.modified) return true;
+      parent = parent.group.parent;
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final states = statesOf(node, record);
+    if (states.invisible) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    final disabled = states.readonly ||
+        (!node.isInstance && _parentModified(record)) ||
+        onPressed == null;
+    final label = node.string ?? node.name;
+    final Widget text = node.rule
+        ? Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(label),
+            const SizedBox(width: 6),
+            _ClickCounter(record: record, name: node.name),
+          ])
+        : Text(label);
+    final iconName = states.icon;
+    void press() => onPressed?.call(node);
+    return iconName != null && iconName.isNotEmpty
+        ? OutlinedButton.icon(
+            icon: TrytonIcon(
+              iconName: iconName,
+              size: 16,
+              color: disabled ? cs.onSurface.withAlpha(97) : cs.primary,
+              fallback: Icons.play_circle_outline,
+            ),
+            label: text,
+            onPressed: disabled ? null : press,
+          )
+        : OutlinedButton(
+            onPressed: disabled ? null : press,
+            child: text,
+          );
+  }
+}
+
+/// Number of clicks of a button with rules (`ir.model.button.click`
+/// `get_click`), tooltip "By: users".
+class _ClickCounter extends StatelessWidget {
+  final Record record;
+  final String name;
+  const _ClickCounter({required this.record, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<dynamic>(
+      future: record.getButtonClicks(name).catchError((Object _) => null),
+      builder: (context, snapshot) {
+        final clicks = snapshot.data;
+        final users = clicks is Map
+            ? [for (final u in clicks.values) '$u']
+            : const <String>[];
+        if (users.isEmpty) return const SizedBox.shrink();
+        return Tooltip(
+          message: context.l10n.buttonClickedBy(users.join(', ')),
+          child: Badge(label: Text('${users.length}')),
+        );
+      },
     );
   }
 }

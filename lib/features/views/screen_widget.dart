@@ -8,6 +8,7 @@ import '../../core/screen/screen.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
 import '../../shared/widgets/concurrency_dialog.dart';
+import '../actions/action_service.dart';
 import '../auth/auth_provider.dart';
 import '../model/concurrency.dart';
 import '../model/field_support.dart';
@@ -125,7 +126,18 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
       ..onClose = (() async => widget.onClose?.call())
       ..onReloadContext = (() => ref.read(sessionProvider).reloadContext())
       ..onReloadMenu = (() async => ref.invalidate(menuProvider));
-    screen.onViewAdded = (v) => _markUnsupported(screen.model, v);
+    screen
+      ..onViewAdded = ((v) => _markUnsupported(screen.model, v))
+      ..onConfirm = _confirm
+      ..onPreValidationFailed = _preValidationFailed
+      ..invalidTexts = _invalidTexts
+      ..onAction = (action, data, context) => ref
+          .read(actionServiceProvider)
+          .execute(action,
+              data: data,
+              context: context,
+              keyword: true,
+              ui: DialogActionUi(this.context));
     final cs = screen.contextScreen;
     if (cs != null) {
       cs
@@ -133,6 +145,58 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
         ..onViewAdded = (v) => _markUnsupported(cs.model, v);
     }
     return screen;
+  }
+
+  /// `confirm` of a button: OK / Cancel.
+  Future<bool> _confirm(String text) async {
+    if (!mounted) return false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text(text),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(ctx.l10n.cancel),
+          ),
+          FilledButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(ctx.l10n.ok),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
+  /// Warning „Pre-validation“ with the invalid fields.
+  Future<void> _preValidationFailed(String message) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded),
+        title: Text(ctx.l10n.preValidation),
+        content: SingleChildScrollView(child: Text(message)),
+        actions: [
+          FilledButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(ctx.l10n.ok),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InvalidMessages _invalidTexts() {
+    final l = context.l10n;
+    return InvalidMessages(
+      required: l.invalidRequired('%s'),
+      domain: l.invalidDomain('%s'),
+      children: l.invalidChildren('%s'),
+    );
   }
 
   Future<void> _init() async {

@@ -300,4 +300,18 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Datensatz nicht gültig';
+
+  @override
+  String get selectAction => 'Aktion auswählen';
+
+  @override
+  String get noActionDefined => 'Keine Aktion definiert.';
+
+  @override
+  String get preValidation => 'Vorabprüfung';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Von: $users';
+  }
 }

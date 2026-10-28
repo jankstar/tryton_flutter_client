@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/actions/action_executor.dart';
+import '../../features/actions/action_service.dart';
+import '../../core/xml/view_definition.dart';
 import '../../features/model/toolbar_data.dart';
 
 /// Reusable toolbar button for Action / Relate / Print / Email categories.
@@ -21,6 +22,11 @@ class ToolbarDropdownButton extends ConsumerWidget {
   /// 10.4); false cancels the action.
   final Future<bool> Function()? beforeExecute;
 
+  /// Form buttons shown in this menu as well (`keyword`, spec 8.6), run
+  /// with [onButton] (without [beforeExecute]: the button saves itself).
+  final List<ButtonNode> buttons;
+  final Future<void> Function(ButtonNode)? onButton;
+
   const ToolbarDropdownButton({
     super.key,
     required this.icon,
@@ -30,6 +36,8 @@ class ToolbarDropdownButton extends ConsumerWidget {
     required this.selectedIds,
     this.enabled = true,
     this.beforeExecute,
+    this.buttons = const [],
+    this.onButton,
   });
 
   Future<void> _execute(
@@ -37,14 +45,31 @@ class ToolbarDropdownButton extends ConsumerWidget {
     final before = beforeExecute;
     if (before != null && !await before()) return;
     if (!context.mounted) return;
-    final executor = ref.read(actionExecutorProvider);
-    await executor.execute(context, action, model, selectedIds);
+    // Like SAO's toolbar: Action.execute with keyword (name suffix).
+    try {
+      await ref.read(actionServiceProvider).execute(
+            {'res_model': action.resModel, ...action.raw},
+            data: {
+              'model': model,
+              'id': selectedIds.isEmpty ? null : selectedIds.first,
+              'ids': selectedIds,
+            },
+            keyword: true,
+            ui: DialogActionUi(context),
+          );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Greyed out when disabled (no selection) or no items configured
-    if (!enabled || items.isEmpty) {
+    final shownButtons = onButton == null ? const <ButtonNode>[] : buttons;
+    // Greyed out when disabled (no selection) or nothing configured
+    if (!enabled || (items.isEmpty && shownButtons.isEmpty)) {
       return IconButton(
         icon: Icon(icon, color: Theme.of(context).disabledColor),
         tooltip: tooltip,
@@ -53,7 +78,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
     }
 
     // Single item → execute directly
-    if (items.length == 1) {
+    if (items.length == 1 && shownButtons.isEmpty) {
       return IconButton(
         icon: Icon(icon),
         tooltip: '$tooltip: ${items.first.name}',
@@ -61,14 +86,18 @@ class ToolbarDropdownButton extends ConsumerWidget {
       );
     }
 
-    // Multiple items → dropdown
-    return PopupMenuButton<TrytonActionItem>(
+    // Multiple items → dropdown (actions, then the form buttons)
+    return PopupMenuButton<Object>(
       icon: Icon(icon),
       tooltip: tooltip,
       position: PopupMenuPosition.under,
-      onSelected: (action) => _execute(context, ref, action),
+      onSelected: (entry) => switch (entry) {
+        TrytonActionItem() => _execute(context, ref, entry),
+        ButtonNode() => onButton?.call(entry),
+        _ => null,
+      },
       itemBuilder: (ctx) => [
-        PopupMenuItem<TrytonActionItem>(
+        PopupMenuItem<Object>(
           enabled: false,
           height: 28,
           child: Text(
@@ -81,7 +110,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
           ),
         ),
         const PopupMenuDivider(height: 1),
-        ...items.map((a) => PopupMenuItem<TrytonActionItem>(
+        ...items.map((a) => PopupMenuItem<Object>(
               value: a,
               child: Row(children: [
                 Icon(icon, size: 16,
@@ -90,6 +119,13 @@ class ToolbarDropdownButton extends ConsumerWidget {
                 Expanded(
                     child: Text(a.name, overflow: TextOverflow.ellipsis)),
               ]),
+            )),
+        if (items.isNotEmpty && shownButtons.isNotEmpty)
+          const PopupMenuDivider(height: 1),
+        ...shownButtons.map((b) => PopupMenuItem<Object>(
+              value: b,
+              child: Text(b.string ?? b.name,
+                  overflow: TextOverflow.ellipsis),
             )),
       ],
     );

@@ -298,4 +298,18 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Posten är inte giltig';
+
+  @override
+  String get selectAction => 'Välj åtgärd';
+
+  @override
+  String get noActionDefined => 'Ingen åtgärd definierad.';
+
+  @override
+  String get preValidation => 'Förhandsvalidering';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Av: $users';
+  }
 }

@@ -6,9 +6,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
-import 'package:tryton_flutter_client/features/actions/act_window.dart';
+import 'package:tryton_flutter_client/features/actions/action_service.dart';
 import 'package:tryton_flutter_client/features/model/model_rpc.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
+import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 
 /// Screen (list of party.party) against the Tryton test server, read
 /// only (not part of `flutter test`, the tag `integration` is skipped in
@@ -60,15 +61,19 @@ void main() {
       return;
     }
     // The party action as the menu opens it.
-    final actions = await svc.searchRead('ir.action.act_window',
-        domain: [
-          ['res_model', '=', 'party.party']
-        ],
-        fields: actWindowFields,
-        limit: 1);
-    expect(actions, isNotEmpty);
-    final action = ScreenAttributes.fromActWindow(actions.first.values,
-        sessionContext: context);
+    final ids = await svc.execute<List>('ir.action.act_window', 'search', [
+      [
+        ['res_model', '=', 'party.party']
+      ],
+      0,
+      1,
+      null
+    ]);
+    expect(ids, isNotEmpty);
+    final values = await svc.execute<Map<String, dynamic>>(
+        'ir.action', 'get_action_value', [ids.first]);
+    final action =
+        ScreenAttributes.fromActWindow(values, sessionContext: context);
     final attributes = ScreenAttributes(
       action.model,
       mode: action.mode,
@@ -122,5 +127,65 @@ void main() {
     expect(identical(screen.currentRecord, record), isTrue);
     expect(record.isLoaded('addresses'), isTrue);
     expect(screen.statusText, startsWith('1'));
+  });
+
+  test('read: open a party → run a relate action (keyword, name suffix)',
+      () async {
+    if (password == null) {
+      markTestSkipped('TRYTON_PASSWORD not set');
+      return;
+    }
+    // Open the first party in a form screen.
+    final ids = await svc.execute<List>('party.party', 'search', [
+      <dynamic>[],
+      0,
+      1,
+      null
+    ]);
+    expect(ids, isNotEmpty);
+    final id = ids.first as int;
+    final form = TrytonScreen(
+        ScreenAttributes('party.party', mode: const ['form'], resId: id),
+        session: modelSessionFor(svc));
+    addTearDown(form.dispose);
+    form.load([id]);
+    form.currentRecord = form.group.first;
+    await form.switchView();
+    final recName = await form.currentRecord!.recName();
+
+    // Relate actions of the toolbar, the first act_window is run.
+    final toolbar = await svc.execute<Map>('party.party', 'view_toolbar_get', []);
+    final relate = [
+      for (final a in (toolbar['relate'] as List? ?? const []))
+        if (a is Map && a['type'] == 'ir.action.act_window')
+          Map<String, dynamic>.from(a)
+    ];
+    if (relate.isEmpty) {
+      markTestSkipped('no relate action for party.party');
+      return;
+    }
+    final tabs = TabsNotifier();
+    final service = ActionService(svc, tabs,
+        sessionContext: () => context, userId: () => null);
+    await service.execute(relate.first,
+        data: {
+          'model': 'party.party',
+          'id': id,
+          'ids': [id]
+        },
+        context: form.localContext,
+        keyword: true);
+    final tab = tabs.state.tabs.single;
+    expect(tab.title, '${relate.first['name']} ($recName)');
+    expect(tab.attributes.domain.toString(), isNot(contains('__class__')),
+        reason: 'PYSON evaluated with active_id(s)');
+
+    // The opened screen searches without error.
+    final related =
+        TrytonScreen(tab.attributes, session: modelSessionFor(svc));
+    addTearDown(related.dispose);
+    await related.switchView();
+    expect(await related.searchFilter(), isTrue);
+    expect(related.searchCount, greaterThanOrEqualTo(0));
   });
 }

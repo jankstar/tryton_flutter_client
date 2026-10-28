@@ -341,5 +341,9 @@
   "invalidRequired": "\"{field}\" er påkrævet.",
   "invalidDomain": "\"{field}\" er ikke gyldig i henhold til domænet.",
   "invalidChildren": "Værdierne i \"{field}\" er ikke gyldige.",
-  "invalidRecordTitle": "Posten er ikke gyldig"
+  "invalidRecordTitle": "Posten er ikke gyldig",
+  "selectAction": "Vælg handling",
+  "noActionDefined": "Ingen handling defineret.",
+  "preValidation": "Forhåndsvalidering",
+  "buttonClickedBy": "Af: {users}"
 }

@@ -299,4 +299,18 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Registro no válido';
+
+  @override
+  String get selectAction => 'Seleccione su acción';
+
+  @override
+  String get noActionDefined => 'No hay ninguna acción definida.';
+
+  @override
+  String get preValidation => 'Validación previa';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Por: $users';
+  }
 }

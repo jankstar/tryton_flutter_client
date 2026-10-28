@@ -341,5 +341,9 @@
   "invalidRequired": "\"{field}\" är obligatoriskt.",
   "invalidDomain": "\"{field}\" är inte giltigt enligt domänen.",
   "invalidChildren": "Värdena i \"{field}\" är inte giltiga.",
-  "invalidRecordTitle": "Posten är inte giltig"
+  "invalidRecordTitle": "Posten är inte giltig",
+  "selectAction": "Välj åtgärd",
+  "noActionDefined": "Ingen åtgärd definierad.",
+  "preValidation": "Förhandsvalidering",
+  "buttonClickedBy": "Av: {users}"
 }

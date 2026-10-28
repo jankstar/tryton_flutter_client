@@ -299,4 +299,18 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Registo não válido';
+
+  @override
+  String get selectAction => 'Selecione sua ação';
+
+  @override
+  String get noActionDefined => 'Nenhuma ação definida.';
+
+  @override
+  String get preValidation => 'Pré-validação';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Por: $users';
+  }
 }

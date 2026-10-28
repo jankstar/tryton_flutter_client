@@ -15,8 +15,7 @@ import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../model/field_definition.dart';
 import '../model/model_service.dart';
 import '../model/toolbar_data.dart';
-import '../actions/act_window.dart';
-import '../auth/auth_provider.dart';
+import '../actions/action_service.dart';
 import '../shell/tab_manager.dart';
 import 'record_cells.dart';
 import 'record_form.dart';
@@ -276,23 +275,17 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         final screen = _screen;
         _setSelected([record]);
         if (_view?.attributes['keyword_open'] == '1' && record.id >= 0) {
-          final svc = ref.read(modelServiceProvider);
-          final actions = await svc.execute<List>('ir.action.keyword',
-              'get_keyword', [
-            'tree_open',
-            [_model, record.id]
-          ]);
-          final action = actions.isEmpty ? null : actions.first;
-          if (action is Map && action['type'] == 'ir.action.act_window') {
-            openActWindow(ref.read(tabsProvider.notifier),
-                ref.read(sessionProvider), action.cast<String, dynamic>(),
-                data: {
-                  'model': _model,
-                  'id': record.id,
-                  'ids': [record.id]
-                });
-            return;
-          }
+          // Keyword action of the record (one runs, several are offered).
+          await ref.read(actionServiceProvider).execKeyword(
+              'tree_open',
+              {
+                'model': _model,
+                'id': record.id,
+                'ids': [record.id]
+              },
+              context: screen.localContext,
+              ui: DialogActionUi(context));
+          return;
         }
         if (screen.modified()) return;
         screen.currentRecord = record;

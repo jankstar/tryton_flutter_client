@@ -341,5 +341,9 @@
   "invalidRequired": "«{field}» обязательно для заполнения.",
   "invalidDomain": "«{field}» недопустимо согласно домену.",
   "invalidChildren": "Значения «{field}» недопустимы.",
-  "invalidRecordTitle": "Запись недопустима"
+  "invalidRecordTitle": "Запись недопустима",
+  "selectAction": "Выберите действие",
+  "noActionDefined": "Действие не определено.",
+  "preValidation": "Предварительная проверка",
+  "buttonClickedBy": "Кем: {users}"
 }

@@ -1,6 +1,6 @@
 # Tryton_Flutter_Client
 
-A Flutter client for the [Tryton ERP system](https://www.tryton.org/), providing a native cross-platform interface that communicates with a Tryton server using the same JSON-RPC 2.0 protocol as the official [SAO web client](https://foss.heptapod.net/tryton/sao).
+A Flutter client for the [Tryton ERP system](https://www.tryton.org/), providing a native cross-platform interface that communicates with a Tryton server using the same JSON-RPC protocol as the official [SAO web client](https://foss.heptapod.net/tryton/sao).
 
 ## Features
 

@@ -341,5 +341,9 @@
   "invalidRequired": "„{field}” jest wymagane.",
   "invalidDomain": "„{field}” jest nieprawidłowe według domeny.",
   "invalidChildren": "Wartości „{field}” są nieprawidłowe.",
-  "invalidRecordTitle": "Rekord nieprawidłowy"
+  "invalidRecordTitle": "Rekord nieprawidłowy",
+  "selectAction": "Wybierz akcję",
+  "noActionDefined": "Nie zdefiniowano akcji.",
+  "preValidation": "Wstępna walidacja",
+  "buttonClickedBy": "Przez: {users}"
 }

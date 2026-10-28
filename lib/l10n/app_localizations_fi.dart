@@ -299,4 +299,18 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Tietue ei ole kelvollinen';
+
+  @override
+  String get selectAction => 'Valitse toiminto';
+
+  @override
+  String get noActionDefined => 'Toimintoa ei ole määritetty.';
+
+  @override
+  String get preValidation => 'Esitarkistus';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Käyttäjät: $users';
+  }
 }

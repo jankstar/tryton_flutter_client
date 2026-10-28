@@ -234,6 +234,28 @@ class ScreenView {
 
   bool get searchable => viewType == 'tree';
 
+  /// Buttons of the view (form: all `<button>` nodes, nested too).
+  late final List<ButtonNode> buttons = [
+    if (formRoot != null) ..._buttonsOf(formRoot!.children),
+  ];
+
+  static Iterable<ButtonNode> _buttonsOf(List<FormNode> nodes) sync* {
+    for (final node in nodes) {
+      switch (node) {
+        case ButtonNode():
+          yield node;
+        case GroupNode():
+          yield* _buttonsOf(node.children);
+        case NotebookNode():
+          yield* _buttonsOf(node.pages);
+        case PageNode():
+          yield* _buttonsOf(node.children);
+        default:
+          break;
+      }
+    }
+  }
+
   @override
   String toString() => 'ScreenView($viewType, $viewId)';
 }
@@ -296,6 +318,16 @@ class TrytonScreen extends ChangeNotifier {
   ScreenCallback? onClose;
   ScreenCallback? onReloadMenu;
   ScreenCallback? onReloadContext;
+
+  /// Buttons (spec 8.6): `confirm` question (true = go on), warning of
+  /// a failed pre-validation (message, title), an action returned by a
+  /// class button (run with keyword; data `model`, `id`, `ids`), texts of
+  /// [Record.invalidMessage].
+  Future<bool> Function(String text)? onConfirm;
+  Future<void> Function(String message)? onPreValidationFailed;
+  Future<void> Function(dynamic action, Map<String, dynamic> data,
+      Map<String, dynamic> context)? onAction;
+  InvalidMessages Function()? invalidTexts;
 
   /// Records selected in a list view (set by the view).
   List<Record> selectedRecords = const [];
@@ -1135,6 +1167,110 @@ class TrytonScreen extends ChangeNotifier {
     record.cancel();
     await record.load('*');
     _notify();
+  }
+
+  // ── Buttons (8.6) ─────────────────────────────────────────────────────────
+
+  /// Records a button works on: the selection of a list, else the
+  /// current record.
+  List<Record> get _buttonRecords => _selectedOrCurrent;
+
+  /// Class buttons of the current view usable for all selected records
+  /// (not invisible/readonly; SAO `get_buttons`, toolbar menus).
+  List<ButtonNode> getButtons() {
+    final records = _buttonRecords;
+    if (records.isEmpty || screenReadonly) return const [];
+    return [
+      for (final button in currentView?.buttons ?? const <ButtonNode>[])
+        if (!button.isInstance &&
+            records.every((r) {
+              final states = r.exprEval(button.statesRaw ?? const {});
+              return !(states is Map &&
+                  (PYSONEvaluator.truthy(states['invisible']) ||
+                      PYSONEvaluator.truthy(states['readonly'])));
+            }))
+          button
+    ];
+  }
+
+  /// Runs [button] (SAO `screen.button`, spec 8.6):
+  /// 1. selected records validated with `states.pre_validate`;
+  /// 2. `confirm` question;
+  /// 3. instance button: `model.X.<name>(values of change + id)`, the
+  ///    changes applied with `set_on_change` (no save);
+  /// 4. class button: save the current record, `model.X.<name>(ids)` with
+  ///    `_timestamp` of the selected records; a string result is a client
+  ///    action (after reload), an action runs with keyword (then reload),
+  ///    otherwise and on error reload.
+  Future<void> button(ButtonNode button) async {
+    final current = currentRecord;
+    if (current == null) return;
+    final records = _buttonRecords;
+    final fields = currentView?.fields;
+    for (final record in records) {
+      final states = record.exprEval(button.statesRaw ?? const {});
+      final domain = states is Map ? states['pre_validate'] : null;
+      if (!record.validate(
+          fields: fields,
+          preValidate: domain is List && domain.isNotEmpty ? domain : null)) {
+        final texts = invalidTexts?.call() ?? const InvalidMessages();
+        await onPreValidationFailed?.call(record.invalidMessage(texts));
+        // Reset the valid state with the normal domain
+        record.validate(fields: fields);
+        _notify();
+        return;
+      }
+    }
+    final confirm = button.confirm;
+    if (confirm != null && confirm.isNotEmpty) {
+      if (!await (onConfirm?.call(confirm) ?? Future.value(true))) {
+        _notify();
+        return;
+      }
+    }
+    if (button.isInstance) {
+      final args = current.exprEval(button.change ?? const []);
+      final values = current.getOnChangeArgs(
+          [for (final a in (args is List ? args : const [])) '$a'])
+        ..['id'] = current.id;
+      final changes = await model
+          .execute(button.name, [values], context: context);
+      if (changes is Map) {
+        await current.setOnChange(changes.cast<String, dynamic>());
+      }
+      current.setModified();
+      _notify();
+      return;
+    }
+    if (!await current.save(forceReload: false)) return;
+    final ctx = context;
+    final timestamps = <String, String?>{};
+    final ids = <int>[];
+    for (final record in records) {
+      timestamps.addAll(record.getTimestamp());
+      ids.add(record.id);
+    }
+    ctx['_timestamp'] = timestamps;
+    final dynamic result;
+    try {
+      result = await model.execute(button.name, [ids], context: ctx);
+    } catch (_) {
+      await reload(ids, written: true);
+      rethrow;
+    }
+    if (result is String) {
+      await reload(ids, written: true);
+      await clientAction(result);
+    } else if (result != null && result != false) {
+      try {
+        await onAction?.call(result,
+            {'model': model.name, 'id': current.id, 'ids': ids}, context);
+      } finally {
+        await reload(ids, written: true);
+      }
+    } else {
+      await reload(ids, written: true);
+    }
   }
 
   // ── Client actions (8.7) ──────────────────────────────────────────────────

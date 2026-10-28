@@ -299,4 +299,18 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get invalidRecordTitle => 'Запись недопустима';
+
+  @override
+  String get selectAction => 'Выберите действие';
+
+  @override
+  String get noActionDefined => 'Действие не определено.';
+
+  @override
+  String get preValidation => 'Предварительная проверка';
+
+  @override
+  String buttonClickedBy(String users) {
+    return 'Кем: $users';
+  }
 }

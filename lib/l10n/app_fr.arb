@@ -341,5 +341,9 @@
   "invalidRequired": "« {field} » est obligatoire.",
   "invalidDomain": "« {field} » n'est pas valide selon son domaine.",
   "invalidChildren": "Les valeurs de « {field} » ne sont pas valides.",
-  "invalidRecordTitle": "Enregistrement non valide"
+  "invalidRecordTitle": "Enregistrement non valide",
+  "selectAction": "Sélectionnez votre action",
+  "noActionDefined": "Aucune action définie.",
+  "preValidation": "Pré-validation",
+  "buttonClickedBy": "Par : {users}"
 }

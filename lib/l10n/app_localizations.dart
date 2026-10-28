@@ -643,6 +643,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Record not valid'**
   String get invalidRecordTitle;
+
+  /// Title of the dialog choosing one of several actions of a keyword
+  ///
+  /// In en, this message translates to:
+  /// **'Select your action'**
+  String get selectAction;
+
+  /// Message when a keyword has no action
+  ///
+  /// In en, this message translates to:
+  /// **'No action defined.'**
+  String get noActionDefined;
+
+  /// Title of the warning when a button pre-validation fails
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-validation'**
+  String get preValidation;
+
+  /// Tooltip of a button rule counter: users who clicked
+  ///
+  /// In en, this message translates to:
+  /// **'By: {users}'**
+  String buttonClickedBy(String users);
 }
 
 class _AppLocalizationsDelegate

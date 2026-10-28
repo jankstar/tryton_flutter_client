@@ -504,51 +504,19 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     }
   }
 
+  /// A form button through the screen (spec 8.6: pre-validation,
+  /// confirm, instance/class button, result); the dialogs come from the
+  /// ScreenWidget's hooks.
   Future<void> _executeButton(ButtonNode node) async {
-    if (node.confirm != null && node.confirm!.isNotEmpty) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          content: Text(node.confirm!),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(context.l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true || !mounted) return;
-    }
-    final record = _record;
-    if (record == null) return;
-    // Like SAO: the record is saved before the button runs.
-    if (_isDirty || _isNew) {
-      if (!await _saveRecord() || !mounted) return;
-    }
-    setState(() => _saving = true);
-    dynamic result;
-    final ok = await errorHandlerOf(context, ref).run(() async {
-      result = await ref
-          .read(modelServiceProvider)
-          .executeButton(_model, node.name, [record.id]);
-    });
-    if (!mounted) return;
-    setState(() => _saving = false);
-    // Like SAO: reloaded afterwards (also after an error); a string is a
-    // client action (spec 8.7) run after the reload. Returned actions
-    // follow with E5.
-    await _reloadRecord();
-    if (ok && result is String && mounted) {
-      try {
-        await _screen.clientAction(result as String);
-      } on HandledRpcError {
-        // shown
-      }
+    if (_record == null) return;
+    try {
+      await _flushPending();
+      await _screen.button(node);
+      _loadResources();
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
     }
   }
 
@@ -708,6 +676,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   Widget build(BuildContext context) {
     final l = context.l10n;
 
+    final buttons = _record == null ? const <ButtonNode>[] : _screen.getButtons();
     final hasPrev = _screen.hasPrevious;
     final hasNext = _screen.hasNext;
     final resources = _resources;
@@ -829,6 +798,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               model: _model,
               selectedIds: _isNew ? [] : [_recordId],
               beforeExecute: _confirmDiscard,
+              buttons: [
+                for (final b in buttons)
+                  if ((b.keyword ?? 'action') == 'action') b
+              ],
+              onButton: _executeButton,
             ),
             ToolbarDropdownButton(
               icon: Icons.link,                   // tryton-link
@@ -837,6 +811,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               model: _model,
               selectedIds: _isNew ? [] : [_recordId],
               beforeExecute: _confirmDiscard,
+              buttons: [
+                for (final b in buttons)
+                  if ((b.keyword ?? 'action') == 'relate') b
+              ],
+              onButton: _executeButton,
             ),
             ToolbarDropdownButton(
               icon: Icons.print_outlined,         // tryton-print
@@ -845,6 +824,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               model: _model,
               selectedIds: _isNew ? [] : [_recordId],
               beforeExecute: _confirmDiscard,
+              buttons: [
+                for (final b in buttons)
+                  if ((b.keyword ?? 'action') == 'print') b
+              ],
+              onButton: _executeButton,
             ),
             ToolbarDropdownButton(
               icon: Icons.email_outlined,         // tryton-email
@@ -979,7 +963,6 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           FormButtonFooter(
             nodes: buttonNodes,
             record: record,
-            isReadOnly: record.readonly,
             onButton: _executeButton,
           ),
       ],

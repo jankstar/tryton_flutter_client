@@ -176,10 +176,13 @@ class _TabChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 4),
       child: InputChip(
+        // Keyword actions of the menu carry the menu path ("A / B / C"):
+        // the chip shows the last part, the tooltip the full name.
+        tooltip: tab.title,
         label: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 180),
           child: Text(
-            tab.title,
+            tab.title.split(' / ').last,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 12,
