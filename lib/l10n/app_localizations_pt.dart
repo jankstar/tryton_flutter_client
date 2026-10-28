@@ -192,6 +192,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get switchToForm => 'Alternar para formulário';
 
   @override
+  String get switchView => 'Alternar visualização';
+
+  @override
   String get close => 'Fechar';
 
   @override

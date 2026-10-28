@@ -458,6 +458,12 @@ abstract class AppLocalizations {
   /// **'Switch to form'**
   String get switchToForm;
 
+  /// Tooltip: switch between the views (list/form) of a screen
+  ///
+  /// In en, this message translates to:
+  /// **'Switch view'**
+  String get switchView;
+
   /// Tooltip/button to close the current view and return to menu
   ///
   /// In en, this message translates to:

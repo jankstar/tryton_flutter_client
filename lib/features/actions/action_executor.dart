@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../auth/auth_provider.dart';
 import '../model/model_service.dart';
+import '../shell/tab_manager.dart';
+import 'act_window.dart';
 import '../model/toolbar_data.dart';
 import '../../core/l10n/locale_provider.dart';
 
 /// Executes Tryton actions (act_window, report, wizard).
 class ActionExecutor {
   final ModelService _svc;
-  ActionExecutor(this._svc);
+  final Ref _ref;
+  ActionExecutor(this._svc, this._ref);
 
   Future<void> execute(
     BuildContext context,
@@ -29,16 +32,25 @@ class ActionExecutor {
     }
   }
 
+  /// Opens the action in a new tab with the selected records as
+  /// `active_id(s)` (Python client `exec_action`).
   void _openActWindow(
     BuildContext context,
     TrytonActionItem action,
     String sourceModel,
     List<int> selectedIds,
   ) {
-    final model = action.resModel;
-    if (model == null || model.isEmpty) return;
-    final title = Uri.encodeComponent(action.name);
-    context.push('/models/$model?title=$title');
+    openActWindow(
+      _ref.read(tabsProvider.notifier),
+      _ref.read(sessionProvider),
+      {'res_model': action.resModel, ...action.raw},
+      data: {
+        'model': sourceModel,
+        'id': selectedIds.isEmpty ? null : selectedIds.first,
+        'ids': selectedIds,
+      },
+      title: action.name,
+    );
   }
 
   Future<void> _executeReport(
@@ -86,5 +98,5 @@ class ActionExecutor {
 }
 
 final actionExecutorProvider = Provider<ActionExecutor>((ref) {
-  return ActionExecutor(ref.read(modelServiceProvider));
+  return ActionExecutor(ref.read(modelServiceProvider), ref);
 });

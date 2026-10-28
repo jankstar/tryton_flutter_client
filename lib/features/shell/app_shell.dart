@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../tabs/model_browser_screen.dart' show ModelBrowserSidebar, UserChip;
-import '../views/dynamic_form_screen.dart';
-import '../views/list_view_screen.dart';
+import '../../core/screen/screen.dart';
+import '../views/screen_widget.dart';
 import 'tab_manager.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -125,22 +125,12 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: Navigator(
       key: tab.navigatorKey,
       onGenerateRoute: (settings) => MaterialPageRoute(
-        builder: (_) => tab.resId != null
-            ? DynamicFormScreen(
-                model: tab.model,
-                recordId: tab.resId!,
-                title: tab.title,
-                screenDomain: tab.initialDomain,
-              )
-            : ListViewScreen(
-          model: tab.model,
+        builder: (_) => ScreenWidget(
+          attributes: tab.attributes,
           title: tab.title,
-          initialDomain: tab.initialDomain,
-          contextModel: tab.contextModel,
-          contextDomain: tab.contextDomain,
-          actionId: tab.actionId,
-          onClose: () =>
-              ref.read(tabsProvider.notifier).closeTab(tab.id),
+          onClose: () async {
+            await ref.read(tabsProvider.notifier).requestCloseTab(tab.id);
+          },
         ),
       ),
     ),
@@ -212,9 +202,10 @@ class _TabChip extends StatelessWidget {
   }
 }
 
-// ─── DynamicFormScreen öffnen (von ListViewScreen aus) ───────────────────────
-// Hilfsfunktion damit list_view_screen.dart und dynamic_form_screen.dart
-// keine zirkulären Importe bekommen.
+// ─── Formular öffnen (z. B. Many2One „Öffnen“, „Anhang hinzufügen“) ─────────
+// Eigener Screen mit nur der Form-View in einer neuen Route des Tabs;
+// recordId < 0 legt einen neuen Datensatz an (nach dem Speichern wird die
+// Route mit dessen id geschlossen).
 
 Future<void> pushFormScreen(
   BuildContext context, {
@@ -222,36 +213,18 @@ Future<void> pushFormScreen(
   required int recordId,
   required String title,
   List<dynamic> screenDomain = const [],
-  bool replace = false,
-}) {
-  final route = MaterialPageRoute<void>(
-    builder: (_) => DynamicFormScreen(
-      model: model,
-      recordId: recordId,
-      title: title,
-      screenDomain: screenDomain,
-    ),
-  );
-  if (replace) {
-    return Navigator.of(context).pushReplacement(route);
-  } else {
-    return Navigator.of(context).push(route);
-  }
-}
-
-Future<void> pushListScreen(
-  BuildContext context, {
-  required String model,
-  required String title,
-  List<dynamic> initialDomain = const [],
-  int? actionId,
 }) {
   return Navigator.of(context).push(MaterialPageRoute<void>(
-    builder: (_) => ListViewScreen(
-      model: model,
+    builder: (ctx) => ScreenWidget(
+      attributes: ScreenAttributes(
+        model,
+        mode: const ['form'],
+        domain: screenDomain,
+        resId: recordId < 0 ? null : recordId,
+      ),
       title: title,
-      initialDomain: initialDomain,
-      actionId: actionId,
+      onClose: () => Navigator.of(ctx).maybePop(),
+      closeOnSaveNew: recordId < 0,
     ),
   ));
 }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/icons/tryton_icon.dart';
 import '../../core/model/model.dart';
+import '../../core/screen/screen.dart';
 import '../../core/rpc/error_processing.dart';
-import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../model/field_definition.dart';
 import '../auth/auth_provider.dart';
@@ -15,12 +16,7 @@ import '../shell/tab_manager.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
-import '../../shared/widgets/concurrency_dialog.dart';
-import '../model/concurrency.dart';
-import '../model/field_support.dart';
-import '../model/model_rpc.dart';
 import '../model/selection_loader.dart';
-import 'navigation_context.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 import '../../core/l10n/locale_provider.dart';
@@ -28,19 +24,25 @@ import '../../core/l10n/locale_provider.dart';
 /// Server-driven form – loads the view definition via
 /// `fields_view_get` and renders layout, groups and tabs dynamically.
 class DynamicFormScreen extends ConsumerStatefulWidget {
-  final String model;
+  /// The screen; its current view is a form view and the form shows the
+  /// screen's current record (spec 8: list and form share group and
+  /// record).
+  final TrytonScreen screen;
   final String title;
-  final int recordId; // < 0 for new records
-  /// Domain from the action that opened this form (screen domain).
-  /// Used for domain_readonly evaluation, like SAO's record.group.domain.
-  final List<dynamic> screenDomain;
+
+  /// "Close": closes the tab or pops the route.
+  final Future<void> Function()? onClose;
+
+  /// After saving a new record the route is popped with its id (form
+  /// opened only to create a record, e.g. "Add attachment").
+  final bool closeOnSaveNew;
 
   const DynamicFormScreen({
     super.key,
-    required this.model,
+    required this.screen,
     required this.title,
-    required this.recordId,
-    this.screenDomain = const [],
+    this.onClose,
+    this.closeOnSaveNew = false,
   });
 
   @override
@@ -62,11 +64,15 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// Translated model display name loaded from ir.model (e.g. "Base Object").
   String? _modelDisplayName;
 
-  /// The record of this form and its group (data layer, spec 5.3/5.4).
-  /// Widgets read with `field.get/getClient` and write with
-  /// `field.setClient`; the group's ChangeNotifier triggers a rebuild.
-  RecordGroup? _group;
-  Record? _record;
+  /// The screen's current record (data layer, spec 5.3/5.4). Widgets read
+  /// with `field.get/getClient` and write with `field.setClient`; the
+  /// screen (listening to its group) triggers a rebuild.
+  TrytonScreen get _screen => widget.screen;
+  Record? get _record => _screen.currentRecord;
+  String get _model => _screen.model.name;
+
+  /// Record the form was prepared for (values loaded, states, side data).
+  Record? _shown;
 
   /// Text input not yet written to the record (written on focus loss, like
   /// SAO's focus-out; flushed before saving).
@@ -82,8 +88,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   bool _saving = false;
   String? _error;
 
-  bool get _isNew => (_record?.id ?? widget.recordId) < 0;
-  int get _recordId => _record?.id ?? widget.recordId;
+  bool get _isNew => (_record?.id ?? -1) < 0;
+  int get _recordId => _record?.id ?? -1;
   bool get _isDirty => (_record?.modified ?? false) || _pending.isNotEmpty;
 
   /// Method-based selections incl. `selection_change_with`, cached per
@@ -91,12 +97,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   late final SelectionLoader _selections = SelectionLoader((method, values) =>
       ref
           .read(modelServiceProvider)
-          .getSelectionOptions(widget.model, method, values: values));
+          .getSelectionOptions(_model, method, values: values));
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _setup();
   }
 
   /// Tab of this form and its notifier: closing the tab asks first.
@@ -118,124 +124,74 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   @override
   void dispose() {
     if (_tabId != null) _tabs?.removeCloseGuard(_tabId!, _confirmDiscard);
-    _group?.removeListener(_onGroupChanged);
+    _screen.removeListener(_onScreenChanged);
     super.dispose();
   }
 
-  void _onGroupChanged() {
-    if (mounted) setState(() {});
+  /// Another current record (Prev/Next, New, Duplicate, Delete) is
+  /// prepared; other changes only rebuild.
+  void _onScreenChanged() {
+    if (!mounted) return;
+    if (!identical(_record, _shown)) {
+      _showRecord();
+    } else {
+      setState(() {});
+    }
   }
 
   // ─── Load data ───────────────────────────────────────────────────────────
 
-  /// Data-layer session of this form: errors of the record's server calls
-  /// go to this form's error dialogs, conflicts to the A1 dialog.
-  ModelSession _modelSession(ModelService svc) => modelSessionFor(
-        svc,
-        processor: errorHandlerOf(context, ref),
-        concurrencyRunner: concurrencyRunner(
-          ask: () async => mounted
-              ? showConcurrencyDialog(context)
-              : ConcurrencyChoice.cancel,
-          onCompare: (_, _) => _openCompareTab(),
-          onMessage: () async {
-            if (mounted) await showConcurrencyMessage(context);
-          },
-        ),
-      );
-
-  /// View attributes of the `<field>` nodes extend the field description
-  /// (SAO `field_attrs`): readonly/required/invisible from the XML.
-  static void _applyViewAttributes(TrytonModel model, List<FormNode> nodes) {
-    for (final node in nodes) {
-      switch (node) {
-        case FieldNode():
-          final desc = model.fields[node.name]?.description;
-          if (desc == null) continue;
-          if (node.readonly != null) desc['readonly'] = node.readonly;
-          if (node.required != null) desc['required'] = node.required;
-          if (node.invisible != null) desc['invisible'] = node.invisible;
-        case GroupNode():
-          _applyViewAttributes(model, node.children);
-        case NotebookNode():
-          _applyViewAttributes(model, node.pages);
-        case PageNode():
-          _applyViewAttributes(model, node.children);
-        default:
-          break;
-      }
+  /// The form view of the screen; then the current record.
+  void _setup() {
+    final view = _screen.currentView!;
+    _viewDef = view.definition;
+    _formRoot = view.formRoot;
+    _screen.addListener(_onScreenChanged);
+    // Load translated model name early (also cached for subsequent opens)
+    if (widget.title == _model) {
+      _loadModelDisplayName(ref.read(modelServiceProvider));
     }
+    _loadSideData(ref.read(modelServiceProvider));
+    _showRecord();
   }
 
-  Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+  /// Prepares the current record: all fields loaded, unique values of
+  /// the screen domain set and locked (domain_readonly, like SAO's
+  /// validation on display), selections for its values, resources.
+  Future<void> _showRecord() async {
+    final record = _record;
+    _shown = record;
+    setState(() {
+      _pending.clear();
+      _notifications = const [];
+      _resources = null;
+      _error = null;
+    });
+    _screen.group.onNotify = (notifications) {
+      if (mounted) setState(() => _notifications = notifications);
+    };
+    if (record == null) return;
+    setState(() => _loading = !record.getLoaded());
     try {
-      final svc = ref.read(modelServiceProvider);
-
-      // Load translated model name early (also cached for subsequent opens)
-      // Do this first so it's available as soon as possible.
-      if (widget.title == widget.model) {
-        _loadModelDisplayName(svc); // fire-and-forget, updates via setState
-      }
-
-      // 1. Load view definition
-      final rawViewDef = await svc.fieldsViewGet(widget.model, viewType: 'form');
-      final formRoot = FormXmlParser().parse(rawViewDef.arch);
-
-      // 2. Model, group and record of the data layer
-      if (!mounted) return;
-      final model = TrytonModel(widget.model, session: _modelSession(svc))
-        ..addFields(rawViewDef.rawFields);
-      _applyViewAttributes(model, formRoot.children);
-      // Fields without an own widget (E13) are never written: as readonly
-      // they are left out of create/write (Record.get).
-      for (final name in unsupportedFieldNames(rawViewDef.fields, formRoot)) {
-        model.fields[name]?.description['readonly'] = true;
-      }
-      final group = RecordGroup(model);
-      if (widget.screenDomain.isNotEmpty) {
-        group.screenDomains.add(widget.screenDomain);
-      }
-      final Record record;
-      if (widget.recordId < 0) {
-        record = group.add(await group.newRecordWithDefaults(), modified: false);
-      } else {
-        group.load([widget.recordId]);
-        record = group.get(widget.recordId)!;
-        await record.load('*');
-      }
-      // Domain inversion: unique values of the screen domain are set and
-      // locked (domain_readonly), like SAO's validation on display.
+      await record.load('*');
       record.validate(softValidation: true);
       await record.idle;
-
-      // 3. Options of method-based selections. With selection_change_with
-      // they depend on the record values, so load after the record.
-      final viewDef = await _withSelections(rawViewDef, record);
-
-      group.onNotify = (notifications) {
-        if (mounted) setState(() => _notifications = notifications);
-      };
-      _group?.removeListener(_onGroupChanged);
-      group.addListener(_onGroupChanged);
-      setState(() {
-        _viewDef = viewDef;
-        _formRoot = formRoot;
-        _group = group;
-        _record = record;
-        _pending.clear();
-        _notifications = const [];
-      });
-
-      // Load toolbar, resources and translated model name in background
-      _loadSideData(svc);  // also called for new records to get model display name
+      final view = _screen.currentView;
+      if (view != null) {
+        final viewDef = await _withSelections(view.definition, record);
+        if (mounted && identical(_record, record)) {
+          setState(() => _viewDef = viewDef);
+        }
+      }
+      _loadResources();
     } on HandledRpcError catch (e) {
       // Already shown by the error dialog; the page keeps a short text.
       if (mounted) setState(() => _error = ErrorHandler.describe(e));
     } catch (e) {
-      // Dialog via the central handler; the page keeps a short text + Reload.
-      if (mounted) errorHandlerOf(context, ref).show(e);
-      if (mounted) setState(() => _error = ErrorHandler.describe(e));
+      if (mounted) {
+        errorHandlerOf(context, ref).show(e);
+        setState(() => _error = ErrorHandler.describe(e));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -266,7 +222,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// Reloads the selections that depend on changed values (cached per
   /// value combination, like SAO's update_selection).
   Future<void> _refreshSelections() async {
-    final viewDef = _viewDef;
+    final viewDef = _screen.currentView?.definition;
     final record = _record;
     if (viewDef == null || record == null) return;
     if (!viewDef.fields.values.any((fd) =>
@@ -275,7 +231,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       return;
     }
     final updated = await _withSelections(viewDef, record);
-    if (mounted && identical(_viewDef, viewDef)) {
+    if (mounted && identical(_record, record)) {
       setState(() => _viewDef = updated);
     }
   }
@@ -283,11 +239,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   Future<void> _loadSideData(ModelService svc) async {
     // Toolbar actions (view_toolbar_get)
     try {
-      final t = await svc.viewToolbarGet(widget.model);
+      final t = await svc.viewToolbarGet(_model);
       if (mounted) setState(() => _toolbar = t);
     } catch (_) {}
-
-    await _loadResources();
 
     // Translated model display name from ir.model (cached per model)
     await _loadModelDisplayName(svc);
@@ -306,10 +260,10 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// Loads the human-readable, translated model name from ir.model.
   /// Only fetches once per model per session (cached in _modelDisplayNameCache).
   Future<void> _loadModelDisplayName(ModelService svc) async {
-    if (_modelDisplayNameCache.containsKey(widget.model)) {
+    if (_modelDisplayNameCache.containsKey(_model)) {
       if (mounted) {
         setState(() =>
-            _modelDisplayName = _modelDisplayNameCache[widget.model]);
+            _modelDisplayName = _modelDisplayNameCache[_model]);
       }
       return;
     }
@@ -318,7 +272,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       // We search by 'name' and then get the translated rec_name (display name).
       final result = await svc.searchRead(
         'ir.model',
-        domain: [['name', '=', widget.model]],
+        domain: [['name', '=', _model]],
         fields: ['name', 'rec_name'],
         limit: 1,
       );
@@ -328,16 +282,16 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         final displayName = result.first['rec_name']?.toString()
             ?? result.first['name']?.toString()
             ?? '';
-        if (displayName.isNotEmpty && displayName != widget.model) {
-          _modelDisplayNameCache[widget.model] = displayName;
+        if (displayName.isNotEmpty && displayName != _model) {
+          _modelDisplayNameCache[_model] = displayName;
           if (mounted) setState(() => _modelDisplayName = displayName);
           return;
         }
       }
       // No result or name equals technical name → mark as "no display name"
-      _modelDisplayNameCache[widget.model] = '';
+      _modelDisplayNameCache[_model] = '';
     } catch (e) {
-      debugPrint('ir.model load error for "${widget.model}": $e');
+      debugPrint('ir.model load error for "$_model": $e');
     }
   }
 
@@ -345,32 +299,24 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// When the widget title IS the technical model name → use the translated name.
   /// Otherwise the title was set explicitly (e.g. from a menu action) → keep it.
   String get _effectiveTitle {
-    final isTechnicalName = widget.title == widget.model;
+    final isTechnicalName = widget.title == _model;
     if (isTechnicalName && _modelDisplayName != null && _modelDisplayName!.isNotEmpty) {
       return _modelDisplayName!;
     }
     return widget.title;
   }
 
-  /// Subtitle line below the primary title.
-  /// Combines model display name (when it differs from the primary title)
-  /// and the record position from the navigation context (e.g. "3 / 47").
-  /// Examples:
-  ///   "Base Object · 3 / 47"   – navigated via list, model name available
-  ///   "3 / 47"                 – model name same as title or unavailable
-  ///   "Base Object"            – no navigation context
+  /// Subtitle line below the primary title: model display name (when it
+  /// differs from the title) and the position of the record in the
+  /// screen (status `3/47`, spec 8.3).
   String get _subtitleText {
-    final nav = ref.read(navContextProvider);
-    final pos = nav?.positionLabel ?? '';
-
+    final pos = _screen.loadedCount > 1 ? _screen.statusText : '';
     final showModelName = _modelDisplayName != null &&
         _modelDisplayName!.isNotEmpty &&
         _modelDisplayName != _effectiveTitle;
-
     if (showModelName && pos.isNotEmpty) return '$_modelDisplayName · $pos';
     if (showModelName) return _modelDisplayName!;
-    if (pos.isNotEmpty) return pos;
-    return '';
+    return pos;
   }
 
   // ─── Language sync ───────────────────────────────────────────────────────
@@ -469,7 +415,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         return false;
       }
       if (mounted) setState(() => _saving = true);
-      final isUserRecord = widget.model == 'res.user' &&
+      final isUserRecord = _model == 'res.user' &&
           record.id == ref.read(sessionProvider).userId;
       if (!await record.save()) return false;
       // After saving the current user's own record: reload session context
@@ -487,14 +433,15 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     }
   }
 
-  /// Toolbar "Save": like before, a new record closes the form afterwards.
+  /// Toolbar "Save"; a form opened only to create a record closes
+  /// afterwards and returns the new id.
   Future<bool> _save() async {
     final wasNew = _isNew;
     if (!await _saveRecord()) return false;
     if (!mounted) return true;
     if (wasNew) {
       _showSnack(context.l10n.recordCreated);
-      Navigator.of(context).pop(_recordId);
+      if (widget.closeOnSaveNew) Navigator.of(context).pop(_recordId);
     } else {
       _showSnack(context.l10n.saved);
     }
@@ -517,23 +464,6 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         ),
       );
 
-  /// "Compare": opens the current server version in a new tab.
-  Future<void> _openCompareTab() async {
-    final svc = ref.read(modelServiceProvider);
-    final records =
-        await svc.read(widget.model, [_recordId], ['rec_name']);
-    final name = records.isNotEmpty
-        ? records.first.values['rec_name']?.toString() ?? ''
-        : '';
-    if (!mounted) return;
-    ref.read(tabsProvider.notifier).openTab(
-      title: context.l10n.compareTabTitle(name),
-      model: widget.model,
-      initialDomain: [['id', '=', _recordId]],
-      resId: _recordId,
-    );
-  }
-
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -554,8 +484,18 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (ok != true || !mounted || record == null) return;
     try {
       // delete with _timestamp; conflicts go to the A1 dialog
-      if (await record.group.delete([record]) && mounted) {
-        Navigator.of(context).pop();
+      if (!await _screen.remove(
+              delete: true, forceRemove: true, records: [record]) ||
+          !mounted) {
+        return;
+      }
+      // Without further record: back to the list or close.
+      if (_record == null) {
+        if (_screen.numberOfViews > 1) {
+          await _screen.switchView(viewType: 'tree');
+        } else {
+          await widget.onClose?.call();
+        }
       }
     } on HandledRpcError {
       // shown
@@ -591,23 +531,39 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       if (!await _saveRecord() || !mounted) return;
     }
     setState(() => _saving = true);
-    final ok = await errorHandlerOf(context, ref).run(() =>
-        ref
-            .read(modelServiceProvider)
-            .executeButton(widget.model, node.name, [record.id]));
+    dynamic result;
+    final ok = await errorHandlerOf(context, ref).run(() async {
+      result = await ref
+          .read(modelServiceProvider)
+          .executeButton(_model, node.name, [record.id]);
+    });
     if (!mounted) return;
     setState(() => _saving = false);
-    if (ok) await _reloadRecord();
+    // Like SAO: reloaded afterwards (also after an error); a string is a
+    // client action (spec 8.7) run after the reload. Returned actions
+    // follow with E5.
+    await _reloadRecord();
+    if (ok && result is String && mounted) {
+      try {
+        await _screen.clientAction(result as String);
+      } on HandledRpcError {
+        // shown
+      }
+    }
   }
 
   /// Discards the local values and reads the record again.
   Future<void> _reloadRecord() async {
     final record = _record;
-    if (record == null || record.id < 0) return _load();
+    if (record == null) return;
     record.cancel();
     _pending.clear();
     try {
-      await record.load('*');
+      if (record.id < 0) {
+        await record.defaultGet();
+      } else {
+        await record.load('*');
+      }
       record.validate(softValidation: true);
     } on HandledRpcError {
       // shown
@@ -618,25 +574,48 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   /// Toolbar "Reload": discards the changes after the save prompt.
   Future<void> _reload() async {
-    if (!await _confirmDiscard()) return;
-    if (mounted) await _load();
+    final answer = await _askSave();
+    // "No" has already discarded and read the record again.
+    if (answer == null || answer == 'no') return;
+    if (mounted) await _reloadRecord();
   }
 
+  /// Copy of the record (`copy`), loaded into the group at
+  /// `new_position` and shown (spec 8.5).
   Future<void> _duplicate() async {
     if (_isNew) return;
     if (!await _confirmDiscard() || !mounted) return;
-    await errorHandlerOf(context, ref).run(() async {
-      final svc = ref.read(modelServiceProvider);
-      final newIds = await svc.copy(widget.model, [_recordId]);
-      if (newIds.isNotEmpty && mounted) {
-        pushFormScreen(context,
-            model: widget.model,
-            recordId: newIds.first,
-            title: widget.title,
-            screenDomain: widget.screenDomain,
-            replace: true);
+    try {
+      await _screen.copy();
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
+    }
+  }
+
+  /// New record in the screen (defaults, `new_position`).
+  Future<void> _newRecord() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    try {
+      await _screen.newRecord();
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
+    }
+  }
+
+  /// Switch to the list of the screen (same group and record).
+  Future<void> _switchView() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    await _flushPending();
+    if (!await _screen.switchView() && mounted) {
+      final record = _record;
+      if (record != null) {
+        await _showInvalid(record.invalidMessage(_invalidTexts()));
       }
-    });
+    }
   }
 
   Future<void> _viewLogs() async {
@@ -644,7 +623,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     ref.read(tabsProvider.notifier).openTab(
       title: 'Logs',
       model: 'ir.model.log',
-      initialDomain: [['resource', '=', '${widget.model},$_recordId']],
+      initialDomain: [['resource', '=', '$_model,$_recordId']],
     );
   }
 
@@ -653,17 +632,23 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     ref.read(tabsProvider.notifier).openTab(
       title: 'Notes',
       model: 'ir.note',
-      initialDomain: [['resource', '=', '${widget.model},$_recordId']],
+      initialDomain: [['resource', '=', '$_model,$_recordId']],
     );
   }
 
   /// Shows the SAO-style "This record has been modified" dialog (spec
-  /// 10.4) before navigation, close, new, reload, duplicate and actions.
-  /// Returns true if the operation should proceed: "Yes" saved the record
-  /// (a failed save stays in the form), "No" discards the changes (with
-  /// [reloadOnNo] the record is read again first), "Cancel" stays.
-  Future<bool> _confirmDiscard({bool reloadOnNo = false}) async {
-    if (!_isDirty) return true;
+  /// 10.4) when the screen is modified (changed or new record, pending
+  /// input) before switch, navigation, close, new, reload, duplicate and
+  /// actions. Returns true if the operation should proceed: "Yes" saved
+  /// the record (a failed save stays in the form), "No" discards the
+  /// changes (`cancel_current`: a new record is removed, another read
+  /// again), "Cancel" stays.
+  Future<bool> _confirmDiscard() async => await _askSave() != null;
+
+  /// The save prompt of [_confirmDiscard]: `'clean'` (nothing to ask),
+  /// `'yes'` (saved), `'no'` (discarded) or null (cancelled / not saved).
+  Future<String?> _askSave() async {
+    if (!_screen.modified() && _pending.isEmpty) return 'clean';
     final l = context.l10n;
     final result = await showDialog<String>(
       context: context,
@@ -689,49 +674,28 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         ],
       ),
     );
-    if (result == 'cancel' || result == null) return false;
+    if (result == 'cancel' || result == null) return null;
     if (result == 'yes') {
       // If save failed or was cancelled, stay in form
-      if (!await _saveRecord()) return false;
-    } else if (reloadOnNo) {
-      await _reloadRecord();
+      if (!await _saveRecord()) return null;
+    } else {
+      _pending.clear();
+      try {
+        await _screen.cancelCurrent();
+      } on HandledRpcError {
+        // shown
+      }
     }
-    return true; // 'no' or successful save
+    return result;
   }
 
-  Future<void> _navigatePrev() async {
-    if (!await _confirmDiscard()) return;
-    if (!mounted) return;
-    final nav = ref.read(navContextProvider);
-    final prevId = nav?.previousId;
-    if (prevId == null) return;
-    ref.read(navContextProvider.notifier).state =
-        nav!.withIndex(nav.currentIndex - 1);
-    if (mounted) {
-      pushFormScreen(context,
-          model: widget.model,
-          recordId: prevId,
-          title: widget.title,
-          screenDomain: widget.screenDomain,
-          replace: true);
-    }
-  }
-
-  Future<void> _navigateNext() async {
-    if (!await _confirmDiscard()) return;
-    if (!mounted) return;
-    final nav = ref.read(navContextProvider);
-    final nextId = nav?.nextId;
-    if (nextId == null) return;
-    ref.read(navContextProvider.notifier).state =
-        nav!.withIndex(nav.currentIndex + 1);
-    if (mounted) {
-      pushFormScreen(context,
-          model: widget.model,
-          recordId: nextId,
-          title: widget.title,
-          screenDomain: widget.screenDomain,
-          replace: true);
+  /// Previous/next record of the screen's group (spec 8.5).
+  Future<void> _navigate({required bool next}) async {
+    if (!await _confirmDiscard() || !mounted) return;
+    try {
+      next ? await _screen.displayNext() : await _screen.displayPrevious();
+    } on HandledRpcError {
+      // shown
     }
   }
 
@@ -744,9 +708,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   Widget build(BuildContext context) {
     final l = context.l10n;
 
-    final nav = ref.watch(navContextProvider);
-    final hasPrev = nav?.hasPrevious ?? false;
-    final hasNext = nav?.hasNext ?? false;
+    final hasPrev = _screen.hasPrevious;
+    final hasNext = _screen.hasNext;
     final resources = _resources;
 
     return PopScope(
@@ -783,28 +746,31 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           IconButton(
             icon: const Icon(Icons.arrow_back_ios, size: 16),
             tooltip: context.l10n.previousRecord,
-            onPressed: hasPrev ? _navigatePrev : null,
+            onPressed: hasPrev ? () => _navigate(next: false) : null,
           ),
           IconButton(
             icon: const Icon(Icons.arrow_forward_ios, size: 16),
             tooltip: context.l10n.nextRecord,
-            onPressed: hasNext ? _navigateNext : null,
+            onPressed: hasNext ? () => _navigate(next: true) : null,
           ),
+          // Switch: like SAO's tryton-switch – the list of the screen
+          if (_screen.numberOfViews > 1)
+            IconButton(
+              icon: TrytonIcon(
+                iconName: 'tryton-switch',
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+                fallback: Icons.compare_arrows,
+              ),
+              tooltip: context.l10n.switchView,
+              onPressed: _saving ? null : _switchView,
+            ),
 
           // ── CRUD ──────────────────────────────────────────────────────
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: l.createNew,
-            onPressed: _saving ? null : () async {
-              final ok = await _confirmDiscard();
-              if (ok && mounted) {
-                pushFormScreen(context,
-                    model: widget.model,
-                    recordId: -1,
-                    title: widget.title,
-                    screenDomain: widget.screenDomain);
-              }
-            },
+            onPressed: _saving ? null : _newRecord,
           ),
           IconButton(
             icon: _saving
@@ -842,7 +808,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onPressed: _viewLogs,
             ),
             _AttachmentIconButton(
-              model: widget.model,
+              model: _model,
               recordId: _recordId,
               count: (resources?['attachment_count'] as num?)?.toInt() ?? 0,
             ),
@@ -860,33 +826,33 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               icon: Icons.rocket_launch_outlined, // tryton-launch
               tooltip: l.launchActions,
               items: _toolbar.actions,
-              model: widget.model,
+              model: _model,
               selectedIds: _isNew ? [] : [_recordId],
-              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
+              beforeExecute: _confirmDiscard,
             ),
             ToolbarDropdownButton(
               icon: Icons.link,                   // tryton-link
               tooltip: l.relatedRecords,
               items: _toolbar.relate,
-              model: widget.model,
+              model: _model,
               selectedIds: _isNew ? [] : [_recordId],
-              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
+              beforeExecute: _confirmDiscard,
             ),
             ToolbarDropdownButton(
               icon: Icons.print_outlined,         // tryton-print
               tooltip: l.reports,
               items: _toolbar.print,
-              model: widget.model,
+              model: _model,
               selectedIds: _isNew ? [] : [_recordId],
-              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
+              beforeExecute: _confirmDiscard,
             ),
             ToolbarDropdownButton(
               icon: Icons.email_outlined,         // tryton-email
               tooltip: l.email,
               items: _toolbar.emails,
-              model: widget.model,
+              model: _model,
               selectedIds: _isNew ? [] : [_recordId],
-              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
+              beforeExecute: _confirmDiscard,
             ),
           ],
 
@@ -894,10 +860,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           IconButton(
             icon: const Icon(Icons.close),  // tryton-close
             tooltip: context.l10n.close,
-            onPressed: () async {
-              final ok = await _confirmDiscard();
-              if (ok && mounted) Navigator.of(context).pop();
-            },
+            // Tab: asks via the tab's close guard; route: via PopScope.
+            onPressed: () => widget.onClose?.call(),
           ),
         ],
       ),
@@ -966,7 +930,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             child: Text(_error!),
           ),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _load, child: Text(context.l10n.reload)),
+          FilledButton(onPressed: _showRecord, child: Text(context.l10n.reload)),
         ]),
       );
     }
@@ -992,7 +956,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 16),
           child: RecordForm(
-            model: widget.model,
+            model: _model,
             root: contentRoot,
             viewDef: _viewDef!,
             record: record,

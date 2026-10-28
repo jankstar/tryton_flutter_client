@@ -261,6 +261,7 @@
     "description": "Tooltip to undo a pending delete in embedded tree"
   },
   "switchToForm": "Zum Formular wechseln",
+  "switchView": "Ansicht wechseln",
   "@switchToForm": {
     "description": "Tooltip to switch selected list records to form view"
   },

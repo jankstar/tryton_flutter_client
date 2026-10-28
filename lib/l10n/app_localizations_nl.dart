@@ -193,6 +193,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get switchToForm => 'Naar formulier schakelen';
 
   @override
+  String get switchView => 'Weergave wisselen';
+
+  @override
   String get close => 'Sluiten';
 
   @override

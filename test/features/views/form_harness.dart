@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/features/auth/auth_provider.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
-import 'package:tryton_flutter_client/features/views/dynamic_form_screen.dart';
+import 'package:tryton_flutter_client/core/screen/screen.dart';
+import 'package:tryton_flutter_client/features/views/screen_widget.dart';
 import 'package:tryton_flutter_client/l10n/app_localizations.dart';
 
 /// One recorded RPC call of the form (`model.X.method`, params without the
@@ -46,9 +47,21 @@ class FakeFormRpc extends RpcClient {
 Map<String, dynamic> formView(String arch, Map<String, dynamic> fields) =>
     {'arch': arch, 'fields': fields, 'view_id': 1, 'type': 'form'};
 
-/// Pumps a DynamicFormScreen on [rpc] (English texts).
+/// Pumps a form screen (only the form view) of [model] on [rpc]: the
+/// record [recordId] or, if negative, a new record (English texts).
 Future<void> pumpForm(WidgetTester tester, FakeFormRpc rpc,
-    {required String model, required int recordId, bool settle = true}) async {
+        {required String model, required int recordId, bool settle = true}) =>
+    pumpScreen(
+        tester,
+        rpc,
+        ScreenAttributes(model,
+            mode: const ['form'], resId: recordId < 0 ? null : recordId),
+        settle: settle);
+
+/// Pumps a [ScreenWidget] with [attributes] on [rpc] (English texts).
+Future<void> pumpScreen(
+    WidgetTester tester, FakeFormRpc rpc, ScreenAttributes attributes,
+    {bool settle = true}) async {
   tester.view.physicalSize = const Size(1400, 1000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -65,7 +78,7 @@ Future<void> pumpForm(WidgetTester tester, FakeFormRpc rpc,
       locale: const Locale('en'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: DynamicFormScreen(model: model, title: 'Form', recordId: recordId),
+      home: ScreenWidget(attributes: attributes, title: 'Form'),
     ),
   ));
   if (settle) {

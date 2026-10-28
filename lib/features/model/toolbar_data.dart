@@ -55,6 +55,9 @@ class TrytonActionItem {
   final String? reportName; // for reports
   final String? wizzName;   // for wizards
   final String? resModel;   // for act_window
+  /// The complete action as sent by `view_toolbar_get` (act_window:
+  /// views, PYSON domain/context/order, tab domains, …).
+  final Map<String, dynamic> raw;
 
   const TrytonActionItem({
     required this.id,
@@ -63,6 +66,7 @@ class TrytonActionItem {
     this.reportName,
     this.wizzName,
     this.resModel,
+    this.raw = const {},
   });
 
   factory TrytonActionItem.fromJson(Map<String, dynamic> json) {
@@ -74,6 +78,7 @@ class TrytonActionItem {
       reportName: json['report_name']?.toString(),
       wizzName: json['wiz_name']?.toString(),
       resModel: json['res_model']?.toString(),
+      raw: json,
     );
   }
 }

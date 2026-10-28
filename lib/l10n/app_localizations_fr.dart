@@ -193,6 +193,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get switchToForm => 'Basculer vers le formulaire';
 
   @override
+  String get switchView => 'Changer de vue';
+
+  @override
   String get close => 'Fermer';
 
   @override

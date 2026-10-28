@@ -192,6 +192,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get switchToForm => 'Перейти к форме';
 
   @override
+  String get switchView => 'Переключить вид';
+
+  @override
   String get close => 'Закрыть';
 
   @override

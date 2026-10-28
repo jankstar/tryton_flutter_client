@@ -261,6 +261,7 @@
     "description": "Tooltip to undo a pending delete in embedded tree"
   },
   "switchToForm": "Byt till formulär",
+  "switchView": "Byt vy",
   "@switchToForm": {
     "description": "Tooltip to switch selected list records to form view"
   },

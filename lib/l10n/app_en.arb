@@ -264,6 +264,10 @@
   "@switchToForm": {
     "description": "Tooltip to switch selected list records to form view"
   },
+  "switchView": "Switch view",
+  "@switchView": {
+    "description": "Tooltip: switch between the views (list/form) of a screen"
+  },
   "close": "Close",
   "@close": {
     "description": "Tooltip/button to close the current view and return to menu"

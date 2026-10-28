@@ -192,6 +192,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get switchToForm => 'Byt till formulär';
 
   @override
+  String get switchView => 'Byt vy';
+
+  @override
   String get close => 'Stäng';
 
   @override

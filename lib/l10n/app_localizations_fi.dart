@@ -192,6 +192,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get switchToForm => 'Vaihda lomakkeeseen';
 
   @override
+  String get switchView => 'Vaihda näkymää';
+
+  @override
   String get close => 'Sulje';
 
   @override

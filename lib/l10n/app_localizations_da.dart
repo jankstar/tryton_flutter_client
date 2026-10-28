@@ -192,6 +192,9 @@ class AppLocalizationsDa extends AppLocalizations {
   String get switchToForm => 'Skift til formular';
 
   @override
+  String get switchView => 'Skift visning';
+
+  @override
   String get close => 'Luk';
 
   @override

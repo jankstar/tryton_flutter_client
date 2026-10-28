@@ -13,7 +13,6 @@ import '../../features/model/field_definition.dart';
 import '../../features/model/field_support.dart';
 import '../../features/model/model_service.dart';
 import '../../features/shell/app_shell.dart' show pushFormScreen;
-import '../../features/views/navigation_context.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../utils/date_format_utils.dart';
 import '../utils/number_format_utils.dart';
@@ -837,8 +836,7 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
 
   void _open(BuildContext ctx) {
     if (_id == null || widget.field.relation == null) return;
-    // Clear nav context: single-record jump has no Prev/Next.
-    ref.read(navContextProvider.notifier).state = null;
+    // Own screen with only the form (no Prev/Next).
     pushFormScreen(
       ctx,
       model: widget.field.relation!,

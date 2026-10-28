@@ -2,31 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-/// One open tab in the app shell – represents a list view opened from a menu action.
+import '../../core/screen/screen.dart';
+
+/// One open tab in the app shell – a screen of a model (spec 8.1), opened
+/// from a menu action, a toolbar action or a form.
 class AppTab {
   final String id;
   final String title;
-  final String model;
-  final List<dynamic> initialDomain;
-  final String? contextModel;
-  final String? contextDomain;
-  final int? actionId;
-  /// When set, the tab opens this record in a form instead of a list
-  /// (SAO `mode: ['form']` with `res_id`).
-  final int? resId;
+
+  /// Attributes of the tab's screen (model, views, domain, tabs, …).
+  final ScreenAttributes attributes;
+
   /// Per-tab Navigator key – keeps the navigation stack alive in IndexedStack.
   final GlobalKey<NavigatorState> navigatorKey;
 
   AppTab({
     required this.id,
     required this.title,
-    required this.model,
-    this.initialDomain = const [],
-    this.contextModel,
-    this.contextDomain,
-    this.actionId,
-    this.resId,
+    required this.attributes,
   }) : navigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tab-$id');
+
+  String get model => attributes.model;
 }
 
 class TabsState {
@@ -83,24 +79,25 @@ class TabsNotifier extends StateNotifier<TabsState> {
     return true;
   }
 
+  /// Opens a tab with [attributes], or for [model] with [initialDomain]
+  /// (with [resId]: the form of that record first, SAO `mode: ['form']`).
   void openTab({
     required String title,
-    required String model,
+    String? model,
     List<dynamic> initialDomain = const [],
-    String? contextModel,
-    String? contextDomain,
-    int? actionId,
     int? resId,
+    ScreenAttributes? attributes,
   }) {
     final tab = AppTab(
       id: _uuid.v4(),
       title: title,
-      model: model,
-      initialDomain: List.unmodifiable(initialDomain),
-      contextModel: contextModel,
-      contextDomain: contextDomain,
-      actionId: actionId,
-      resId: resId,
+      attributes: attributes ??
+          ScreenAttributes(
+            model!,
+            mode: resId != null ? const ['form', 'tree'] : const ['tree', 'form'],
+            domain: List.unmodifiable(initialDomain),
+            resId: resId,
+          ),
     );
     final newTabs = [...state.tabs, tab];
     state = state.copyWith(tabs: newTabs, activeIndex: newTabs.length - 1);

@@ -4,16 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart';
-import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/rpc/error_processing.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/errors/error_dialogs.dart';
-import '../../shared/utils/date_format_utils.dart';
-import '../../shared/utils/number_format_utils.dart';
-import '../../shared/utils/symbol_cache.dart' as sym_cache;
 import '../model/field_definition.dart';
 import '../model/model_service.dart';
+import 'record_cells.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 
@@ -462,7 +459,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                 rows: records.map((record) {
                   final isSelected = _selected.contains(record);
                   final isDeleted = isMarked(record);
-                  final visual = _evalVisual(record);
+                  final visual = recordVisual(record, _treeDef?.visual);
 
                   return DataRow(
                     selected: isSelected,
@@ -497,23 +494,16 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                       ),
                       ...columns.map((col) {
                         final fd = _treeDef!.fields[col.name];
-                        final isNum = fd?.type == 'float' || fd?.type == 'numeric' || fd?.type == 'integer';
                         final cellStyle = TextStyle(
                           fontSize: 12,
                           decoration: isDeleted ? TextDecoration.lineThrough : null,
                           decorationColor: isDeleted ? errorColor : null,
                           color: isDeleted ? errorColor.withAlpha(160) : null,
                         );
-                        final symbolValue = fd?.symbol == null ? null : _get(record, fd!.symbol!);
                         return DataCell(
-                          isNum && fd != null
-                              ? _EmbeddedNumericCell(
-                                  value: _get(record, col.name),
-                                  field: fd,
-                                  currencyId: symbolValue is int ? symbolValue : null,
-                                  style: cellStyle,
-                                )
-                              : Text(_fmt(record, col.name, fd), style: cellStyle, overflow: TextOverflow.ellipsis),
+                          isNumericField(fd)
+                              ? RecordNumericCell.of(record, col.name, fd!, style: cellStyle)
+                              : Text(recordCellText(record, col.name, fd), style: cellStyle, overflow: TextOverflow.ellipsis),
                           onTap: isDeleted ? null : () => _openRecord(record),
                         );
                       }),
@@ -527,111 +517,6 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     );
   }
 
-  dynamic _get(Record record, String name) => record.model.fields[name]?.get(record);
-
-  String _evalVisual(Record record) {
-    final visual = _treeDef?.visual;
-    if (visual == null || visual.isEmpty) return '';
-    try {
-      return record.exprEval(visual)?.toString() ?? '';
-    } catch (_) {
-      return '';
-    }
-  }
-
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-
-  /// Cell text of [colName] (many2one/reference: rec_name, selection:
-  /// label, boolean: ✓, x2many: count).
-  String _fmt(Record record, String colName, FieldDefinition? fd) {
-    final field = record.model.fields[colName];
-    if (field == null) return '';
-    if (field is Many2OneField) return '${field.getClient(record)}';
-    if (field is ReferenceField) {
-      final client = field.getClient(record);
-      return client is List && client.length > 1 ? '${client[1]}' : '';
-    }
-    if (field is One2ManyField) return '( ${field.getEval(record).length} )';
-    final val = field.get(record);
-    if (val == null || val == false) return '';
-    if (field is BooleanField) return PYSONEvaluator.truthy(val) ? '✓' : '';
-    if (fd?.type == 'selection' && fd!.selection != null) {
-      final label = record.values['$colName:string'];
-      if (label is String && label.isNotEmpty) return label;
-      final match = fd.selection!.where((e) => e[0].toString() == val.toString()).firstOrNull;
-      return match?[1]?.toString() ?? val.toString();
-    }
-    // datetime: local time without milliseconds (DateTime.toString() would
-    // show "2026-10-26 14:30:00.000").
-    if (val is DateTime) return formatDateTimeValue(val);
-    // Prevent raw List/Map from leaking as toString()
-    if (val is List || val is Map) return '';
-    return val.toString();
-  }
-}
-
-// ─── Numeric cell for embedded tree ──────────────────────────────────────────
-
-class _EmbeddedNumericCell extends ConsumerStatefulWidget {
-  final dynamic value;
-  final FieldDefinition field;
-  /// Id of the currency/unit (value of the `symbol` field).
-  final int? currencyId;
-  final TextStyle? style;
-  const _EmbeddedNumericCell({required this.value, required this.field, this.currencyId, this.style});
-  @override
-  ConsumerState<_EmbeddedNumericCell> createState() => _EmbeddedNumericCellState();
-}
-
-class _EmbeddedNumericCellState extends ConsumerState<_EmbeddedNumericCell> {
-  String _symbol = '';
-  double _position = 1.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSymbol();
-  }
-
-  @override
-  void didUpdateWidget(_EmbeddedNumericCell old) {
-    super.didUpdateWidget(old);
-    if (old.currencyId != widget.currencyId) _loadSymbol();
-  }
-
-  Future<void> _loadSymbol() async {
-    if (widget.field.symbol == null) return;
-    final id = widget.currencyId;
-    if (id == null || id <= 0) return;
-    const relation = 'res.currency';
-    final svc = ref.read(modelServiceProvider);
-    final (sym, pos) = await sym_cache.resolveSymbol(svc, relation, id);
-    if (sym.isNotEmpty && mounted) {
-      setState(() {
-        _symbol = sym;
-        _position = pos;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    final formatted = formatNumericValue(
-      widget.value,
-      digits: widget.field.digits,
-      locale: locale,
-      isInteger: widget.field.type == 'integer',
-    );
-    final hasPrefix = _symbol.isNotEmpty && _position < 0.5;
-    final hasSuffix = _symbol.isNotEmpty && _position >= 0.5;
-    final text = hasPrefix
-        ? '$_symbol $formatted'
-        : hasSuffix
-        ? '$formatted $_symbol'
-        : formatted;
-    return Text(text, style: widget.style, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end);
-  }
 }
 
 // ─── Compact toolbar button ───────────────────────────────────────────────────

@@ -193,6 +193,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get switchToForm => 'Przełącz na formularz';
 
   @override
+  String get switchView => 'Przełącz widok';
+
+  @override
   String get close => 'Zamknij';
 
   @override

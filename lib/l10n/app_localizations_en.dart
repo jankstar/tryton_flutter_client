@@ -192,6 +192,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get switchToForm => 'Switch to form';
 
   @override
+  String get switchView => 'Switch view';
+
+  @override
   String get close => 'Close';
 
   @override

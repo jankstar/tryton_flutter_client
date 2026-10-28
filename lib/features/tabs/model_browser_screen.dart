@@ -6,13 +6,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
-import '../../core/pyson/pyson_environment.dart';
-import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
 import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/model_service.dart';
+import '../actions/act_window.dart';
 import '../shell/tab_manager.dart';
 
 // ─── Data model ──────────────────────────────────────────────────────────────
@@ -411,51 +410,19 @@ class _MenuNodeState extends ConsumerState<_MenuNode> {
       final svc = ref.read(modelServiceProvider);
       final session = ref.read(sessionProvider);
 
-      // Load act_window – including pyson_domain and pyson_context
-      // (like SAO: exec_action reads all these fields)
+      // Load act_window with everything the screen needs (views, domains,
+      // order, …), like the Python client's exec_action. A menu opens its
+      // action like tree_open: active_model = 'ir.ui.menu', the menu entry
+      // as active_id, no ids.
       final actions = await svc.read(
-        'ir.action.act_window',
-        [actionId],
-        ['name', 'res_model', 'pyson_domain', 'pyson_context',
-         'context_model', 'context_domain'],
-      );
+          'ir.action.act_window', [actionId], actWindowFields);
       if (actions.isEmpty || !context.mounted) return;
-
-      final action = actions.first;
-      final model = action['res_model']?.toString() ?? '';
-      final name = action['name']?.toString() ?? item.name;
-      if (model.isEmpty) return;
-
-      // Build evaluation context (like SAO: active_*, session.context, _user
-      // and the evaluated pyson_context; `context` is the whole dict again.
-      // A menu opens its action like the Python client's tree_open:
-      // active_model = 'ir.ui.menu', active_id = the menu entry, no ids.
-      final evalCtx = actionEnvironment(
-        sessionContext: session.context,
-        userId: session.userId,
-        activeModel: 'ir.ui.menu',
-        activeId: item.id,
-        pysonContext: action['pyson_context']?.toString(),
-      );
-
-      // Evaluate pyson_domain → concrete domain list
-      final domain = evaluateActionDomain(
-        action['pyson_domain']?.toString(),
-        evalCtx,
-      );
-
-      final contextModel = action['context_model']?.toString();
-      final contextDomain = action['context_domain']?.toString();
-
-      ref.read(tabsProvider.notifier).openTab(
-        title: name,
-        model: model,
-        initialDomain: domain,
-        contextModel:
-            (contextModel != null && contextModel.isNotEmpty) ? contextModel : null,
-        contextDomain:
-            (contextDomain != null && contextDomain.isNotEmpty) ? contextDomain : null,
-        actionId: actionId,
+      openActWindow(
+        ref.read(tabsProvider.notifier),
+        session,
+        actions.first.values,
+        data: {'model': 'ir.ui.menu', 'id': item.id, 'ids': const <int>[]},
+        title: actions.first['name']?.toString() ?? item.name,
       );
     } catch (e) {
       if (context.mounted) {
