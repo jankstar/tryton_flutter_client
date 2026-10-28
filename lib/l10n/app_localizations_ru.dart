@@ -278,4 +278,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String networkError(String details) {
     return 'Не удаётся связаться с сервером. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '«$field» обязательно для заполнения.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '«$field» недопустимо согласно домену.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Значения «$field» недопустимы.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Запись недопустима';
 }

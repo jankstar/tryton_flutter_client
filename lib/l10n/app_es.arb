@@ -336,5 +336,9 @@
   "applicationError": "Error de la aplicación",
   "details": "Detalles",
   "httpError": "Error: «[{code}] {text}». Inténtelo de nuevo más tarde.",
-  "networkError": "No se puede conectar con el servidor. {details}"
+  "networkError": "No se puede conectar con el servidor. {details}",
+  "invalidRequired": "\"{field}\" es obligatorio.",
+  "invalidDomain": "\"{field}\" no es válido según su dominio.",
+  "invalidChildren": "Los valores de \"{field}\" no son válidos.",
+  "invalidRecordTitle": "Registro no válido"
 }

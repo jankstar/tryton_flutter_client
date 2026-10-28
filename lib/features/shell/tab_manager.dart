@@ -44,10 +44,44 @@ class TabsState {
       activeIndex >= 0 && activeIndex < tabs.length ? tabs[activeIndex] : null;
 }
 
+/// Asks before a tab is closed (e.g. a modified form: save prompt, spec
+/// 10.4); true = may close.
+typedef TabCloseGuard = Future<bool> Function();
+
+/// Provides the id of the tab to the screens inside its Navigator.
+class TabScope extends InheritedWidget {
+  final String tabId;
+  const TabScope({super.key, required this.tabId, required super.child});
+
+  static String? of(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<TabScope>()?.tabId;
+
+  @override
+  bool updateShouldNotify(TabScope oldWidget) => oldWidget.tabId != tabId;
+}
+
 class TabsNotifier extends StateNotifier<TabsState> {
   TabsNotifier() : super(const TabsState());
 
   static const _uuid = Uuid();
+
+  /// Close guards per tab (the screens of the tab's navigator stack).
+  final Map<String, List<TabCloseGuard>> _closeGuards = {};
+
+  void addCloseGuard(String tabId, TabCloseGuard guard) =>
+      _closeGuards.putIfAbsent(tabId, () => []).add(guard);
+
+  void removeCloseGuard(String tabId, TabCloseGuard guard) =>
+      _closeGuards[tabId]?.remove(guard);
+
+  /// Closes the tab after all its guards agreed (topmost screen first).
+  Future<bool> requestCloseTab(String id) async {
+    for (final guard in [...?_closeGuards[id]].reversed) {
+      if (!await guard()) return false;
+    }
+    closeTab(id);
+    return true;
+  }
 
   void openTab({
     required String title,
@@ -75,6 +109,7 @@ class TabsNotifier extends StateNotifier<TabsState> {
   void closeTab(String id) {
     final idx = state.tabs.indexWhere((t) => t.id == id);
     if (idx < 0) return;
+    _closeGuards.remove(id);
     final newTabs = [...state.tabs]..removeAt(idx);
     int newActive = state.activeIndex;
     if (newTabs.isEmpty) {

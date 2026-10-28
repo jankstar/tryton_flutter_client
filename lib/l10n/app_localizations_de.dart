@@ -279,4 +279,22 @@ class AppLocalizationsDe extends AppLocalizations {
   String networkError(String details) {
     return 'Server nicht erreichbar. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '„$field“ ist erforderlich.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '„$field“ ist laut Domain nicht gültig.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Die Werte von „$field“ sind nicht gültig.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Datensatz nicht gültig';
 }

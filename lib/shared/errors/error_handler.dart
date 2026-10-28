@@ -117,6 +117,7 @@ class ErrorHandler implements RpcErrorProcessor {
 
   /// Short one-line text, e.g. for an error placeholder in a page.
   static String describe(Object error) => switch (error) {
+        HandledRpcError(:final error) => describe(error),
         UserError(:final message) => message,
         RpcHttpException(:final statusCode) =>
           '[$statusCode] ${httpReason(statusCode)}'.trim(),

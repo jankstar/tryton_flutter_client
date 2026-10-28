@@ -336,5 +336,9 @@
   "applicationError": "Erreur de l'application",
   "details": "Détails",
   "httpError": "Erreur : « [{code}] {text} ». Réessayez plus tard.",
-  "networkError": "Impossible de joindre le serveur. {details}"
+  "networkError": "Impossible de joindre le serveur. {details}",
+  "invalidRequired": "« {field} » est obligatoire.",
+  "invalidDomain": "« {field} » n'est pas valide selon son domaine.",
+  "invalidChildren": "Les valeurs de « {field} » ne sont pas valides.",
+  "invalidRecordTitle": "Enregistrement non valide"
 }

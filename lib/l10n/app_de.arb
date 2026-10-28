@@ -336,5 +336,9 @@
   "applicationError": "Anwendungsfehler",
   "details": "Details",
   "httpError": "Fehler: „[{code}] {text}“. Bitte später erneut versuchen.",
-  "networkError": "Server nicht erreichbar. {details}"
+  "networkError": "Server nicht erreichbar. {details}",
+  "invalidRequired": "„{field}“ ist erforderlich.",
+  "invalidDomain": "„{field}“ ist laut Domain nicht gültig.",
+  "invalidChildren": "Die Werte von „{field}“ sind nicht gültig.",
+  "invalidRecordTitle": "Datensatz nicht gültig"
 }

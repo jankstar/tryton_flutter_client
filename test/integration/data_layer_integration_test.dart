@@ -103,6 +103,37 @@ void main() {
     }
   });
 
+  test('read: form view (fields_view_get) of party.party', () async {
+    if (password == null) {
+      markTestSkipped('TRYTON_PASSWORD not set');
+      return;
+    }
+    final view = await svc.fieldsViewGet('party.party', viewType: 'form');
+    expect(view.rawFields, isNotEmpty);
+    final model = TrytonModel('party.party', session: modelSessionFor(svc))
+      ..addFields(view.rawFields);
+    final ids = await svc.execute<List>('party.party', 'search', [
+      <dynamic>[],
+      0,
+      1,
+      null
+    ]);
+    final group = RecordGroup(model)..load(ids.cast<int>());
+    final record = group.first;
+    await record.load('*');
+    expect(record.exception, isFalse);
+    expect(record.validate(softValidation: true), isTrue,
+        reason: record.invalidMessage());
+    await record.idle;
+    for (final field in model.fields.values) {
+      field.setState(record);
+    }
+    expect(record.modified, isFalse, reason: 'loading changes nothing');
+    final addresses = record.fieldGetClient('addresses') as RecordGroup;
+    expect(addresses.model.fields, isNotEmpty,
+        reason: 'sub-view fields of the form view');
+  });
+
   test('write: party with address – create, change, delete', () async {
     if (password == null || env['TRYTON_WRITE_TEST'] != '1') {
       markTestSkipped('TRYTON_PASSWORD / TRYTON_WRITE_TEST=1 not set');

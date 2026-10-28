@@ -278,4 +278,22 @@ class AppLocalizationsDa extends AppLocalizations {
   String networkError(String details) {
     return 'Kan ikke nå serveren. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '\"$field\" er påkrævet.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '\"$field\" er ikke gyldig i henhold til domænet.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Værdierne i \"$field\" er ikke gyldige.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Posten er ikke gyldig';
 }

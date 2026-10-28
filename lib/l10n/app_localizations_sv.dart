@@ -277,4 +277,22 @@ class AppLocalizationsSv extends AppLocalizations {
   String networkError(String details) {
     return 'Kan inte nå servern. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '\"$field\" är obligatoriskt.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '\"$field\" är inte giltigt enligt domänen.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Värdena i \"$field\" är inte giltiga.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Posten är inte giltig';
 }

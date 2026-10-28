@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tryton_flutter_client/core/domain/field_domain.dart';
 import 'package:tryton_flutter_client/core/pyson/pyson_environment.dart';
 import 'package:tryton_flutter_client/core/pyson/pyson_evaluator.dart';
 
@@ -130,87 +129,8 @@ void main() {
     });
   });
 
-  // ── Existing callers must behave as before (Many2One [id, name]) ───────
+  // ── Action domains of the menu and the list ──────────────────────────────
   group('callers', () {
-    Map<String, dynamic> formEnv(Map<String, dynamic> values) =>
-        recordEnvironment(
-            values: formEvalValues(values), activeModel: 'x', activeId: 1);
-
-    test('field states compare a Many2One with its id', () {
-      final states = {
-        'invisible': equal(eval_('party', null), 5),
-        'readonly': not(bool_(eval_('lines', []))),
-        'required': in_(eval_('state', ''), ['draft', 'quotation']),
-      };
-      final r = evaluateFieldStates(
-        statesRaw: states,
-        staticInvisible: false,
-        staticReadonly: false,
-        staticRequired: false,
-        environment: formEnv({
-          'party': [5, 'Jan'],
-          'lines': [11, 12],
-          'state': 'draft',
-        }),
-      );
-      expect(r.invisible, isTrue);
-      expect(r.readonly, isFalse);
-      expect(r.required, isTrue);
-
-      final empty = evaluateFieldStates(
-        statesRaw: states,
-        staticInvisible: false,
-        staticReadonly: false,
-        staticRequired: false,
-        environment: formEnv({'party': null, 'lines': [], 'state': 'done'}),
-      );
-      expect(empty.invisible, isFalse);
-      expect(empty.readonly, isTrue);
-      expect(empty.required, isFalse);
-    });
-
-    test('page/button states: static invisible wins, missing states keep '
-        'static values', () {
-      expect(
-          evaluateFieldStates(
-            statesRaw: {'invisible': false},
-            staticInvisible: true,
-            staticReadonly: false,
-            staticRequired: false,
-            environment: const {},
-          ).invisible,
-          isTrue);
-      final r = evaluateFieldStates(
-        statesRaw: null,
-        staticInvisible: false,
-        staticReadonly: true,
-        staticRequired: true,
-        environment: const {},
-      );
-      expect(r.readonly, isTrue);
-      expect(r.required, isTrue);
-    });
-
-    test('domain_readonly with a Many2One from the form', () {
-      // Field domain of a non-relational field, evaluated with the id of
-      // a Many2One value; required, so an empty field is set.
-      final r = evaluateDomainReadonly(
-        fieldName: 'company_id',
-        fieldType: 'integer',
-        fieldDomainRaw: jsonEncode([
-          ['company_id', '=', eval_('party_company', -1)]
-        ]),
-        screenDomain: const [],
-        environment: formEnv({
-          'party_company': [2, 'ACME'],
-        }),
-        required: true,
-      );
-      expect(r.readonly, isTrue);
-      expect(r.forced, isTrue);
-      expect(r.forcedValue, 2);
-    });
-
     test('action domain with session context and _user', () {
       final env = actionEnvironment(
         sessionContext: {'company': 1},

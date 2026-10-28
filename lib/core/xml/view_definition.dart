@@ -10,8 +10,11 @@ class ViewDefinition {
   /// Field name of the child records (One2Many). Only for hierarchical trees.
   /// SAO: `field_childs` in the `fields_view_get` response.
   final String? fieldChilds;
+  /// Field descriptions as sent by `fields_view_get` (for the data layer,
+  /// `TrytonModel.addFields`).
+  final Map<String, dynamic> rawFields;
 
-  const ViewDefinition({required this.arch, required this.fields, this.viewId, required this.type, this.fieldChilds});
+  const ViewDefinition({required this.arch, required this.fields, this.viewId, required this.type, this.fieldChilds, this.rawFields = const {}});
 
   factory ViewDefinition.fromJson(Map<String, dynamic> json) {
     final rawFields = json['fields'] as Map<String, dynamic>? ?? {};
@@ -26,6 +29,7 @@ class ViewDefinition {
       fieldChilds: json['field_childs'] is String && (json['field_childs'] as String).isNotEmpty
           ? json['field_childs'] as String
           : null,
+      rawFields: rawFields,
     );
   }
 }

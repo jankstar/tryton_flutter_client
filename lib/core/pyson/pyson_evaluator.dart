@@ -305,19 +305,6 @@ class PYSONEvaluator {
   static DateTime Function() clock = DateTime.now;
 }
 
-/// Evaluates the `states` dict of a field and returns a normalised result.
-class FieldStateResult {
-  final bool invisible;
-  final bool readonly;
-  final bool required;
-
-  const FieldStateResult({
-    this.invisible = false,
-    this.readonly = false,
-    this.required = false,
-  });
-}
-
 /// Evaluates a `pyson_domain` string from an `ir.action.act_window`.
 ///
 /// [pysonDomain] is a JSON string such as `'[["type","=","property"]]'`
@@ -352,54 +339,4 @@ dynamic _jsonDecodeStr(String s) {
   } catch (_) {
     return null;
   }
-}
-
-/// Evaluates `states` (invisible/readonly/required) of a field, button or
-/// page. [environment] is the record's evaluation environment
-/// (`recordEnvironment`, values in `get_eval` format).
-FieldStateResult evaluateFieldStates({
-  required Map<String, dynamic>? statesRaw,
-  required bool staticInvisible,
-  required bool staticReadonly,
-  required bool staticRequired,
-  required Map<String, dynamic> environment,
-}) {
-  if (staticInvisible) {
-    return const FieldStateResult(invisible: true);
-  }
-
-  if (statesRaw == null || statesRaw.isEmpty) {
-    return FieldStateResult(
-      invisible: staticInvisible,
-      readonly: staticReadonly,
-      required: staticRequired,
-    );
-  }
-
-  final ev = PYSONEvaluator(environment);
-
-  bool invisible = staticInvisible;
-  bool readonly = staticReadonly;
-  bool required = staticRequired;
-
-  final rawInvisible = statesRaw['invisible'];
-  if (rawInvisible != null) {
-    invisible = ev.evalBool(rawInvisible);
-  }
-
-  final rawReadonly = statesRaw['readonly'];
-  if (rawReadonly != null) {
-    readonly = ev.evalBool(rawReadonly);
-  }
-
-  final rawRequired = statesRaw['required'];
-  if (rawRequired != null) {
-    required = ev.evalBool(rawRequired);
-  }
-
-  return FieldStateResult(
-    invisible: invisible,
-    readonly: readonly,
-    required: required,
-  );
 }

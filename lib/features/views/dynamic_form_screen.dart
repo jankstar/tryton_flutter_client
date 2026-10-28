@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/icons/tryton_icon.dart';
-import '../../core/domain/domain_inversion.dart';
-import '../../core/domain/field_domain.dart';
-import '../../core/pyson/pyson_environment.dart';
-import '../../core/pyson/pyson_evaluator.dart';
+import '../../core/model/model.dart';
+import '../../core/rpc/error_processing.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../model/field_definition.dart';
@@ -16,15 +13,16 @@ import '../model/toolbar_data.dart';
 import '../shell/app_shell.dart';
 import '../shell/tab_manager.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
-import '../../shared/widgets/field_widget.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
 import '../../shared/widgets/concurrency_dialog.dart';
 import '../model/concurrency.dart';
 import '../model/field_support.dart';
+import '../model/model_rpc.dart';
 import '../model/selection_loader.dart';
-import 'embedded_tree_widget.dart';
 import 'navigation_context.dart';
+import 'record_form.dart';
+import 'record_widget_values.dart';
 import '../../core/l10n/locale_provider.dart';
 
 /// Server-driven form – loads the view definition via
@@ -36,16 +34,6 @@ class DynamicFormScreen extends ConsumerStatefulWidget {
   /// Domain from the action that opened this form (screen domain).
   /// Used for domain_readonly evaluation, like SAO's record.group.domain.
   final List<dynamic> screenDomain;
-  /// When true, renders without Scaffold/AppBar for use inside another widget.
-  final bool embedded;
-  /// Called when the user closes the embedded form (back to parent view).
-  final VoidCallback? onClose;
-  /// Called to navigate to the previous record in embedded mode.
-  final VoidCallback? onPrev;
-  /// Called to navigate to the next record in embedded mode.
-  final VoidCallback? onNext;
-  /// Position label shown in embedded toolbar, e.g. "2 / 5".
-  final String? positionLabel;
 
   const DynamicFormScreen({
     super.key,
@@ -53,16 +41,12 @@ class DynamicFormScreen extends ConsumerStatefulWidget {
     required this.title,
     required this.recordId,
     this.screenDomain = const [],
-    this.embedded = false,
-    this.onClose,
-    this.onPrev,
-    this.onNext,
-    this.positionLabel,
   });
 
   @override
   ConsumerState<DynamicFormScreen> createState() => _DynamicFormScreenState();
 }
+
 
 /// Session-level cache: model technical name → translated display name.
 /// Populated from ir.model on first access per model.
@@ -78,36 +62,29 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// Translated model display name loaded from ir.model (e.g. "Base Object").
   String? _modelDisplayName;
 
-  // Data values of the record
-  Map<String, dynamic> _values = {};
-  String? _timestamp;
+  /// The record of this form and its group (data layer, spec 5.3/5.4).
+  /// Widgets read with `field.get/getClient` and write with
+  /// `field.setClient`; the group's ChangeNotifier triggers a rebuild.
+  RecordGroup? _group;
+  Record? _record;
 
-  /// Like SAO's `modified_fields`: only these fields are passed to write()
-  /// when saving. Function fields (without a setter) are thus never
-  /// accidentally sent.
-  final Set<String> _modifiedFields = {};
+  /// Text input not yet written to the record (written on focus loss, like
+  /// SAO's focus-out; flushed before saving).
+  final Map<String, dynamic> _pending = {};
 
-  // Attachment count badge
-  int _attachmentCount = 0;
+  /// `on_change_notify` messages (`[[type, message], …]`), info bar.
+  List<dynamic> _notifications = const [];
+
+  /// `resources(id)`: attachment/note counters.
+  Map<String, dynamic>? _resources;
 
   bool _loading = false;
   bool _saving = false;
-  bool get _isDirty => _modifiedFields.isNotEmpty;
   String? _error;
 
-  bool get _isNew => widget.recordId < 0;
-
-  /// PYSON environment of the current record (SAO `record.expr_eval`).
-  Map<String, dynamic> _evalEnvironment() {
-    final fields = _viewDef?.fields ?? const <String, FieldDefinition>{};
-    return recordEnvironment(
-      values: formEvalValues(_values,
-          fieldTypes: {for (final e in fields.entries) e.key: e.value.type}),
-      context: ref.read(sessionProvider).context,
-      activeModel: widget.model,
-      activeId: widget.recordId,
-    );
-  }
+  bool get _isNew => (_record?.id ?? widget.recordId) < 0;
+  int get _recordId => _record?.id ?? widget.recordId;
+  bool get _isDirty => (_record?.modified ?? false) || _pending.isNotEmpty;
 
   /// Method-based selections incl. `selection_change_with`, cached per
   /// value combination for the lifetime of this form.
@@ -122,7 +99,73 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     _load();
   }
 
+  /// Tab of this form and its notifier: closing the tab asks first.
+  String? _tabId;
+  TabsNotifier? _tabs;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tabId = TabScope.of(context);
+    if (tabId != _tabId) {
+      if (_tabId != null) _tabs?.removeCloseGuard(_tabId!, _confirmDiscard);
+      _tabId = tabId;
+      _tabs = ref.read(tabsProvider.notifier);
+      if (tabId != null) _tabs!.addCloseGuard(tabId, _confirmDiscard);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_tabId != null) _tabs?.removeCloseGuard(_tabId!, _confirmDiscard);
+    _group?.removeListener(_onGroupChanged);
+    super.dispose();
+  }
+
+  void _onGroupChanged() {
+    if (mounted) setState(() {});
+  }
+
   // ─── Load data ───────────────────────────────────────────────────────────
+
+  /// Data-layer session of this form: errors of the record's server calls
+  /// go to this form's error dialogs, conflicts to the A1 dialog.
+  ModelSession _modelSession(ModelService svc) => modelSessionFor(
+        svc,
+        processor: errorHandlerOf(context, ref),
+        concurrencyRunner: concurrencyRunner(
+          ask: () async => mounted
+              ? showConcurrencyDialog(context)
+              : ConcurrencyChoice.cancel,
+          onCompare: (_, _) => _openCompareTab(),
+          onMessage: () async {
+            if (mounted) await showConcurrencyMessage(context);
+          },
+        ),
+      );
+
+  /// View attributes of the `<field>` nodes extend the field description
+  /// (SAO `field_attrs`): readonly/required/invisible from the XML.
+  static void _applyViewAttributes(TrytonModel model, List<FormNode> nodes) {
+    for (final node in nodes) {
+      switch (node) {
+        case FieldNode():
+          final desc = model.fields[node.name]?.description;
+          if (desc == null) continue;
+          if (node.readonly != null) desc['readonly'] = node.readonly;
+          if (node.required != null) desc['required'] = node.required;
+          if (node.invisible != null) desc['invisible'] = node.invisible;
+        case GroupNode():
+          _applyViewAttributes(model, node.children);
+        case NotebookNode():
+          _applyViewAttributes(model, node.pages);
+        case PageNode():
+          _applyViewAttributes(model, node.children);
+        default:
+          break;
+      }
+    }
+  }
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
@@ -139,68 +182,101 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       final rawViewDef = await svc.fieldsViewGet(widget.model, viewType: 'form');
       final formRoot = FormXmlParser().parse(rawViewDef.arch);
 
-      // 2. Load record
-      // Skip binary fields – not displayed yet (E13) and potentially large.
-      const skipTypes = {'binary'};
-      final fieldNames = rawViewDef.fields.entries
-          .where((e) => !skipTypes.contains(e.value.type))
-          .map((e) => e.key)
-          .toList();
-
-      Map<String, dynamic> values = {};
-      String? timestamp;
-      if (_isNew) {
-        values = await svc.defaultGet(widget.model, fieldNames);
-      } else {
-        // '_timestamp' is only returned when requested (like SAO's
-        // Record.load) – needed for the concurrency check on write/delete.
-        final records = await svc.read(
-            widget.model, [widget.recordId], [...fieldNames, '_timestamp']);
-        if (records.isNotEmpty) {
-          values = Map.from(records.first.values);
-          timestamp = records.first.timestamp;
-          // 'id' is removed from values in TrytonRecord.fromJson.
-          // Write it back explicitly here so the id field in the form
-          // shows the actual record number.
-          values['id'] = records.first.id;
-        }
+      // 2. Model, group and record of the data layer
+      if (!mounted) return;
+      final model = TrytonModel(widget.model, session: _modelSession(svc))
+        ..addFields(rawViewDef.rawFields);
+      _applyViewAttributes(model, formRoot.children);
+      // Fields without an own widget (E13) are never written: as readonly
+      // they are left out of create/write (Record.get).
+      for (final name in unsupportedFieldNames(rawViewDef.fields, formRoot)) {
+        model.fields[name]?.description['readonly'] = true;
       }
+      final group = RecordGroup(model);
+      if (widget.screenDomain.isNotEmpty) {
+        group.screenDomains.add(widget.screenDomain);
+      }
+      final Record record;
+      if (widget.recordId < 0) {
+        record = group.add(await group.newRecordWithDefaults(), modified: false);
+      } else {
+        group.load([widget.recordId]);
+        record = group.get(widget.recordId)!;
+        await record.load('*');
+      }
+      // Domain inversion: unique values of the screen domain are set and
+      // locked (domain_readonly), like SAO's validation on display.
+      record.validate(softValidation: true);
+      await record.idle;
 
       // 3. Options of method-based selections. With selection_change_with
       // they depend on the record values, so load after the record.
-      final enrichedFields =
-          Map<String, FieldDefinition>.from(rawViewDef.fields);
-      await Future.wait(rawViewDef.fields.values
-          .where(SelectionLoader.isDynamic)
-          .map((fd) async {
-        final opts = await _selections.load(fd, values, rawViewDef.fields);
-        enrichedFields[fd.name] = fd.copyWithSelection(opts);
-      }));
+      final viewDef = await _withSelections(rawViewDef, record);
 
-      final viewDef = ViewDefinition(
-        arch: rawViewDef.arch,
-        fields: enrichedFields,
-        viewId: rawViewDef.viewId,
-        type: rawViewDef.type,
-        fieldChilds: rawViewDef.fieldChilds,
-      );
-
+      group.onNotify = (notifications) {
+        if (mounted) setState(() => _notifications = notifications);
+      };
+      _group?.removeListener(_onGroupChanged);
+      group.addListener(_onGroupChanged);
       setState(() {
         _viewDef = viewDef;
         _formRoot = formRoot;
-        _values = values;
-        _timestamp = timestamp;
-        _modifiedFields.clear();
+        _group = group;
+        _record = record;
+        _pending.clear();
+        _notifications = const [];
       });
 
-      // Load toolbar, attachment count and translated model name in background
+      // Load toolbar, resources and translated model name in background
       _loadSideData(svc);  // also called for new records to get model display name
+    } on HandledRpcError catch (e) {
+      // Already shown by the error dialog; the page keeps a short text.
+      if (mounted) setState(() => _error = ErrorHandler.describe(e));
     } catch (e) {
       // Dialog via the central handler; the page keeps a short text + Reload.
       if (mounted) errorHandlerOf(context, ref).show(e);
-      setState(() => _error = ErrorHandler.describe(e));
+      if (mounted) setState(() => _error = ErrorHandler.describe(e));
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// [viewDef] with the options of all method-based selections for the
+  /// current values of [record].
+  Future<ViewDefinition> _withSelections(
+      ViewDefinition viewDef, Record record) async {
+    final values = recordWidgetValues(record);
+    final fields = Map<String, FieldDefinition>.from(viewDef.fields);
+    await Future.wait(viewDef.fields.values
+        .where(SelectionLoader.isDynamic)
+        .map((fd) async {
+      final opts = await _selections.load(fd, values, viewDef.fields);
+      fields[fd.name] = fd.copyWithSelection(opts);
+    }));
+    return ViewDefinition(
+      arch: viewDef.arch,
+      fields: fields,
+      viewId: viewDef.viewId,
+      type: viewDef.type,
+      fieldChilds: viewDef.fieldChilds,
+      rawFields: viewDef.rawFields,
+    );
+  }
+
+  /// Reloads the selections that depend on changed values (cached per
+  /// value combination, like SAO's update_selection).
+  Future<void> _refreshSelections() async {
+    final viewDef = _viewDef;
+    final record = _record;
+    if (viewDef == null || record == null) return;
+    if (!viewDef.fields.values.any((fd) =>
+        SelectionLoader.isDynamic(fd) &&
+        (fd.selectionChangeWith?.isNotEmpty ?? false))) {
+      return;
+    }
+    final updated = await _withSelections(viewDef, record);
+    if (mounted && identical(_viewDef, viewDef)) {
+      setState(() => _viewDef = updated);
     }
   }
 
@@ -211,14 +287,20 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       if (mounted) setState(() => _toolbar = t);
     } catch (_) {}
 
-    // Attachment count
-    try {
-      final count = await svc.attachmentCount(widget.model, widget.recordId);
-      if (mounted) setState(() => _attachmentCount = count);
-    } catch (_) {}
+    await _loadResources();
 
     // Translated model display name from ir.model (cached per model)
     await _loadModelDisplayName(svc);
+  }
+
+  /// Attachment and note counters (`resources`, without error dialog).
+  Future<void> _loadResources() async {
+    final record = _record;
+    if (record == null || record.id < 0) return;
+    try {
+      final resources = await record.getResources(reload: true);
+      if (mounted) setState(() => _resources = resources);
+    } catch (_) {}
   }
 
   /// Loads the human-readable, translated model name from ir.model.
@@ -314,79 +396,132 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     } catch (_) {}
   }
 
+  // ─── Field changes ───────────────────────────────────────────────────────
+
+  /// Keystroke in a text field: kept until focus loss.
+  void _onTextChanged(String name, dynamic value) {
+    setState(() => _pending[name] = value);
+  }
+
+  /// Focus loss of a text field: the value goes to the record (on_change).
+  void _onFieldBlur(String name) {
+    if (!_pending.containsKey(name)) return;
+    _writeField(name, _pending.remove(name));
+  }
+
+  /// Selection, date, many2one, boolean: written at once.
+  void _onFieldChangedImmediate(String name, dynamic value) {
+    _writeField(name, value);
+  }
+
+  /// `setClient` on the record; errors of the on_change chain were shown by
+  /// the form's error handler.
+  Future<void> _writeField(String name, dynamic value) async {
+    final record = _record;
+    if (record == null) return;
+    try {
+      await setRecordWidgetValue(record, name, value);
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
+    }
+    if (mounted) setState(() {});
+    await _refreshSelections();
+  }
+
+  /// Writes all pending text input to the record.
+  Future<void> _flushPending() async {
+    final record = _record;
+    if (record == null) return;
+    final pending = Map<String, dynamic>.from(_pending);
+    _pending.clear();
+    for (final MapEntry(key: name, value: value) in pending.entries) {
+      await setRecordWidgetValue(record, name, value);
+    }
+    await record.idle;
+  }
+
   // ─── Save ────────────────────────────────────────────────────────────────
 
-  /// Saves the record. Returns true when it was written; errors are shown
-  /// by the central [ErrorHandler] (a UserWarning repeats the save).
-  Future<bool> _save() async {
-    setState(() => _saving = true);
-    var saved = false;
-    await errorHandlerOf(context, ref).run(() async {
-      final svc = ref.read(modelServiceProvider);
-
-      // Like SAO: send only actually modified fields.
-      // Function fields (no setter) and computed fields are thus
-      // never accidentally passed to write() → no NotImplementedError.
-      final saveValues = _buildSaveValues();
-
-      if (_isNew) {
-        final ids = await svc.create(widget.model, [saveValues]);
-        saved = true;
-        if (mounted) {
-          _showSnack(context.l10n.recordCreated);
-          if (widget.embedded) {
-            widget.onClose?.call();
-          } else {
-            Navigator.of(context).pop(ids.firstOrNull);
-          }
-        }
-      } else {
-        final isUserRecord = widget.model == 'res.user' &&
-            widget.recordId == ref.read(sessionProvider).userId;
-        final written = await _withConcurrencyCheck((withTimestamp) =>
-            svc.write(widget.model, [widget.recordId], saveValues,
-                timestamp: withTimestamp ? _timestamp : null));
-        if (!written) return;
-        saved = true;
-        // Record changed on the server → reload to get the new _timestamp.
-        await _loadRecordTimestamp();
-        if (mounted) {
-          _showSnack(context.l10n.saved);
-          setState(() => _modifiedFields.clear());
-        }
-        // After saving the current user's own record: reload session context
-        // so language + name changes take effect immediately everywhere.
-        if (isUserRecord) {
-          await _reloadUserContext();
-        }
-      }
-    });
-    if (mounted) setState(() => _saving = false);
-    return saved;
-  }
-
-  /// Runs a write/delete of this record and resolves a concurrency
-  /// conflict with the user (spec 01-rpc-session.md 2.6).
-  Future<bool> _withConcurrencyCheck(
-      Future<void> Function(bool withTimestamp) action) {
-    return runWithConcurrencyCheck(
-      idCount: 1,
-      action: action,
-      ask: () async => mounted
-          ? showConcurrencyDialog(context)
-          : ConcurrencyChoice.cancel,
-      onCompare: _openCompareTab,
-      onMessage: () async {
-        if (mounted) await showConcurrencyMessage(context);
-      },
+  InvalidMessages _invalidTexts() {
+    final l = context.l10n;
+    return InvalidMessages(
+      required: l.invalidRequired('%s'),
+      domain: l.invalidDomain('%s'),
+      children: l.invalidChildren('%s'),
     );
   }
+
+  /// Validates and saves the record (spec 5.4.4/5.5). Returns true when it
+  /// was written. Invalid fields block saving and are listed in a dialog;
+  /// server errors are shown by the form's error handler.
+  Future<bool> _saveRecord() async {
+    final record = _record;
+    if (record == null) return false;
+    try {
+      await _flushPending();
+      if (!record.validate()) {
+        if (mounted) {
+          setState(() {});
+          await _showInvalid(record.invalidMessage(_invalidTexts()));
+        }
+        return false;
+      }
+      if (mounted) setState(() => _saving = true);
+      final isUserRecord = widget.model == 'res.user' &&
+          record.id == ref.read(sessionProvider).userId;
+      if (!await record.save()) return false;
+      // After saving the current user's own record: reload session context
+      // so language + name changes take effect immediately everywhere.
+      if (isUserRecord) await _reloadUserContext();
+      _loadResources();
+      return true;
+    } on HandledRpcError {
+      return false;
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
+      return false;
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Toolbar "Save": like before, a new record closes the form afterwards.
+  Future<bool> _save() async {
+    final wasNew = _isNew;
+    if (!await _saveRecord()) return false;
+    if (!mounted) return true;
+    if (wasNew) {
+      _showSnack(context.l10n.recordCreated);
+      Navigator.of(context).pop(_recordId);
+    } else {
+      _showSnack(context.l10n.saved);
+    }
+    return true;
+  }
+
+  Future<void> _showInvalid(String message) => showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.warning_amber_rounded),
+          title: Text(ctx.l10n.invalidRecordTitle),
+          content: SingleChildScrollView(child: Text(message)),
+          actions: [
+            FilledButton(
+              autofocus: true,
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(ctx.l10n.ok),
+            ),
+          ],
+        ),
+      );
 
   /// "Compare": opens the current server version in a new tab.
   Future<void> _openCompareTab() async {
     final svc = ref.read(modelServiceProvider);
     final records =
-        await svc.read(widget.model, [widget.recordId], ['rec_name']);
+        await svc.read(widget.model, [_recordId], ['rec_name']);
     final name = records.isNotEmpty
         ? records.first.values['rec_name']?.toString() ?? ''
         : '';
@@ -394,74 +529,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     ref.read(tabsProvider.notifier).openTab(
       title: context.l10n.compareTabTitle(name),
       model: widget.model,
-      initialDomain: [['id', '=', widget.recordId]],
-      resId: widget.recordId,
+      initialDomain: [['id', '=', _recordId]],
+      resId: _recordId,
     );
-  }
-
-  /// Re-reads only the timestamp after a successful write, so the next
-  /// save does not run into a false concurrency conflict.
-  Future<void> _loadRecordTimestamp() async {
-    try {
-      final svc = ref.read(modelServiceProvider);
-      final records = await svc.read(widget.model, [widget.recordId], ['_timestamp']);
-      if (records.isNotEmpty) _timestamp = records.first.timestamp;
-    } catch (_) {}
-  }
-
-  /// Builds the dict of fields to be written.
-  ///
-  /// For new records: all non-system fields with a value.
-  /// For existing records: only `_modifiedFields` (like SAO's modified_fields).
-  /// One2Many/Many2Many fields with pending delete operations are included
-  /// in Tryton operation format: `[['delete', [id1, id2]]]`.
-  /// Encodes a field value for write()/create().
-  /// Many2One UI stores [id, name] — Tryton expects just the integer id.
-  dynamic _encodeFieldValue(String fieldName, dynamic val) {
-    final fd = _viewDef?.fields[fieldName];
-    if (fd != null && fd.type == 'many2one') {
-      if (val is List && val.isNotEmpty) return (val[0] as num?)?.toInt();
-      if (val is int) return val;
-      return null;
-    }
-    return val;
-  }
-
-  Map<String, dynamic> _buildSaveValues() {
-    // Fields without an own widget (E13) are never written: their value
-    // could not be edited correctly in this client.
-    final neverWrite = {
-      'id', '_timestamp', '_write', '_delete',
-      ...unsupportedFieldNames(_viewDef?.fields ?? const {}, _formRoot),
-    };
-
-    if (_isNew) {
-      return {
-        for (final entry in _values.entries)
-          if (!neverWrite.contains(entry.key) && entry.value != null && entry.value != false)
-            entry.key: _encodeFieldValue(entry.key, entry.value),
-      };
-    }
-
-    final result = <String, dynamic>{};
-    for (final field in _modifiedFields) {
-      if (neverWrite.contains(field)) continue;
-      if (!_values.containsKey(field)) continue;
-      final val = _values[field];
-      // One2Many/Many2Many: include only if it contains Tryton operations
-      // (a List<List> like [['delete', [id1, id2]]]).
-      // Empty lists or non-operation values are skipped.
-      final fd = _viewDef?.fields[field];
-      if (fd != null && (fd.type == 'one2many' || fd.type == 'many2many')) {
-        if (val is List && val.isNotEmpty && val.first is List) {
-          result[field] = val; // Tryton operation list
-        }
-        // else: skip (no pending x2many changes)
-      } else {
-        result[field] = _encodeFieldValue(field, val);
-      }
-    }
-    return result;
   }
 
   Future<void> _delete() async {
@@ -480,84 +550,18 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         ],
       ),
     );
-    if (ok != true || !mounted) return;
-    await errorHandlerOf(context, ref).run(() async {
-      final svc = ref.read(modelServiceProvider);
-      final deleted = await _withConcurrencyCheck((withTimestamp) =>
-          svc.delete(widget.model, [widget.recordId],
-              timestamp: withTimestamp ? _timestamp : null));
-      if (deleted && mounted) Navigator.of(context).pop();
-    });
-  }
-
-  /// Called by every field when its value changes (like SAO's set_client).
-  /// Only updates local state – does NOT trigger on_change RPC.
-  /// Use [_onFieldBlur] for the RPC trigger (on focus loss).
-  void _onFieldChanged(String name, dynamic value) {
-    setState(() {
-      _values[name] = value;
-      _modifiedFields.add(name);
-    });
-  }
-
-  void _onFieldBlur(String name) {
-    _triggerOnChange(name);
-    // Text fields: reload dependent selections on blur, not per keystroke.
-    _refreshSelections([name]);
-  }
-
-  void _onFieldChangedImmediate(String name, dynamic value) {
-    setState(() {
-      _values[name] = value;
-      _modifiedFields.add(name);
-    });
-    _triggerOnChange(name);
-    _refreshSelections([name]);
-  }
-
-  /// Reloads selections whose `selection_change_with` contains one of
-  /// [changed] (cached per value combination). A result is dropped when the
-  /// values changed again meanwhile (like SAO's update_selection).
-  Future<void> _refreshSelections(Iterable<String> changed) async {
-    final viewDef = _viewDef;
-    if (viewDef == null) return;
-    final fields = viewDef.fields;
-    final targets = fields.values
-        .where((fd) => changed.any((c) => SelectionLoader.dependsOn(fd, c)))
-        .toList();
-    for (final fd in targets) {
-      String keyOf() => SelectionLoader.cacheKey(fd.selectionFunction!,
-          SelectionLoader.changeWithValues(fd, _values, fields));
-      final key = keyOf();
-      final opts = await _selections.load(fd, _values, fields);
-      if (!mounted || _viewDef != viewDef || keyOf() != key) continue;
-      setState(() {
-        _viewDef = ViewDefinition(
-          arch: viewDef.arch,
-          fields: {...viewDef.fields, fd.name: fd.copyWithSelection(opts)},
-          viewId: viewDef.viewId,
-          type: viewDef.type,
-          fieldChilds: viewDef.fieldChilds,
-        );
-      });
-    }
-  }
-
-  Future<void> _triggerOnChange(String field) async {
-    final fd = _viewDef?.fields[field];
-    if (fd?.onChange == null || fd!.onChange!.isEmpty) return;
+    final record = _record;
+    if (ok != true || !mounted || record == null) return;
     try {
-      final svc = ref.read(modelServiceProvider);
-      final updates = await svc.onChange(widget.model, _values, [field]);
-      if (mounted) {
-        setState(() {
-          _values.addAll(updates);
-          // on_change results are also "modified" (like SAO's set_on_change)
-          _modifiedFields.addAll(updates.keys);
-        });
-        _refreshSelections(updates.keys);
+      // delete with _timestamp; conflicts go to the A1 dialog
+      if (await record.group.delete([record]) && mounted) {
+        Navigator.of(context).pop();
       }
-    } catch (_) {}
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
+    }
   }
 
   Future<void> _executeButton(ButtonNode node) async {
@@ -580,22 +584,50 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       );
       if (confirmed != true || !mounted) return;
     }
-    if (_isNew || widget.recordId <= 0) return;
+    final record = _record;
+    if (record == null) return;
+    // Like SAO: the record is saved before the button runs.
+    if (_isDirty || _isNew) {
+      if (!await _saveRecord() || !mounted) return;
+    }
     setState(() => _saving = true);
     final ok = await errorHandlerOf(context, ref).run(() =>
         ref
             .read(modelServiceProvider)
-            .executeButton(widget.model, node.name, [widget.recordId]));
+            .executeButton(widget.model, node.name, [record.id]));
     if (!mounted) return;
     setState(() => _saving = false);
-    if (ok) await _load();
+    if (ok) await _reloadRecord();
+  }
+
+  /// Discards the local values and reads the record again.
+  Future<void> _reloadRecord() async {
+    final record = _record;
+    if (record == null || record.id < 0) return _load();
+    record.cancel();
+    _pending.clear();
+    try {
+      await record.load('*');
+      record.validate(softValidation: true);
+    } on HandledRpcError {
+      // shown
+    }
+    if (mounted) setState(() => _notifications = const []);
+    _loadResources();
+  }
+
+  /// Toolbar "Reload": discards the changes after the save prompt.
+  Future<void> _reload() async {
+    if (!await _confirmDiscard()) return;
+    if (mounted) await _load();
   }
 
   Future<void> _duplicate() async {
     if (_isNew) return;
+    if (!await _confirmDiscard() || !mounted) return;
     await errorHandlerOf(context, ref).run(() async {
       final svc = ref.read(modelServiceProvider);
-      final newIds = await svc.copy(widget.model, [widget.recordId]);
+      final newIds = await svc.copy(widget.model, [_recordId]);
       if (newIds.isNotEmpty && mounted) {
         pushFormScreen(context,
             model: widget.model,
@@ -612,7 +644,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     ref.read(tabsProvider.notifier).openTab(
       title: 'Logs',
       model: 'ir.model.log',
-      initialDomain: [['resource', '=', '${widget.model},${widget.recordId}']],
+      initialDomain: [['resource', '=', '${widget.model},$_recordId']],
     );
   }
 
@@ -621,14 +653,16 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     ref.read(tabsProvider.notifier).openTab(
       title: 'Notes',
       model: 'ir.note',
-      initialDomain: [['resource', '=', '${widget.model},${widget.recordId}']],
+      initialDomain: [['resource', '=', '${widget.model},$_recordId']],
     );
   }
 
-  /// Shows the SAO-style "This record has been modified" dialog.
-  /// Returns true if navigation should proceed (saved or discarded),
-  /// false if the user chose Cancel (stay in form).
-  Future<bool> _confirmDiscard() async {
+  /// Shows the SAO-style "This record has been modified" dialog (spec
+  /// 10.4) before navigation, close, new, reload, duplicate and actions.
+  /// Returns true if the operation should proceed: "Yes" saved the record
+  /// (a failed save stays in the form), "No" discards the changes (with
+  /// [reloadOnNo] the record is read again first), "Cancel" stays.
+  Future<bool> _confirmDiscard({bool reloadOnNo = false}) async {
     if (!_isDirty) return true;
     final l = context.l10n;
     final result = await showDialog<String>(
@@ -658,7 +692,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (result == 'cancel' || result == null) return false;
     if (result == 'yes') {
       // If save failed or was cancelled, stay in form
-      if (!await _save()) return false;
+      if (!await _saveRecord()) return false;
+    } else if (reloadOnNo) {
+      await _reloadRecord();
     }
     return true; // 'no' or successful save
   }
@@ -702,19 +738,16 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   void _showSnack(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  // _withRecNames removed: read() automatically returns Many2One as [id, rec_name].
-
   // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
 
-    if (widget.embedded) return _buildEmbedded(context, l);
-
     final nav = ref.watch(navContextProvider);
     final hasPrev = nav?.hasPrevious ?? false;
     final hasNext = nav?.hasNext ?? false;
+    final resources = _resources;
 
     return PopScope(
       canPop: false,
@@ -783,7 +816,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l.reload,
-            onPressed: _saving ? null : _load,
+            onPressed: _saving ? null : _reload,
           ),
           if (!_isNew) ...[
             IconButton(
@@ -810,12 +843,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             ),
             _AttachmentIconButton(
               model: widget.model,
-              recordId: widget.recordId,
-              count: _attachmentCount,
+              recordId: _recordId,
+              count: (resources?['attachment_count'] as num?)?.toInt() ?? 0,
             ),
-            IconButton(
-              icon: const Icon(Icons.sticky_note_2_outlined),
-              tooltip: context.l10n.note,
+            _NoteIconButton(
+              total: (resources?['note_count'] as num?)?.toInt() ?? 0,
+              unread: (resources?['note_unread'] as num?)?.toInt() ?? 0,
               onPressed: _openNote,
             ),
           ],
@@ -828,28 +861,32 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               tooltip: l.launchActions,
               items: _toolbar.actions,
               model: widget.model,
-              selectedIds: _isNew ? [] : [widget.recordId],
+              selectedIds: _isNew ? [] : [_recordId],
+              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
             ),
             ToolbarDropdownButton(
               icon: Icons.link,                   // tryton-link
               tooltip: l.relatedRecords,
               items: _toolbar.relate,
               model: widget.model,
-              selectedIds: _isNew ? [] : [widget.recordId],
+              selectedIds: _isNew ? [] : [_recordId],
+              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
             ),
             ToolbarDropdownButton(
               icon: Icons.print_outlined,         // tryton-print
               tooltip: l.reports,
               items: _toolbar.print,
               model: widget.model,
-              selectedIds: _isNew ? [] : [widget.recordId],
+              selectedIds: _isNew ? [] : [_recordId],
+              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
             ),
             ToolbarDropdownButton(
               icon: Icons.email_outlined,         // tryton-email
               tooltip: l.email,
               items: _toolbar.emails,
               model: widget.model,
-              selectedIds: _isNew ? [] : [widget.recordId],
+              selectedIds: _isNew ? [] : [_recordId],
+              beforeExecute: () => _confirmDiscard(reloadOnNo: true),
             ),
           ],
 
@@ -869,6 +906,54 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     ); // PopScope
   }
 
+  /// Info bar with the `on_change_notify` messages (spec 10.3), above the
+  /// form; closable, replaced by each notify.
+  Widget _buildNotifications() {
+    final cs = Theme.of(context).colorScheme;
+    final items = [
+      for (final n in _notifications)
+        if (n is List && n.length >= 2) (n[0].toString(), n[1].toString())
+    ];
+    if (items.isEmpty) return const SizedBox.shrink();
+    (IconData, Color) style(String type) => switch (type) {
+          'warning' => (Icons.warning_amber_rounded, Colors.orange),
+          'danger' || 'error' => (Icons.error_outline, cs.error),
+          'success' => (Icons.check_circle_outline, Colors.green),
+          _ => (Icons.info_outline, cs.primary),
+        };
+    return Container(
+      key: const ValueKey('form-notifications'),
+      color: cs.surfaceContainerHigh,
+      padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final (type, message) in items)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(children: [
+                      Icon(style(type).$1, size: 18, color: style(type).$2),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(message)),
+                    ]),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            tooltip: context.l10n.close,
+            onPressed: () => setState(() => _notifications = const []),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
@@ -885,7 +970,10 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         ]),
       );
     }
-    if (_formRoot == null || _viewDef == null) return const SizedBox.shrink();
+    final record = _record;
+    if (_formRoot == null || _viewDef == null || record == null) {
+      return const SizedBox.shrink();
+    }
 
     // Separate root-level buttons from field content so they stay in a
     // sticky footer while only the fields scroll.
@@ -903,841 +991,82 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         final hPad = (constraints.maxWidth * 0.03).clamp(12.0, 40.0);
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 16),
-          child: _FormRenderer(
+          child: RecordForm(
             model: widget.model,
             root: contentRoot,
             viewDef: _viewDef!,
-            values: _values,
-            environment: _evalEnvironment(),
-            onChanged: _onFieldChanged,
+            record: record,
+            onTextChanged: _onTextChanged,
             onBlur: _onFieldBlur,
             onChangedImmediate: _onFieldChangedImmediate,
-            isReadOnly: false,
-            screenDomain: widget.screenDomain,
+            isReadOnly: record.readonly,
             onButton: _executeButton,
           ),
         );
       },
     );
 
-    if (buttonNodes.isEmpty) return scrollBody;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildNotifications(),
         Expanded(child: scrollBody),
-        _ButtonFooter(
-          nodes: buttonNodes,
-          environment: _evalEnvironment(),
-          isReadOnly: false,
-          onButton: _executeButton,
-        ),
-      ],
-    );
-  }
-
-  // ── Embedded (inline inside EmbeddedTreeWidget) ────────────────────────────
-  Widget _buildEmbedded(BuildContext context, dynamic l) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Compact toolbar
-        Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          color: cs.surfaceContainerHighest,
-          child: Row(children: [
-            // ── Zurück zur Tabelle ──────────────────────────────────────
-            IconButton(
-              icon: const Icon(Icons.arrow_back, size: 16),
-              tooltip: l.close,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              onPressed: () async {
-                if (await _confirmDiscard()) widget.onClose?.call();
-              },
-            ),
-            // ── Vorheriger / Nächster ───────────────────────────────────
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios, size: 14),
-              tooltip: l.previousRecord,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 32),
-              onPressed: widget.onPrev == null ? null : () async {
-                if (await _confirmDiscard()) widget.onPrev!();
-              },
-            ),
-            if (widget.positionLabel != null)
-              Text(
-                widget.positionLabel!,
-                style: TextStyle(fontSize: 11, color: cs.outline),
-              ),
-            IconButton(
-              icon: const Icon(Icons.arrow_forward_ios, size: 14),
-              tooltip: l.nextRecord,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 28, minHeight: 32),
-              onPressed: widget.onNext == null ? null : () async {
-                if (await _confirmDiscard()) widget.onNext!();
-              },
-            ),
-            const SizedBox(width: 4),
-            // ── Titel ───────────────────────────────────────────────────
-            Expanded(
-              child: Text(
-                _effectiveTitle,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // ── Speichern / Reload ──────────────────────────────────────
-            if (_saving)
-              const SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-            else
-              IconButton(
-                icon: const Icon(Icons.save, size: 16),
-                tooltip: l.save,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                onPressed: (_saving || (!_isDirty && !_isNew)) ? null : _save,
-              ),
-            IconButton(
-              icon: const Icon(Icons.refresh, size: 16),
-              tooltip: l.reload,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              onPressed: _saving ? null : _load,
-            ),
-          ]),        // Row
-        ),             // Container
-        // Form body
-        Expanded(child: _buildBody()),
+        if (buttonNodes.isNotEmpty)
+          FormButtonFooter(
+            nodes: buttonNodes,
+            record: record,
+            isReadOnly: record.readonly,
+            onButton: _executeButton,
+          ),
       ],
     );
   }
 }
 
-// ─── Form-Renderer ────────────────────────────────────────────────────────────
+/// Notes button with badge `unread/total` (spec 10.3; coloured when there
+/// are unread notes).
+class _NoteIconButton extends StatelessWidget {
+  final int total;
+  final int unread;
+  final VoidCallback onPressed;
 
-class _FormRenderer extends StatefulWidget {
-  final String model;
-  final FormRoot root;
-  final ViewDefinition viewDef;
-  final Map<String, dynamic> values;
-  /// PYSON evaluation environment of the record (states, domains).
-  final Map<String, dynamic> environment;
-  final void Function(String, dynamic) onChanged;
-  final void Function(String) onBlur;
-  final void Function(String, dynamic) onChangedImmediate;
-  final bool isReadOnly;
-  /// Screen domain from the action that opened this form (for domain_readonly).
-  final List<dynamic> screenDomain;
-  /// Called when the user activates a <button> in the form.
-  final Future<void> Function(ButtonNode)? onButton;
-
-  const _FormRenderer({
-    required this.model,
-    required this.root,
-    required this.viewDef,
-    required this.values,
-    required this.environment,
-    required this.onChanged,
-    required this.onBlur,
-    required this.onChangedImmediate,
-    required this.isReadOnly,
-    this.screenDomain = const [],
-    this.onButton,
-  });
-
-  @override
-  State<_FormRenderer> createState() => _FormRendererState();
-}
-
-class _FormRendererState extends State<_FormRenderer> {
-  @override
-  Widget build(BuildContext context) {
-    return _renderNodes(widget.root.children, _safeCol(widget.root.col));
-  }
-
-  // Tryton can use col="-1" or col="0" for flexible layouts.
-  // We normalise to at least 1 (default: 4).
-  static int _safeCol(int col) => col < 1 ? 4 : col;
-
-  Widget _renderNodes(List<FormNode> nodes, int totalCol) {
-    // Labels with fieldName are skipped. Their column width is transferred to
-    // the immediately following Field-Node with the same name, so that no
-    // gaps appear in the grid and the field uses the full available space.
-    // (The field already shows its name as a floating label internally.)
-    final labelColspanMap = <String, int>{};
-    for (final n in nodes) {
-      if (n is LabelNode && n.fieldName != null) {
-        labelColspanMap[n.fieldName!] = n.colspan;
-      }
-    }
-
-    final rows = <Widget>[];
-    final currentRow = <_Cell>[];
-    int currentColUsed = 0;
-
-    void flushRow() {
-      if (currentRow.isEmpty) return;
-      rows.add(_GridRow(cells: List.from(currentRow), totalCols: totalCol));
-      currentRow.clear();
-      currentColUsed = 0;
-    }
-
-    for (final node in nodes) {
-      // LabelNode with field name → skip (field shows label internally)
-      if (node is LabelNode && node.fieldName != null) continue;
-
-      if (node is NewlineNode) {
-        flushRow();
-        continue;
-      }
-      if (node is NotebookNode) {
-        flushRow();
-        rows.add(_buildNotebook(node));
-        continue;
-      }
-      if (node is SeparatorNode) {
-        flushRow();
-        rows.add(_buildSeparator(node));
-        continue;
-      }
-
-      final w = _buildNode(node, totalCol);
-      if (w == null) continue;
-
-      // Field colspan + absorbed label colspan
-      int colspan = _getColspan(node, totalCol);
-      if (node is FieldNode) {
-        final extra = labelColspanMap[node.name] ?? 0;
-        colspan = (colspan + extra).clamp(1, totalCol);
-        // one2many / many2many tables always need full width – force it even
-        // when the XML omits an explicit colspan (Tryton forms always intend
-        // this, but our parser defaults to 1).
-        final fd = widget.viewDef.fields[node.name];
-        if (fd != null && (fd.type == 'one2many' || fd.type == 'many2many')) {
-          colspan = totalCol;
-        }
-      }
-
-      if (currentColUsed + colspan > totalCol) flushRow();
-      currentRow.add(_Cell(child: w, colspan: colspan));
-      currentColUsed += colspan;
-
-      if (colspan >= totalCol) flushRow();
-    }
-    flushRow();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rows,
-    );
-  }
-
-  Widget? _buildNode(FormNode node, int totalCol) {
-    if (node is FieldNode) return _buildField(node);
-    if (node is LabelNode) return _buildLabel(node);
-    if (node is GroupNode) return _buildGroup(node);
-    if (node is ButtonNode) return _buildButton(node);
-    return null;
-  }
-
-  Widget _buildField(FieldNode node) {
-    final fd = widget.viewDef.fields[node.name];
-    if (fd == null) return _unknownField(node.name);
-
-    // Evaluate PYSON states against the current field values
-    final states = evaluateFieldStates(
-      statesRaw: fd.statesRaw,
-      staticInvisible: fd.invisible || (node.invisible ?? false),
-      staticReadonly: fd.readonly || (node.readonly ?? false),
-      staticRequired: fd.required || (node.required ?? false),
-      environment: widget.environment,
-    );
-
-    // Invisible fields are not rendered (no placeholder, no spacing)
-    if (states.invisible) return const SizedBox.shrink();
-
-    // domain_readonly: if the screen domain (inverted on this field) and the
-    // field domain allow a single value, auto-set it and lock it (domain
-    // inversion like Field.validate in the Python client / SAO).
-    final fields = widget.viewDef.fields;
-    final domReadonly = evaluateDomainReadonly(
-      fieldName: node.name,
-      fieldType: fd.type,
-      fieldDomainRaw: fd.domainRaw,
-      screenDomain: widget.screenDomain,
-      environment: widget.environment,
-      fieldReadonly: fd.readonly,
-      required: states.required,
-      invisible: states.invisible,
-      isReadonlyField: (name) => fields[name]?.readonly ?? false,
-    );
-    // Compared in get_eval format (Many2One [id, name] equals its id).
-    if (domReadonly.forced &&
-        !domainEquals(
-            widget.environment[node.name], domReadonly.forcedValue)) {
-      // Defer the forced value update to avoid calling setState during build.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onChangedImmediate(node.name, domReadonly.forcedValue);
-      });
-    }
-
-    final readOnly = widget.isReadOnly || states.readonly || domReadonly.readonly;
-
-    // One2Many / Many2Many → inline table
-    if (fd.type == 'one2many' || fd.type == 'many2many') {
-      return _buildX2ManyField(fd, widget.values[node.name], readOnly);
-    }
-
-    // Many2One: combine value + rec_name if necessary
-    final value = _resolveM2OValue(node.name, fd, widget.values);
-
-    // Text-input fields: update local state on keystroke, trigger on_change
-    // only on blur (focus loss) – like SAO's focus_out event.
-    // Single-action fields (selection, date, many2one, boolean): trigger
-    // on_change immediately since there is no "typing" involved.
-    final isTextInput = fd.type == 'char' || fd.type == 'text' ||
-        fd.type == 'integer' || fd.type == 'float' || fd.type == 'numeric';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: FieldWidget(
-        field: fd,
-        value: value,
-        readOnly: readOnly,
-        isRequired: states.required,
-        recordValues: widget.values,
-        // XML attr takes precedence; fall back to fields_get 'symbol'.
-        symbolField: node.symbol ?? fd.symbol,
-        // Resolve the relation model of the symbol field so _NumericField
-        // can call get_symbol without hardcoding 'res.currency'.
-        symbolRelation: _resolveSymbolRelation(node.symbol ?? fd.symbol),
-        // widget= override from XML arch (e.g. "url", "email", "password").
-        widgetOverride: node.widget,
-        model: widget.model,
-        onChanged: isTextInput
-            ? (v) => widget.onChanged(node.name, v)   // local only
-            : (v) => widget.onChangedImmediate(node.name, v), // + RPC
-        onBlur: isTextInput
-            ? () => widget.onBlur(node.name)  // RPC on focus loss
-            : null,
-      ),
-    );
-  }
-
-  /// Returns the relation model name of a symbol field (e.g. 'res.currency').
-  String? _resolveSymbolRelation(String? symbolFieldName) {
-    if (symbolFieldName == null) return null;
-    return widget.viewDef.fields[symbolFieldName]?.relation;
-  }
-
-  /// Resolves the Many2One value: if only an ID is present,
-  /// resolves the Many2One value.
-  /// Tryton already returns [id, rec_name] via read().
-  /// Also checked here for search_read() (companion key).
-  /// Fallback: ID as string, so the field is never empty.
-  static dynamic _resolveM2OValue(
-    String name,
-    FieldDefinition fd,
-    Map<String, dynamic> values,
-  ) {
-    final raw = values[name];
-    if (fd.type != 'many2one') return raw;
-    if (raw == null || raw == false) return null;
-
-    // Tryton read() returns [id, rec_name] → use directly
-    if (raw is List && raw.isNotEmpty) {
-      final id = raw[0];
-      if (id == null || id == false) return null;
-      final name2 = raw.length > 1 ? raw[1] : null;
-      if (name2 != null && name2 != false) return raw;
-      // ID present but name missing → check companion key
-      final companion = values['$name.rec_name'] ?? values['$name.'];
-      if (companion != null && companion != false) return [id, companion];
-      return raw; // [id, null] → _updateFromValue loads name asynchronously
-    }
-
-    // Integer ID only (search_read without eager loading)
-    if (raw is int && raw > 0) {
-      final companion = values['$name.rec_name'] ?? values['$name.'];
-      if (companion != null && companion != false) return [raw, companion];
-      return raw; // Integer → _updateFromValue async loads
-    }
-
-    // on_change may return many2one as {"id": n, "rec_name": "Name"}
-    if (raw is Map) {
-      final id = (raw['id'] as num?)?.toInt();
-      if (id != null && id > 0) {
-        final recName = raw['rec_name'];
-        return (recName != null && recName != false && recName.toString().isNotEmpty)
-            ? [id, recName.toString()]
-            : id;
-      }
-    }
-
-    return null;
-  }
-
-  Widget _buildX2ManyField(FieldDefinition fd, dynamic value, bool readOnly) {
-    // value is a list of IDs (integer) or null
-    final ids = <int>[];
-    if (value is List) {
-      for (final item in value) {
-        if (item is int && item > 0) ids.add(item);
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 4),
-          child: Text(fd.label,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  )),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.outline.withAlpha(80)),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          padding: const EdgeInsets.all(8),
-          child: EmbeddedTreeWidget(
-            key: ValueKey('${fd.name}_${ids.length}'),
-            fieldDef: fd,
-            recordIds: ids,
-            readOnly: readOnly,
-            onChanged: (ops) {
-              // Tryton operation list [['delete', [ids]]] or []
-              // Stored in _values so _buildSaveValues() can include it on save
-              widget.onChanged(fd.name, ops.isEmpty ? null : ops);
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-
-  Widget _buildLabel(LabelNode node) {
-    // Hide label for a field if the field itself is invisible
-    if (node.fieldName != null) {
-      final fd = widget.viewDef.fields[node.fieldName!];
-      if (fd != null) {
-        final states = evaluateFieldStates(
-          statesRaw: fd.statesRaw,
-          staticInvisible: fd.invisible,
-          staticReadonly: fd.readonly,
-          staticRequired: fd.required,
-          environment: widget.environment,
-        );
-        if (states.invisible) return const SizedBox.shrink();
-      }
-    }
-
-    String text;
-    if (node.string != null) {
-      text = node.string!;
-    } else if (node.fieldName != null) {
-      text = widget.viewDef.fields[node.fieldName!]?.label ?? node.fieldName!;
-    } else {
-      return const SizedBox.shrink();
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, right: 4),
-      child: Text(
-        '$text:',
-        overflow: TextOverflow.ellipsis,
-        maxLines: 2,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-        textAlign: TextAlign.right,
-      ),
-    );
-  }
-
-  Widget _buildSeparator(SeparatorNode node) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(children: [
-        if (node.string != null) ...[
-          // Flexible prevents overflow when the text is wider than available
-          Flexible(
-            child: Text(
-              node.string!,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-        const Expanded(child: Divider()),
-      ]),
-    );
-  }
-
-  Widget _buildGroup(GroupNode node) {
-    final inner = _renderNodes(node.children, _safeCol(node.col));
-    if (node.string != null) {
-      return Card(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(node.string!,
-                  style: Theme.of(context).textTheme.titleSmall),
-              const Divider(),
-              inner,
-            ],
-          ),
-        ),
-      );
-    }
-    return inner;
-  }
-
-  Widget _buildButton(ButtonNode node) {
-    // Evaluate PYSON states against current record values – like SAO's
-    // Button.set_state(record) which calls record.expr_eval(attributes.states).
-    final states = evaluateFieldStates(
-      statesRaw: node.statesRaw,
-      staticInvisible: false,
-      staticReadonly: false,
-      staticRequired: false,
-      environment: widget.environment,
-    );
-
-    if (states.invisible) return const SizedBox.shrink();
-
-    final label = node.string ?? node.name;
-    final iconName = node.icon;
-    final disabled = widget.isReadOnly || states.readonly;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: (iconName != null && iconName.isNotEmpty)
-          ? OutlinedButton.icon(
-              icon: TrytonIcon(
-                iconName: iconName,
-                size: 16,
-                color: disabled
-                    ? Theme.of(context).colorScheme.onSurface.withAlpha(97)
-                    : Theme.of(context).colorScheme.primary,
-                fallback: Icons.play_circle_outline,
-              ),
-              label: Text(label),
-              onPressed: disabled ? null : () => widget.onButton?.call(node),
-            )
-          : OutlinedButton(
-              onPressed: disabled ? null : () => widget.onButton?.call(node),
-              child: Text(label),
-            ),
-    );
-  }
-
-  Widget _buildNotebook(NotebookNode node) {
-    // Filter pages based on their states/invisible conditions
-    final visiblePages = node.pages.where(_isPageVisible).toList();
-    if (visiblePages.isEmpty) return const SizedBox.shrink();
-
-    return DefaultTabController(
-      length: visiblePages.length,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 8),
-          TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: visiblePages.map((p) => Tab(text: _pageLabel(p))).toList(),
-          ),
-          SizedBox(
-            height: _estimateNotebookHeight(visiblePages),
-            child: TabBarView(
-              children: visiblePages.map((page) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: _renderNodes(page.children, _safeCol(widget.root.col)),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Resolves the display label for a notebook page.
-  ///
-  /// Priority (like Tryton/SAO):
-  /// 1. `string` attribute in the XML arch (already translated by server)
-  /// 2. The `string` (label) of the field with the same name as `page.name`
-  ///    (pages added via view inheritance often have only `name`, not `string`)
-  /// 3. Capitalize the technical `name` as a last fallback
-  String _pageLabel(PageNode page) {
-    // If the page has an explicit string that looks like a real label, use it
-    if (page.string.isNotEmpty &&
-        (page.string.contains(' ') ||
-            page.string != page.string.toLowerCase() ||
-            page.name == null)) {
-      return page.string;
-    }
-
-    // Look up the field whose name matches the page name → its translated label
-    final name = page.name ?? page.string;
-    final fieldLabel = widget.viewDef.fields[name]?.label;
-    if (fieldLabel != null && fieldLabel.isNotEmpty) return fieldLabel;
-
-    // Fallback: capitalize each word of the technical name
-    if (name.isEmpty) return '';
-    return name
-        .split('_')
-        .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
-        .join(' ');
-  }
-
-  /// Returns true when the page should be shown.
-  /// Evaluates static `invisible` attribute and PYSON `states` against
-  /// the current field values – same logic as SAO's page visibility check.
-  bool _isPageVisible(PageNode page) {
-    // Static invisible="1" → always hidden
-    if (page.invisibleStatic) return false;
-
-    // PYSON states evaluation
-    if (page.statesRaw != null) {
-      final result = evaluateFieldStates(
-        statesRaw: page.statesRaw,
-        staticInvisible: false,
-        staticReadonly: false,
-        staticRequired: false,
-        environment: widget.environment,
-      );
-      if (result.invisible) return false;
-    }
-
-    return true;
-  }
-
-  // Estimates the minimum height of a notebook based on the number of fields
-  double _estimateNotebookHeight(List<PageNode> pages) {
-    final maxFields = pages.fold<int>(0, (max, page) {
-      final count = page.children.whereType<FieldNode>().length;
-      return count > max ? count : max;
-    });
-    final x2mCount = pages.fold<int>(0, (max, page) {
-      final count = page.children.whereType<FieldNode>().where((f) {
-        final fd = widget.viewDef.fields[f.name];
-        return fd?.type == 'one2many' || fd?.type == 'many2many';
-      }).length;
-      return count > max ? count : max;
-    });
-    return (maxFields * 64.0 + x2mCount * 200.0 + 40).clamp(200, 800);
-  }
-
-  Widget _unknownField(String name) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text('[$name]', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-    );
-  }
-
-  int _getColspan(FormNode node, int totalCol) {
-    final maxCol = _safeCol(totalCol); // Prevents clamp(1, 0) or clamp(1, -1)
-    if (node is FieldNode) return node.colspan.clamp(1, maxCol);
-    if (node is LabelNode) return node.colspan.clamp(1, maxCol);
-    if (node is GroupNode) return node.colspan.clamp(1, maxCol);
-    if (node is ButtonNode) return node.colspan.clamp(1, maxCol);
-    return 1;
-  }
-}
-
-// ─── Grid row ─────────────────────────────────────────────────────────────────
-
-// ─── Sticky button footer ─────────────────────────────────────────────────────
-
-/// Renders root-level form buttons in a fixed footer bar that stays visible
-/// while the form content scrolls. Evaluates PYSON states per button.
-class _ButtonFooter extends StatelessWidget {
-  final List<ButtonNode> nodes;
-  /// PYSON evaluation environment of the record (button states).
-  final Map<String, dynamic> environment;
-  final bool isReadOnly;
-  final Future<void> Function(ButtonNode)? onButton;
-
-  const _ButtonFooter({
-    required this.nodes,
-    required this.environment,
-    required this.isReadOnly,
-    this.onButton,
-  });
+  const _NoteIconButton(
+      {required this.total, required this.unread, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final buttons = <Widget>[];
-
-    for (final node in nodes) {
-      final states = evaluateFieldStates(
-        statesRaw: node.statesRaw,
-        staticInvisible: false,
-        staticReadonly: false,
-        staticRequired: false,
-        environment: environment,
-      );
-      if (states.invisible) continue;
-
-      final label = node.string ?? node.name;
-      final disabled = isReadOnly || states.readonly;
-      final iconName = node.icon;
-
-      buttons.add(
-        iconName != null && iconName.isNotEmpty
-            ? OutlinedButton.icon(
-                icon: TrytonIcon(
-                  iconName: iconName,
-                  size: 16,
-                  color: disabled
-                      ? cs.onSurface.withAlpha(97)
-                      : cs.primary,
-                  fallback: Icons.play_circle_outline,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.sticky_note_2_outlined),
+          tooltip: context.l10n.note,
+          onPressed: onPressed,
+        ),
+        if (total > 0)
+          Positioned(
+            right: 2,
+            top: 4,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: unread > 0 ? cs.error : cs.primary,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                label: Text(label),
-                onPressed: disabled ? null : () => onButton?.call(node),
-              )
-            : OutlinedButton(
-                onPressed: disabled ? null : () => onButton?.call(node),
-                child: Text(label),
+                child: Text(
+                  unread > 0 ? '$unread/$total' : '$total',
+                  style: const TextStyle(color: Colors.white, fontSize: 9),
+                ),
               ),
-      );
-    }
-
-    if (buttons.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        border: Border(
-          top: BorderSide(color: cs.outlineVariant),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: buttons,
-      ),
+            ),
+          ),
+      ],
     );
   }
 }
 
-// ─── Grid cell / row ──────────────────────────────────────────────────────────
-
-class _Cell {
-  final Widget child;
-  final int colspan;
-  const _Cell({required this.child, required this.colspan});
-}
-
-class _GridRow extends StatelessWidget {
-  final List<_Cell> cells;
-  final int totalCols;
-
-  /// Minimum pixel width per base column. When the available width divided by
-  /// totalCols falls below this value, the effective column count is reduced
-  /// so that fields wrap to the next line instead of becoming too narrow.
-  static const double _minColWidth = 160.0;
-
-  const _GridRow({required this.cells, required this.totalCols});
-
-  @override
-  Widget build(BuildContext context) {
-    if (cells.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final available = constraints.maxWidth;
-        // How many base columns fit at the minimum width?
-        final effectiveCols =
-            (available / _minColWidth).floor().clamp(1, totalCols);
-
-        if (effectiveCols >= totalCols) {
-          return _buildRow(cells, totalCols);
-        }
-        // Re-layout: scale each colspan to the reduced column count and wrap.
-        return _buildWrapped(cells, totalCols, effectiveCols);
-      },
-    );
-  }
-
-  Widget _buildRow(List<_Cell> rowCells, int cols) {
-    if (rowCells.isEmpty) return const SizedBox.shrink();
-    final usedCols = rowCells.fold(0, (s, c) => s + c.colspan);
-
-    if (rowCells.length == 1 && usedCols >= cols) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: rowCells.first.child,
-      );
-    }
-
-    final children = <Widget>[];
-    for (final cell in rowCells) {
-      children.add(Expanded(
-        flex: cell.colspan,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: cell.child,
-        ),
-      ));
-    }
-    final remaining = cols - usedCols;
-    if (remaining > 0) children.add(Spacer(flex: remaining));
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: children);
-  }
-
-  Widget _buildWrapped(
-      List<_Cell> allCells, int origCols, int effectiveCols) {
-    final rows = <Widget>[];
-    final curRow = <_Cell>[];
-    int curUsed = 0;
-
-    void flush() {
-      if (curRow.isEmpty) return;
-      rows.add(_buildRow(List.from(curRow), effectiveCols));
-      curRow.clear();
-      curUsed = 0;
-    }
-
-    for (final cell in allCells) {
-      // Scale colspan proportionally; always at least 1, at most effectiveCols.
-      final scaled =
-          ((cell.colspan * effectiveCols) / origCols).ceil().clamp(1, effectiveCols);
-      if (curUsed + scaled > effectiveCols) flush();
-      curRow.add(_Cell(child: cell.child, colspan: scaled));
-      curUsed += scaled;
-      if (curUsed >= effectiveCols) flush();
-    }
-    flush();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rows,
-    );
-  }
-}
 
 // ─── Attachment button with count badge ──────────────────────────────────────
 

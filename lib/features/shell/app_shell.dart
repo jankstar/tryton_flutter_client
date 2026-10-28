@@ -103,9 +103,10 @@ class _AppShellState extends ConsumerState<AppShell> {
                       isActive: i == state.activeIndex,
                       onTap: () =>
                           ref.read(tabsProvider.notifier).activateTab(i),
+                      // A modified form in the tab asks first (10.4).
                       onClose: () => ref
                           .read(tabsProvider.notifier)
-                          .closeTab(state.tabs[i].id),
+                          .requestCloseTab(state.tabs[i].id),
                     ),
                 ],
               ),
@@ -119,7 +120,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   Widget _buildTabContent(AppTab tab) {
-    return Navigator(
+    return TabScope(
+      tabId: tab.id,
+      child: Navigator(
       key: tab.navigatorKey,
       onGenerateRoute: (settings) => MaterialPageRoute(
         builder: (_) => tab.resId != null
@@ -140,6 +143,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               ref.read(tabsProvider.notifier).closeTab(tab.id),
         ),
       ),
+    ),
     );
   }
 

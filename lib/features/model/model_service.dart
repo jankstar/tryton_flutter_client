@@ -184,17 +184,6 @@ class ModelService {
     return raw;
   }
 
-  /// Recalculates dependent fields after a change (on_change).
-  Future<Map<String, dynamic>> onChange(
-    String model,
-    Map<String, dynamic> values,
-    List<String> changedFields,
-  ) async {
-    final raw = await execute<Map<String, dynamic>>(
-        model, 'on_change', [values, changedFields]);
-    return raw;
-  }
-
   /// Executes a form button method on the server.
   /// Returns the action dict if the server returns one, otherwise null.
   Future<dynamic> executeButton(

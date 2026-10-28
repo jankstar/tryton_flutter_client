@@ -278,4 +278,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String networkError(String details) {
     return 'No se puede conectar con el servidor. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '\"$field\" es obligatorio.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '\"$field\" no es válido según su dominio.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Los valores de \"$field\" no son válidos.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Registro no válido';
 }

@@ -278,4 +278,22 @@ class AppLocalizationsNl extends AppLocalizations {
   String networkError(String details) {
     return 'Server niet bereikbaar. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '\"$field\" is verplicht.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '\"$field\" is niet geldig volgens het domein.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'De waarden van \"$field\" zijn niet geldig.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Record niet geldig';
 }

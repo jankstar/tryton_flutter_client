@@ -17,6 +17,10 @@ class ToolbarDropdownButton extends ConsumerWidget {
   /// Use this to disable the button when no record is selected.
   final bool enabled;
 
+  /// Called before an action runs (e.g. the form's save prompt, spec
+  /// 10.4); false cancels the action.
+  final Future<bool> Function()? beforeExecute;
+
   const ToolbarDropdownButton({
     super.key,
     required this.icon,
@@ -25,7 +29,17 @@ class ToolbarDropdownButton extends ConsumerWidget {
     required this.model,
     required this.selectedIds,
     this.enabled = true,
+    this.beforeExecute,
   });
+
+  Future<void> _execute(
+      BuildContext context, WidgetRef ref, TrytonActionItem action) async {
+    final before = beforeExecute;
+    if (before != null && !await before()) return;
+    if (!context.mounted) return;
+    final executor = ref.read(actionExecutorProvider);
+    await executor.execute(context, action, model, selectedIds);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,10 +57,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
       return IconButton(
         icon: Icon(icon),
         tooltip: '$tooltip: ${items.first.name}',
-        onPressed: () async {
-          final executor = ref.read(actionExecutorProvider);
-          await executor.execute(context, items.first, model, selectedIds);
-        },
+        onPressed: () => _execute(context, ref, items.first),
       );
     }
 
@@ -55,10 +66,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
       icon: Icon(icon),
       tooltip: tooltip,
       position: PopupMenuPosition.under,
-      onSelected: (action) async {
-        final executor = ref.read(actionExecutorProvider);
-        await executor.execute(context, action, model, selectedIds);
-      },
+      onSelected: (action) => _execute(context, ref, action),
       itemBuilder: (ctx) => [
         PopupMenuItem<TrytonActionItem>(
           enabled: false,

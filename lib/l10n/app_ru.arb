@@ -336,5 +336,9 @@
   "applicationError": "Ошибка приложения",
   "details": "Подробности",
   "httpError": "Ошибка: «[{code}] {text}». Повторите попытку позже.",
-  "networkError": "Не удаётся связаться с сервером. {details}"
+  "networkError": "Не удаётся связаться с сервером. {details}",
+  "invalidRequired": "«{field}» обязательно для заполнения.",
+  "invalidDomain": "«{field}» недопустимо согласно домену.",
+  "invalidChildren": "Значения «{field}» недопустимы.",
+  "invalidRecordTitle": "Запись недопустима"
 }

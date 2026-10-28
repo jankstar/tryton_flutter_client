@@ -89,7 +89,6 @@ void main() {
       await svc.delete('party.party', [1]);
       rpc.result = <String, dynamic>{};
       await svc.defaultGet('party.party', ['name']);
-      await svc.onChange('party.party', {'name': 'X'}, ['name']);
       rpc.result = 0;
       await svc.searchCount('party.party');
       rpc.result = <dynamic>[];

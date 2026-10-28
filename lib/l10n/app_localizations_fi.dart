@@ -278,4 +278,22 @@ class AppLocalizationsFi extends AppLocalizations {
   String networkError(String details) {
     return 'Palvelimeen ei saada yhteyttä. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '\"$field\" on pakollinen.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '\"$field\" ei ole kelvollinen toimialueensa mukaan.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Kentän \"$field\" arvot eivät ole kelvollisia.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Tietue ei ole kelvollinen';
 }

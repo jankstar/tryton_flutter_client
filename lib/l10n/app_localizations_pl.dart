@@ -279,4 +279,22 @@ class AppLocalizationsPl extends AppLocalizations {
   String networkError(String details) {
     return 'Nie można połączyć się z serwerem. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '„$field” jest wymagane.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '„$field” jest nieprawidłowe według domeny.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Wartości „$field” są nieprawidłowe.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Rekord nieprawidłowy';
 }

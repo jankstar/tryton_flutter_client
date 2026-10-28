@@ -1,18 +1,28 @@
 import '../../core/model/model.dart';
+import '../../core/rpc/error_processing.dart';
 import 'concurrency.dart';
 import 'model_service.dart';
 
 /// [ModelRpc] of the data layer over the [ModelService] (session context
-/// merged, `processException` passed on).
+/// merged). With `processException` an error goes through [processor]
+/// (e.g. the `ErrorHandler` of a form: dialog, then `HandledRpcError`),
+/// otherwise through the service's own `errorProcessor`.
 class ModelServiceRpc implements ModelRpc {
   final ModelService service;
-  const ModelServiceRpc(this.service);
+  final RpcErrorProcessor? processor;
+  const ModelServiceRpc(this.service, {this.processor});
 
   @override
   Future<dynamic> execute(String model, String method, List<dynamic> params,
-          {Map<String, dynamic>? context, bool processException = true}) =>
-      service.execute<dynamic>(model, method, params,
-          context: context, processException: processException);
+      {Map<String, dynamic>? context, bool processException = true}) {
+    final p = processor;
+    if (processException && p != null) {
+      return p.process(() => service.execute<dynamic>(model, method, params,
+          context: context, processException: false));
+    }
+    return service.execute<dynamic>(model, method, params,
+        context: context, processException: processException);
+  }
 }
 
 /// [ConcurrencyRunner] with the A1 dialog flow (`runWithConcurrencyCheck`):
@@ -34,9 +44,10 @@ ConcurrencyRunner concurrencyRunner({
 /// A [ModelSession] on the [ModelService] (session context of the
 /// service).
 ModelSession modelSessionFor(ModelService service,
-        {ConcurrencyRunner? concurrencyRunner}) =>
+        {ConcurrencyRunner? concurrencyRunner,
+        RpcErrorProcessor? processor}) =>
     ModelSession(
-      rpc: ModelServiceRpc(service),
+      rpc: ModelServiceRpc(service, processor: processor),
       context: service.sessionContext,
       concurrencyRunner: concurrencyRunner,
     );

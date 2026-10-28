@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/rpc/rpc_client.dart';
 import '../../core/rpc/rpc_exceptions.dart';
 import '../../core/session/session.dart';
+import '../views/embedded_tree_widget.dart' show clearEmbeddedViewCache;
 import 'user_preferences_provider.dart' show clearUserPreferencesCache;
 
 /// Singleton RpcClient – URL is set during login
@@ -172,6 +173,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     clearUserPreferencesCache();
+    clearEmbeddedViewCache();
     await _session.logout();
     state = const AuthState();
   }

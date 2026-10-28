@@ -393,5 +393,36 @@
         "type": "String"
       }
     }
+  },
+  "invalidRequired": "\"{field}\" is required.",
+  "invalidDomain": "\"{field}\" is not valid according to its domain.",
+  "invalidChildren": "The values of \"{field}\" are not valid.",
+  "invalidRecordTitle": "Record not valid",
+  "@invalidRequired": {
+    "description": "Validation: required field is empty (spec 5.5)",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "@invalidDomain": {
+    "description": "Validation: value violates the field domain",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "@invalidChildren": {
+    "description": "Validation: invalid x2many child records",
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "@invalidRecordTitle": {
+    "description": "Title of the dialog listing invalid fields before saving"
   }
 }

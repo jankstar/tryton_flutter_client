@@ -336,5 +336,9 @@
   "applicationError": "Toepassingsfout",
   "details": "Details",
   "httpError": "Fout: \"[{code}] {text}\". Probeer het later opnieuw.",
-  "networkError": "Server niet bereikbaar. {details}"
+  "networkError": "Server niet bereikbaar. {details}",
+  "invalidRequired": "\"{field}\" is verplicht.",
+  "invalidDomain": "\"{field}\" is niet geldig volgens het domein.",
+  "invalidChildren": "De waarden van \"{field}\" zijn niet geldig.",
+  "invalidRecordTitle": "Record niet geldig"
 }

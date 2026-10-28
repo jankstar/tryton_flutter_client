@@ -336,5 +336,9 @@
   "applicationError": "Sovellusvirhe",
   "details": "Tiedot",
   "httpError": "Virhe: \"[{code}] {text}\". Yritä myöhemmin uudelleen.",
-  "networkError": "Palvelimeen ei saada yhteyttä. {details}"
+  "networkError": "Palvelimeen ei saada yhteyttä. {details}",
+  "invalidRequired": "\"{field}\" on pakollinen.",
+  "invalidDomain": "\"{field}\" ei ole kelvollinen toimialueensa mukaan.",
+  "invalidChildren": "Kentän \"{field}\" arvot eivät ole kelvollisia.",
+  "invalidRecordTitle": "Tietue ei ole kelvollinen"
 }

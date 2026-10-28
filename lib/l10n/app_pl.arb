@@ -336,5 +336,9 @@
   "applicationError": "Błąd aplikacji",
   "details": "Szczegóły",
   "httpError": "Błąd: „[{code}] {text}”. Spróbuj ponownie później.",
-  "networkError": "Nie można połączyć się z serwerem. {details}"
+  "networkError": "Nie można połączyć się z serwerem. {details}",
+  "invalidRequired": "„{field}” jest wymagane.",
+  "invalidDomain": "„{field}” jest nieprawidłowe według domeny.",
+  "invalidChildren": "Wartości „{field}” są nieprawidłowe.",
+  "invalidRecordTitle": "Rekord nieprawidłowy"
 }

@@ -336,5 +336,9 @@
   "applicationError": "Programfel",
   "details": "Detaljer",
   "httpError": "Fel: \"[{code}] {text}\". Försök igen senare.",
-  "networkError": "Kan inte nå servern. {details}"
+  "networkError": "Kan inte nå servern. {details}",
+  "invalidRequired": "\"{field}\" är obligatoriskt.",
+  "invalidDomain": "\"{field}\" är inte giltigt enligt domänen.",
+  "invalidChildren": "Värdena i \"{field}\" är inte giltiga.",
+  "invalidRecordTitle": "Posten är inte giltig"
 }

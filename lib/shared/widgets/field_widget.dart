@@ -48,6 +48,14 @@ class FieldWidget extends ConsumerWidget {
   /// Tryton model name — used to load dynamic selection options from the server.
   final String? model;
 
+  /// Field is invalid (required/domain, spec 9.2.3 `has-error`): red border.
+  final bool invalid;
+
+  /// Search domain of a many2one computed by the data layer
+  /// (`field.getDomain(record)`); when null the field `domain` is evaluated
+  /// with [recordValues].
+  final List<dynamic>? searchDomain;
+
   const FieldWidget({
     super.key,
     required this.field,
@@ -62,6 +70,8 @@ class FieldWidget extends ConsumerWidget {
     this.onClear,
     this.widgetOverride,
     this.model,
+    this.invalid = false,
+    this.searchDomain,
   });
 
   @override
@@ -200,6 +210,8 @@ class FieldWidget extends ConsumerWidget {
           readOnly: effective,
           onChanged: onChanged,
           recordValues: recordValues,
+          searchDomain: searchDomain,
+          invalid: invalid,
         );
 
       case 'one2many':
@@ -264,6 +276,9 @@ class FieldWidget extends ConsumerWidget {
       helperText: field.help,
       border: const OutlineInputBorder(),
       suffixIcon: clearBtn,
+      // has-error: red border without text (the message comes on save)
+      errorText: invalid ? '' : null,
+      errorStyle: invalid ? const TextStyle(height: 0, fontSize: 0) : null,
     );
   }
 
@@ -633,6 +648,8 @@ class _Many2OneField extends ConsumerStatefulWidget {
   final bool readOnly;
   final void Function(dynamic)? onChanged;
   final Map<String, dynamic> recordValues;
+  final List<dynamic>? searchDomain;
+  final bool invalid;
 
   const _Many2OneField({
     required this.field,
@@ -640,6 +657,8 @@ class _Many2OneField extends ConsumerStatefulWidget {
     required this.readOnly,
     this.onChanged,
     this.recordValues = const {},
+    this.searchDomain,
+    this.invalid = false,
   });
 
   @override
@@ -784,6 +803,8 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
   /// Mirrors SAO's `record.expr_eval(this.description.domain)`:
   /// PYSON expressions like Eval('party') are resolved using recordValues.
   List<dynamic> _evalFieldDomain() {
+    final domain = widget.searchDomain;
+    if (domain != null) return domain;
     // Many2One values are [id, name] – expose the id for Eval('field')
     return evalFieldDomain(
         widget.field.domainRaw, formEvalValues(widget.recordValues));
@@ -847,6 +868,10 @@ class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
               child: const Icon(Icons.account_tree_outlined, size: 16),
             ),
             suffixIcon: _buildSuffix(context, hasValue),
+            errorText: widget.invalid ? '' : null,
+            errorStyle: widget.invalid
+                ? const TextStyle(height: 0, fontSize: 0)
+                : null,
           ),
           onTap: widget.readOnly
               ? null

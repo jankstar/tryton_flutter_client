@@ -613,6 +613,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to reach the server. {details}'**
   String networkError(String details);
+
+  /// Validation: required field is empty (spec 5.5)
+  ///
+  /// In en, this message translates to:
+  /// **'\"{field}\" is required.'**
+  String invalidRequired(String field);
+
+  /// Validation: value violates the field domain
+  ///
+  /// In en, this message translates to:
+  /// **'\"{field}\" is not valid according to its domain.'**
+  String invalidDomain(String field);
+
+  /// Validation: invalid x2many child records
+  ///
+  /// In en, this message translates to:
+  /// **'The values of \"{field}\" are not valid.'**
+  String invalidChildren(String field);
+
+  /// Title of the dialog listing invalid fields before saving
+  ///
+  /// In en, this message translates to:
+  /// **'Record not valid'**
+  String get invalidRecordTitle;
 }
 
 class _AppLocalizationsDelegate

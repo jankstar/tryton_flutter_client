@@ -279,4 +279,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String networkError(String details) {
     return 'Impossible de joindre le serveur. $details';
   }
+
+  @override
+  String invalidRequired(String field) {
+    return '« $field » est obligatoire.';
+  }
+
+  @override
+  String invalidDomain(String field) {
+    return '« $field » n\'est pas valide selon son domaine.';
+  }
+
+  @override
+  String invalidChildren(String field) {
+    return 'Les valeurs de « $field » ne sont pas valides.';
+  }
+
+  @override
+  String get invalidRecordTitle => 'Enregistrement non valide';
 }
