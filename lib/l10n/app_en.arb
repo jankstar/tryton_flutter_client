@@ -499,5 +499,17 @@
         "type": "String"
       }
     }
+  },
+  "revisions": "Revisions...",
+  "@revisions": {
+    "description": "Revision view (spec 11.7)"
+  },
+  "currentRevision": "Current",
+  "@currentRevision": {
+    "description": "Revision view (spec 11.7)"
+  },
+  "selectRevision": "Select a revision",
+  "@selectRevision": {
+    "description": "Revision view (spec 11.7)"
   }
 }

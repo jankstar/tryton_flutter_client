@@ -347,4 +347,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String createNamed(String name) {
     return 'Создать «$name»…';
   }
+
+  @override
+  String get revisions => 'Ревизии…';
+
+  @override
+  String get currentRevision => 'Текущая';
+
+  @override
+  String get selectRevision => 'Выберите ревизию';
 }

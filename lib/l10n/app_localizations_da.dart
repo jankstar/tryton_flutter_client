@@ -347,4 +347,13 @@ class AppLocalizationsDa extends AppLocalizations {
   String createNamed(String name) {
     return 'Opret \"$name\"…';
   }
+
+  @override
+  String get revisions => 'Revisioner…';
+
+  @override
+  String get currentRevision => 'Aktuel';
+
+  @override
+  String get selectRevision => 'Vælg en revision';
 }

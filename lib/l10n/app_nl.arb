@@ -355,5 +355,8 @@
   "searchMenu": "Zoeken…",
   "createMenu": "Aanmaken…",
   "searchTitle": "{title} zoeken",
-  "createNamed": "\"{name}\" aanmaken…"
+  "createNamed": "\"{name}\" aanmaken…",
+  "revisions": "Revisies…",
+  "currentRevision": "Huidig",
+  "selectRevision": "Kies een revisie"
 }

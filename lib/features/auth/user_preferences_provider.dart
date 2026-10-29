@@ -38,6 +38,10 @@ void clearUserPreferencesCache() {
 
 final userPreferencesProvider =
     FutureProvider<UserPreferences?>((ref) async {
+  // The session object stays the same across logins: the login state
+  // makes the provider load again (another user after logout/login).
+  // Full start sequence with get_preferences(false)/status_bar: B10.
+  ref.watch(authProvider.select((state) => state.status));
   final session = ref.watch(sessionProvider);
   if (!session.isLoggedIn) {
     clearUserPreferencesCache();

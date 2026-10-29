@@ -74,6 +74,14 @@ class ModelSession {
   /// `on_change_notify`. Loaded on first use when null.
   Map<String, List<String>>? notificationFields;
 
+  /// Access rights per model (SAO `MODELACCESS.get`); null = not known
+  /// (then full access is assumed, see [TrytonModel.access]).
+  ModelAccess? Function(String model)? accessOf;
+
+  /// Loads the access rights of [models] (batches, spec 4) so that
+  /// [accessOf] knows them.
+  Future<void> Function(Iterable<String> models)? loadAccess;
+
   /// Record limit for eager loading (`client.limit`).
   int limit;
 
@@ -85,6 +93,8 @@ class ModelSession {
     Map<String, dynamic> Function()? context,
     this.concurrencyRunner,
     this.notificationFields,
+    this.accessOf,
+    this.loadAccess,
     this.limit = 1000,
     this.displaySize = 20,
   }) : context = context ?? _emptyContext;
@@ -120,15 +130,21 @@ class TrytonModel {
   /// Field objects by name (SAO `model.fields`).
   final Map<String, Field> fields = {};
 
-  /// Access rights (SAO `Sao.common.MODELACCESS.get(name)`).
-  ModelAccess access;
+  /// Access rights (SAO `Sao.common.MODELACCESS.get(name)`): set
+  /// explicitly, else from the session's metadata, else full access.
+  ModelAccess get access =>
+      _access ?? session.accessOf?.call(name) ?? const ModelAccess();
+  set access(ModelAccess value) => _access = value;
+  ModelAccess? _access;
 
   TrytonModel(
     this.name, {
     ModelSession? session,
     Map<String, dynamic> Function()? sessionContext,
-    this.access = const ModelAccess(),
-  }) : session = session ?? ModelSession(context: sessionContext);
+    ModelAccess? access,
+  }) : session = session ?? ModelSession(context: sessionContext) {
+    _access = access;
+  }
 
   /// Session context (SAO `model.session.context`).
   Map<String, dynamic> sessionContext() => session.context();

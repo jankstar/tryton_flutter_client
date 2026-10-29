@@ -105,6 +105,21 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
 
   set context(Map<String, dynamic> value) => _context = {...value};
 
+  /// Revision shown (`_datetime` of the own context, spec 11.7); null =
+  /// current values. With a revision the group is read only.
+  DateTime? get revision {
+    final value = _context['_datetime'];
+    return value is DateTime ? value : null;
+  }
+
+  set revision(DateTime? value) {
+    if (value == null) {
+      _context.remove('_datetime');
+    } else {
+      _context['_datetime'] = value;
+    }
+  }
+
   /// [context] without the session context (for URLs, actions).
   Map<String, dynamic> get localContext => _getContext(local: true);
 

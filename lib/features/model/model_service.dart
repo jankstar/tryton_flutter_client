@@ -6,6 +6,7 @@ import '../../core/rpc/rpc_exceptions.dart';
 import '../../features/auth/auth_provider.dart';
 import '../../core/xml/view_definition.dart';
 import 'field_definition.dart';
+import 'metadata_service.dart';
 import 'record.dart';
 import 'toolbar_data.dart';
 
@@ -26,6 +27,10 @@ class ModelService {
   /// (dialogs, UserWarning repetition). Null = errors go to the caller
   /// unchanged (current screens handle them with `ErrorHandler.run`).
   RpcErrorProcessor? errorProcessor;
+
+  /// Metadata caches of the session (access rights, model names, …; set
+  /// by `metadataServiceProvider`).
+  MetadataService? metadata;
 
   String get _db => _getDatabase();
   Map<String, dynamic> get _ctx => _getContext();

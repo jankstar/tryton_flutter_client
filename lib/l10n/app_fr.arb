@@ -355,5 +355,8 @@
   "searchMenu": "Rechercher…",
   "createMenu": "Créer…",
   "searchTitle": "Rechercher {title}",
-  "createNamed": "Créer « {name} »…"
+  "createNamed": "Créer « {name} »…",
+  "revisions": "Révisions…",
+  "currentRevision": "Actuelle",
+  "selectRevision": "Sélectionnez une révision"
 }

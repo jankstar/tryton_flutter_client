@@ -348,4 +348,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String createNamed(String name) {
     return 'Créer « $name »…';
   }
+
+  @override
+  String get revisions => 'Révisions…';
+
+  @override
+  String get currentRevision => 'Actuelle';
+
+  @override
+  String get selectRevision => 'Sélectionnez une révision';
 }

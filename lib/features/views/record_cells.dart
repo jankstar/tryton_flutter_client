@@ -39,6 +39,15 @@ String recordCellText(Record record, String name, FieldDefinition? fd) {
   return val.toString();
 }
 
+/// Touch devices (Android, iOS): tapping a row opens it, a long press
+/// selects; otherwise a click selects and a double click (or Enter)
+/// opens, like SAO.
+bool isTouchPlatform(BuildContext context) => switch (Theme.of(context).platform) {
+      TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.fuchsia =>
+        true,
+      _ => false,
+    };
+
 /// Whether [fd] is shown as a right-aligned number.
 bool isNumericField(FieldDefinition? fd) =>
     fd?.type == 'float' || fd?.type == 'numeric' || fd?.type == 'integer';

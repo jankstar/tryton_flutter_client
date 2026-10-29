@@ -727,6 +727,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create \"{name}\"...'**
   String createNamed(String name);
+
+  /// Revision view (spec 11.7)
+  ///
+  /// In en, this message translates to:
+  /// **'Revisions...'**
+  String get revisions;
+
+  /// Revision view (spec 11.7)
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get currentRevision;
+
+  /// Revision view (spec 11.7)
+  ///
+  /// In en, this message translates to:
+  /// **'Select a revision'**
+  String get selectRevision;
 }
 
 class _AppLocalizationsDelegate

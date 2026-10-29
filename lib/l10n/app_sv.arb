@@ -355,5 +355,8 @@
   "searchMenu": "Sök…",
   "createMenu": "Skapa…",
   "searchTitle": "Sök {title}",
-  "createNamed": "Skapa \"{name}\"…"
+  "createNamed": "Skapa \"{name}\"…",
+  "revisions": "Revisioner…",
+  "currentRevision": "Aktuell",
+  "selectRevision": "Välj en revision"
 }

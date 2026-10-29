@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/icons/tryton_icon.dart';
@@ -79,6 +80,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   final Set<Record> _loading = {};
 
   final _hScrollController = ScrollController();
+
+  /// Keyboard focus of the table (Enter opens the selected record).
+  final _tableFocus = FocusNode();
   bool _loadingView = false;
   String? _error;
 
@@ -94,11 +98,23 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   void initState() {
     super.initState();
     _loadView();
+    _loadAccess();
+  }
+
+  /// Access rights of the relation if not known yet.
+  Future<void> _loadAccess() async {
+    final session = widget.parent.model.session;
+    if (_relModel.isEmpty || session.accessOf?.call(_relModel) != null) return;
+    try {
+      await session.loadAccess?.call([_relModel]);
+    } catch (_) {}
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _hScrollController.dispose();
+    _tableFocus.dispose();
     super.dispose();
   }
 
@@ -191,10 +207,19 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     return value == null || value == false ? null : value;
   }
 
-  bool get _canAdd => _isMany2Many || _addRemove != null;
-  bool get _canDelete => !_isMany2Many && _flag('delete');
-  bool get _canRemove => _isMany2Many || _addRemove != null;
-  bool get _canCreate => _flag('create');
+  /// Access rights of the relation (SAO `get_access` of the widget).
+  ModelAccess get _access =>
+      _group?.model.access ??
+      TrytonModel(_relModel, session: widget.parent.model.session).access;
+
+  bool get _canAdd =>
+      (_isMany2Many || _addRemove != null) && _access.write && _access.read;
+  bool get _canDelete =>
+      !_isMany2Many && _flag('delete') && _access.delete;
+  bool get _canRemove =>
+      (_isMany2Many || _addRemove != null) && _access.write && _access.read;
+  bool get _canCreate => _flag('create') && _access.create;
+  bool get _canOpen => _access.read;
 
   /// `size` reached: New/Add disabled (spec 9.2.7).
   bool get _sizeLimitReached {
@@ -393,6 +418,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     final selectedHaveMarked = _selected.any(isMarked);
     final markedCount = group.recordDeleted.length + group.recordRemoved.length;
     final limitReached = _sizeLimitReached;
+    final touch = isTouchPlatform(context);
     // Row values: one eager load reads the neighbours too.
     if (columns.isNotEmpty) {
       for (final r in records) {
@@ -431,7 +457,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                         tooltip: l.openInForm,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        onPressed: hasSelection ? () => _openRecord(_selected.first) : null,
+                        onPressed: hasSelection && _canOpen
+                            ? () => _openRecord(_selected.first)
+                            : null,
                       ),
                       if (!widget.readOnly) ...[
                         if (_canCreate)
@@ -499,7 +527,20 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
             child: Text(l.noEntries, style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13)),
           )
         else
-          Scrollbar(
+          Focus(
+            focusNode: _tableFocus,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
+                  _selected.isNotEmpty &&
+                  _canOpen) {
+                _openRecord(_selected.first);
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: Scrollbar(
             controller: _hScrollController,
             thumbVisibility: true,
             child: SingleChildScrollView(
@@ -587,7 +628,24 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                           isNumericField(fd)
                               ? RecordNumericCell.of(record, col.name, fd!, style: cellStyle)
                               : Text(recordCellText(record, col.name, fd), style: cellStyle, overflow: TextOverflow.ellipsis),
-                          onTap: isDeleted ? null : () => _openRecord(record),
+                          // SAO: a click selects, a double click opens;
+                          // touch: tapping opens, a long press selects.
+                          onTap: touch
+                              ? (isDeleted || !_canOpen ? null : () => _openRecord(record))
+                              : () {
+                                  _tableFocus.requestFocus();
+                                  setState(() => _selected
+                                    ..clear()
+                                    ..add(record));
+                                },
+                          onDoubleTap: touch || isDeleted || !_canOpen
+                              ? null
+                              : () => _openRecord(record),
+                          onLongPress: touch
+                              ? () => setState(() {
+                                    if (!_selected.remove(record)) _selected.add(record);
+                                  })
+                              : null,
                         );
                       }),
                     ],
@@ -596,6 +654,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
               ),
             ),
           ), // Scrollbar
+          ), // Focus
       ],
     );
   }

@@ -127,9 +127,15 @@ class ActionService {
           context: ctx,
         );
         if (attributes.model.isEmpty || attributes.model == 'null') return;
+        // Without action name: the translated model name (MODELNAME).
+        var baseName = name;
+        if (baseName.isEmpty) {
+          baseName = await _svc.metadata?.name(attributes.model) ?? '';
+          if (baseName.isEmpty) baseName = attributes.model;
+        }
         final title = action['keyword'] != null
-            ? await _nameWithSuffix(name, data, attributes.context, ui)
-            : name;
+            ? await _nameWithSuffix(baseName, data, attributes.context, ui)
+            : baseName;
         _tabs.openTab(title: title, attributes: attributes);
       case 'ir.action.url':
         final url = action['url'];

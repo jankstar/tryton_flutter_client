@@ -347,4 +347,13 @@ class AppLocalizationsFi extends AppLocalizations {
   String createNamed(String name) {
     return 'Luo \"$name\"…';
   }
+
+  @override
+  String get revisions => 'Versiot…';
+
+  @override
+  String get currentRevision => 'Nykyinen';
+
+  @override
+  String get selectRevision => 'Valitse versio';
 }

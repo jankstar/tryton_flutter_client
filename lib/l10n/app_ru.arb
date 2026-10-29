@@ -355,5 +355,8 @@
   "searchMenu": "Поиск…",
   "createMenu": "Создать…",
   "searchTitle": "Поиск: {title}",
-  "createNamed": "Создать «{name}»…"
+  "createNamed": "Создать «{name}»…",
+  "revisions": "Ревизии…",
+  "currentRevision": "Текущая",
+  "selectRevision": "Выберите ревизию"
 }

@@ -355,5 +355,8 @@
   "searchMenu": "Etsi…",
   "createMenu": "Luo…",
   "searchTitle": "Etsi {title}",
-  "createNamed": "Luo \"{name}\"…"
+  "createNamed": "Luo \"{name}\"…",
+  "revisions": "Versiot…",
+  "currentRevision": "Nykyinen",
+  "selectRevision": "Valitse versio"
 }

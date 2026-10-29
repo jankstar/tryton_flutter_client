@@ -487,6 +487,30 @@ class TrytonScreen extends ChangeNotifier {
 
   bool get deletable => selectedRecords.every((r) => r.deletable);
 
+  // ── Toolbar (spec 10.3) ──────────────────────────────────────────────────
+
+  /// Revision view (`_datetime` in the context, 11.7): everything is
+  /// read only.
+  bool get revision => PYSONEvaluator.truthy(group.context['_datetime']);
+
+  /// New / Copy / Import: create right.
+  bool get canCreate => !revision && !screenReadonly && model.access.create;
+
+  /// Save: create or write right, a modification and not read only.
+  bool canSave({required bool modified}) =>
+      !revision &&
+      !screenReadonly &&
+      (model.access.create || model.access.write) &&
+      modified;
+
+  /// Delete: delete right and all selected (or the current) records
+  /// deletable.
+  bool get canDelete {
+    if (revision || screenReadonly || !model.access.delete) return false;
+    final records = _selectedOrCurrent;
+    return records.isNotEmpty && records.every((r) => r.deletable);
+  }
+
   // ── Views (8.2) ───────────────────────────────────────────────────────────
 
   int get numberOfViews => views.length + _viewToLoad.length;

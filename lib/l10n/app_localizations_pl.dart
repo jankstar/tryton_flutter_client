@@ -348,4 +348,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String createNamed(String name) {
     return 'Utwórz „$name”…';
   }
+
+  @override
+  String get revisions => 'Wersje…';
+
+  @override
+  String get currentRevision => 'Bieżąca';
+
+  @override
+  String get selectRevision => 'Wybierz wersję';
 }

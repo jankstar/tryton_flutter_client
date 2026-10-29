@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/features/auth/auth_provider.dart';
+import 'package:tryton_flutter_client/features/model/metadata_service.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 import 'package:tryton_flutter_client/features/views/screen_widget.dart';
@@ -50,18 +51,22 @@ Map<String, dynamic> formView(String arch, Map<String, dynamic> fields) =>
 /// Pumps a form screen (only the form view) of [model] on [rpc]: the
 /// record [recordId] or, if negative, a new record (English texts).
 Future<void> pumpForm(WidgetTester tester, FakeFormRpc rpc,
-        {required String model, required int recordId, bool settle = true}) =>
+        {required String model,
+        required int recordId,
+        bool settle = true,
+        bool metadata = false}) =>
     pumpScreen(
         tester,
         rpc,
         ScreenAttributes(model,
             mode: const ['form'], resId: recordId < 0 ? null : recordId),
-        settle: settle);
+        settle: settle,
+        metadata: metadata);
 
 /// Pumps a [ScreenWidget] with [attributes] on [rpc] (English texts).
 Future<void> pumpScreen(
     WidgetTester tester, FakeFormRpc rpc, ScreenAttributes attributes,
-    {bool settle = true}) async {
+    {bool settle = true, bool metadata = false}) async {
   tester.view.physicalSize = const Size(1400, 1000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -69,6 +74,11 @@ Future<void> pumpScreen(
       rpc: rpc,
       getContext: () => {'language': 'en'},
       getDatabase: () => 'test');
+  // Access rights etc. from the fake server (ir.model.list_models, …).
+  if (metadata) {
+    // Like the start sequence (3.2): model list, history, …
+    await tester.runAsync(() => (svc.metadata = MetadataService(svc)).load());
+  }
   await tester.pumpWidget(ProviderScope(
     overrides: [
       rpcClientProvider.overrideWithValue(rpc),

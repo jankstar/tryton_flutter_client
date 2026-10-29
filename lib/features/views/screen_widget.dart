@@ -205,12 +205,17 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
         await cs.switchView();
         await cs.newRecord();
       }
+      // Access rights of the model before the group decides readonly
+      // (spec 4); afterwards of the relations of its fields.
+      final loadAccess = screen.model.session.loadAccess;
+      await loadAccess?.call([screen.model.name]);
       final resId = widget.attributes.resId;
       if (resId != null) {
         screen.load([resId]);
         screen.currentRecord = screen.group.get(resId);
       }
       await screen.switchView();
+      await loadAccess?.call(relationModels(screen.model));
       final view = screen.currentView;
       if (view?.viewType == 'tree' && resId == null) {
         await screen.searchFilter();
@@ -284,3 +289,11 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
     };
   }
 }
+
+/// Relation models of the fields of [model] (for loading access rights).
+Iterable<String> relationModels(TrytonModel model) => {
+      for (final field in model.fields.values)
+        if (field.description['relation'] case final String relation
+            when relation.isNotEmpty)
+          relation,
+    };

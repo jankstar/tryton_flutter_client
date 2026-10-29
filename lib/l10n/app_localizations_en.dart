@@ -347,4 +347,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String createNamed(String name) {
     return 'Create \"$name\"...';
   }
+
+  @override
+  String get revisions => 'Revisions...';
+
+  @override
+  String get currentRevision => 'Current';
+
+  @override
+  String get selectRevision => 'Select a revision';
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/icons/tryton_icon.dart';
@@ -63,6 +64,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   final _scrollController = ScrollController();
   final _hScrollController = ScrollController();
 
+  /// Keyboard focus of the list (Enter opens the selected record).
+  final _listFocus = FocusNode();
+
   /// Number of group records shown (grows while scrolling).
   int _visible = _displayStep;
   final Set<Record> _selected = {};
@@ -93,6 +97,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   void dispose() {
     _scrollController.dispose();
     _hScrollController.dispose();
+    _listFocus.dispose();
     _searchCtrl.dispose();
     _screen.removeListener(_onScreenChanged);
     _screen.contextScreen?.removeListener(_onScreenChanged);
@@ -195,6 +200,21 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     screen.currentRecord =
         screen.selectedRecords.isEmpty ? null : screen.selectedRecords.first;
   }
+
+  /// Touch devices: tapping opens, a long press selects; otherwise a click
+  /// selects and a double click / Enter opens (like SAO).
+  bool get _touch => isTouchPlatform(context);
+
+  void _tapRow(Record record) {
+    if (_touch) {
+      _openRecord(record);
+      return;
+    }
+    _listFocus.requestFocus();
+    setState(() => _setSelected([record]));
+  }
+
+  void _longPressRow(Record record) => setState(() => _toggleSelected(record));
 
   void _toggleSelected(Record record) {
     final selected = {..._selected};
@@ -393,10 +413,11 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           ),
 
           // ── CRUD ──────────────────────────────────────────────────────
+          // Rights and revision view (spec 10.3, MODELACCESS)
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: l.createNew,
-            onPressed: _newRecord,
+            onPressed: _screen.canCreate ? _newRecord : null,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -405,17 +426,19 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           ),
           IconButton(
             icon: Icon(Icons.copy_outlined,
-                color: hasSelection ? null : Theme.of(context).disabledColor),
+                color: hasSelection && _screen.canCreate
+                    ? null
+                    : Theme.of(context).disabledColor),
             tooltip: l.duplicate,
-            onPressed: hasSelection ? _copySelected : null,
+            onPressed: hasSelection && _screen.canCreate ? _copySelected : null,
           ),
           IconButton(
             icon: Icon(Icons.delete_outline,
-                color: hasSelection
+                color: hasSelection && _screen.canDelete
                     ? Theme.of(context).colorScheme.error
                     : Theme.of(context).disabledColor),
             tooltip: l.delete,
-            onPressed: hasSelection ? _deleteSelected : null,
+            onPressed: hasSelection && _screen.canDelete ? _deleteSelected : null,
           ),
 
           // ── Attachment (requires selection) ───────────────────────────
@@ -602,11 +625,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             const SizedBox(height: 8),
             Text(context.l10n.noRecordsFound),
             const SizedBox(height: 16),
-            FilledButton.icon(
-              icon: const Icon(Icons.add),
-              label: Text(context.l10n.createNew),
-              onPressed: _newRecord,
-            ),
+            if (_screen.canCreate)
+              FilledButton.icon(
+                icon: const Icon(Icons.add),
+                label: Text(context.l10n.createNew),
+                onPressed: _newRecord,
+              ),
           ]),
         ),
       );
@@ -615,7 +639,22 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     return Column(
       children: [
         Expanded(
-          child: _isHierarchical ? _buildTreeBody(rows) : _buildTableBody(rows),
+          // Enter opens the selected record (SAO row activation).
+          child: Focus(
+            focusNode: _listFocus,
+            onKeyEvent: (node, event) {
+              final selected = _screen.selectedRecords;
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
+                  selected.isNotEmpty) {
+                _openRecord(selected.first);
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: _isHierarchical ? _buildTreeBody(rows) : _buildTableBody(rows),
+          ),
         ),
         if (_loading) const LinearProgressIndicator(),
       ],
@@ -722,8 +761,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         for (final col in _columns)
           DataCell(
             _cell(record, col.name, const TextStyle(fontSize: 13)),
-            onTap: () => setState(() => _setSelected([record])),
-            onDoubleTap: () => _openRecord(record),
+            onTap: () => _tapRow(record),
+            onDoubleTap: _touch ? null : () => _openRecord(record),
+            onLongPress: _touch ? () => _longPressRow(record) : null,
           ),
       ],
     );
@@ -857,8 +897,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final expanded = _expanded.contains(record);
 
     return InkWell(
-      onTap: () => setState(() => _setSelected([record])),
-      onDoubleTap: () => _openRecord(record),
+      onTap: () => _tapRow(record),
+      onDoubleTap: _touch ? null : () => _openRecord(record),
+      onLongPress: _touch ? () => _longPressRow(record) : null,
       child: Container(
         color: isSelected
             ? Theme.of(ctx).colorScheme.primaryContainer.withAlpha(80)

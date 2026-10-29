@@ -347,4 +347,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String createNamed(String name) {
     return '\"$name\" aanmaken…';
   }
+
+  @override
+  String get revisions => 'Revisies…';
+
+  @override
+  String get currentRevision => 'Huidig';
+
+  @override
+  String get selectRevision => 'Kies een revisie';
 }

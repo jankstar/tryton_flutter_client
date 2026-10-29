@@ -346,4 +346,13 @@ class AppLocalizationsSv extends AppLocalizations {
   String createNamed(String name) {
     return 'Skapa \"$name\"…';
   }
+
+  @override
+  String get revisions => 'Revisioner…';
+
+  @override
+  String get currentRevision => 'Aktuell';
+
+  @override
+  String get selectRevision => 'Välj en revision';
 }

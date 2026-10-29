@@ -50,4 +50,9 @@ ModelSession modelSessionFor(ModelService service,
       rpc: ModelServiceRpc(service, processor: processor),
       context: service.sessionContext,
       concurrencyRunner: concurrencyRunner,
+      // Metadata of the session (spec 4): access rights, notification
+      // fields.
+      accessOf: service.metadata?.accessOf,
+      loadAccess: service.metadata?.ensureAccess,
+      notificationFields: service.metadata?.notificationFields,
     );

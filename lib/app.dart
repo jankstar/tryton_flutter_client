@@ -10,6 +10,7 @@ import 'core/rpc/reauth_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/model/metadata_service.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
 import 'features/model/model_service.dart';
@@ -46,6 +47,16 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
         ReAuthService.fail();
       }
     });
+  }
+
+  /// Start sequence after login (spec 3.2; the context was loaded with
+  /// get_preferences): metadata caches, then the language (model names
+  /// are loaded again in the new language).
+  Future<void> _startSession() async {
+    final metadata = ref.read(metadataServiceProvider);
+    await metadata.load();
+    await _applyServerLocale();
+    metadata.clearNames();
   }
 
   /// After login: read res.user.language.code from the server and apply it.
@@ -86,7 +97,11 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
     // When login completes, load the server language and persist it.
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.status == AuthStatus.authenticated && prev?.status != AuthStatus.authenticated) {
-        _applyServerLocale();
+        _startSession();
+      } else if (next.status == AuthStatus.unauthenticated &&
+          prev?.status == AuthStatus.authenticated) {
+        // Logout: all metadata caches are cleared.
+        ref.read(metadataServiceProvider).clear();
       }
     });
 

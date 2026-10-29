@@ -166,6 +166,19 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
     _ctrl.text = _recName;
     _focus.addListener(_onFocus);
     if (_isReference) _loadModels();
+    _loadAccess();
+  }
+
+  /// Access rights of the relation if not known yet (Open needs read, New
+  /// needs create).
+  Future<void> _loadAccess() async {
+    final relation = _relation;
+    final session = _record.model.session;
+    if (relation == null || session.accessOf?.call(relation) != null) return;
+    try {
+      await session.loadAccess?.call([relation]);
+    } catch (_) {}
+    if (mounted) setState(() {});
   }
 
   @override

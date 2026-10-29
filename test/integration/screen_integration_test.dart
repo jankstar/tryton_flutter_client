@@ -10,6 +10,7 @@ import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 import 'package:tryton_flutter_client/core/wizard/wizard.dart';
 import 'package:tryton_flutter_client/features/actions/action_service.dart';
+import 'package:tryton_flutter_client/features/model/metadata_service.dart';
 import 'package:tryton_flutter_client/features/model/model_rpc.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
 import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
@@ -343,5 +344,32 @@ void main() {
     }
     // Nothing saved: discard.
     record.cancel();
+  });
+
+  test('read: metadata – get_access for some models, names, history',
+      () async {
+    if (password == null) {
+      markTestSkipped('TRYTON_PASSWORD not set');
+      return;
+    }
+    final metadata = MetadataService(svc);
+    await metadata.load();
+    for (final model in ['party.party', 'res.user', 'ir.model']) {
+      final access = await metadata.access(model);
+      expect(access.read, isTrue, reason: '$model readable for $login');
+    }
+    // One batch covers the neighbours of the list.
+    expect(metadata.accessOf('party.party'), isNotNull);
+    final name = await metadata.name('party.party');
+    expect(name, isNotEmpty);
+    // MODELHISTORY is a (possibly empty) set; it decides the revisions menu.
+    expect(metadata.hasHistory('ir.model'), isA<bool>());
+    // Rights flow into the data layer.
+    final session = modelSessionFor(svc..metadata = metadata);
+    final screen = TrytonScreen(
+        const ScreenAttributes('party.party', mode: ['tree']),
+        session: session);
+    addTearDown(screen.dispose);
+    expect(screen.model.access.read, isTrue);
   });
 }

@@ -19,6 +19,7 @@ import '../model/selection_loader.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 import '../../core/l10n/locale_provider.dart';
+import '../../shared/utils/date_format_utils.dart';
 
 /// Server-driven form – loads the view definition via
 /// `fields_view_get` and renders layout, groups and tabs dynamically.
@@ -315,6 +316,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       if (langCode != null) {
         await ref.read(localeProvider.notifier).applyServerLanguage(langCode);
       }
+      // Model names in the new language (MODELNAME, spec 4)
+      ref.read(modelServiceProvider).metadata?.clearNames();
       // Clear cached preferences so header chip reloads name/currency
       clearUserPreferencesCache();
       ref.invalidate(userPreferencesProvider);
@@ -565,6 +568,66 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     }
   }
 
+  /// Model with history (MODELHISTORY): menu "Revisions…".
+  bool get _hasHistory =>
+      ref.read(modelServiceProvider).metadata?.hasHistory(_model) ?? false;
+
+  /// Shown revision with milliseconds (SAO `%H:%M:%S.%f`).
+  static String _revisionText(DateTime dt) =>
+      '${formatDateTimeValue(dt)}.${dt.toLocal().millisecond.toString().padLeft(3, '0')}';
+
+  /// Revisions (spec 11.7): `history_revisions(ids)` → choice of a
+  /// revision or "Current"; the group gets `_datetime` (+1 ms) and the
+  /// records are read again – everything read only in the revision.
+  Future<void> _revisions() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    final record = _record;
+    if (record == null || record.id < 0) return;
+    final List revisions;
+    try {
+      revisions = await _screen.model.execute('history_revisions', [
+        [record.id]
+      ], context: _screen.context) as List? ?? const [];
+    } on HandledRpcError {
+      return;
+    }
+    if (!mounted) return;
+    final l = context.l10n;
+    final choice = await showDialog<Object>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l.selectRevision),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'current'),
+            child: Text(l.currentRevision),
+          ),
+          for (final r in revisions)
+            if (r is List && r.isNotEmpty && r[0] is DateTime)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, r[0]),
+                child: Text('${_revisionText(r[0] as DateTime)}'
+                    '${r.length > 2 ? '  ${r[2]}' : ''}'),
+              ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    _screen.group.revision = choice is DateTime
+        ? choice.add(const Duration(milliseconds: 1))
+        : null;
+    try {
+      for (final r in _screen.group) {
+        r.cancel();
+      }
+      await _screen.reload([for (final r in _screen.group) r.id]);
+      await record.load('*');
+    } on HandledRpcError {
+      // shown
+    }
+    if (mounted) setState(() {});
+  }
+
   Future<void> _viewLogs() async {
     if (_isNew) return;
     ref.read(tabsProvider.notifier).openTab(
@@ -677,7 +740,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             // Primary title: translated model name when available
-            Text(_effectiveTitle, style: const TextStyle(fontSize: 14)),
+            Text(
+                _screen.group.revision == null
+                    ? _effectiveTitle
+                    : '$_effectiveTitle @ ${_revisionText(_screen.group.revision!)}',
+                style: const TextStyle(fontSize: 14)),
             // Subtitle: model display name + record position (3 / 47)
             // Show both together, separated by · when both are available.
             if (_subtitleText.isNotEmpty)
@@ -715,17 +782,22 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             ),
 
           // ── CRUD ──────────────────────────────────────────────────────
+          // Rights and revision view (spec 10.3, MODELACCESS)
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: l.createNew,
-            onPressed: _saving ? null : _newRecord,
+            onPressed: _saving || !_screen.canCreate ? null : _newRecord,
           ),
           IconButton(
             icon: _saving
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.save),
             tooltip: l.save,
-            onPressed: (_saving || (!_isDirty && !_isNew)) ? null : _save,
+            onPressed: _saving ||
+                    !_screen.canSave(modified: _isDirty || _isNew) ||
+                    (_record?.readonly ?? true)
+                ? null
+                : _save,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -736,15 +808,15 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             IconButton(
               icon: const Icon(Icons.copy_outlined),
               tooltip: l.duplicate,
-              onPressed: _saving ? null : _duplicate,
+              onPressed: _saving || !_screen.canCreate ? null : _duplicate,
             ),
             IconButton(
               icon: Icon(Icons.delete_outline,
-                  color: _saving
+                  color: _saving || !_screen.canDelete
                       ? Theme.of(context).disabledColor
                       : Theme.of(context).colorScheme.error),
               tooltip: l.delete,
-              onPressed: _saving ? null : _delete,
+              onPressed: _saving || !_screen.canDelete ? null : _delete,
             ),
           ],
 
@@ -755,6 +827,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               tooltip: context.l10n.viewLogs,
               onPressed: _viewLogs,
             ),
+            // Revisions only for models with history (MODELHISTORY):
+            // otherwise the server answers "No history table".
+            if (_hasHistory)
+              IconButton(
+                icon: const Icon(Icons.manage_history),
+                tooltip: context.l10n.revisions,
+                onPressed: _saving ? null : _revisions,
+              ),
             _AttachmentIconButton(
               model: _model,
               recordId: _recordId,
@@ -923,6 +1003,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 16),
           child: RecordForm(
+            // Another record (Prev/Next, New, …): new field states.
+            key: ObjectKey(record),
             model: _model,
             root: contentRoot,
             viewDef: _viewDef!,

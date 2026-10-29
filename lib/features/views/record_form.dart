@@ -581,6 +581,7 @@ class RecordButton extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final disabled = states.readonly ||
         (!node.isInstance && _parentModified(record)) ||
+        record.group.rootGroup.revision != null ||
         onPressed == null;
     final label = node.string ?? node.name;
     final Widget text = node.rule
