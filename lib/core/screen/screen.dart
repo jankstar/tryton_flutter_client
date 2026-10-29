@@ -21,6 +21,7 @@ import '../model/model.dart';
 import '../pyson/pyson_environment.dart';
 import '../pyson/pyson_evaluator.dart';
 import '../xml/form_xml_parser.dart';
+import '../serialization/tryton_serializer.dart';
 import '../xml/view_definition.dart';
 
 /// View types the client can show; others in `mode` are skipped.
@@ -155,6 +156,23 @@ class ScreenAttributes {
       limit: limit is int ? limit : 1000,
       resId: resId is int ? resId : null,
     );
+  }
+
+  /// Same tab (spec 10.2, SAO `Tab.compare`): model, res_id, domain,
+  /// context_domain, view_ids/mode, (local) context, search_value and
+  /// tab_domain are equal.
+  bool sameAs(ScreenAttributes other) {
+    String enc(dynamic v) => jsonEncode(TrytonSerializer.encode(v));
+    return model == other.model &&
+        resId == other.resId &&
+        enc(domain) == enc(other.domain) &&
+        enc(contextDomain) == enc(other.contextDomain) &&
+        enc(viewIds) == enc(other.viewIds) &&
+        enc(mode) == enc(other.mode) &&
+        enc(context) == enc(other.context) &&
+        enc(searchValue ?? const []) == enc(other.searchValue ?? const []) &&
+        enc([for (final t in tabDomain) [t.name, t.domain, t.count]]) ==
+            enc([for (final t in other.tabDomain) [t.name, t.domain, t.count]]);
   }
 
   static dynamic _decode(dynamic value, Map<String, dynamic> env) {

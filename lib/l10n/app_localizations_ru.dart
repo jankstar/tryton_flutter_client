@@ -398,4 +398,25 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get rangeTo => 'По';
+
+  @override
+  String get favorites => 'Избранное';
+
+  @override
+  String get addToFavorites => 'Добавить в избранное';
+
+  @override
+  String get removeFromFavorites => 'Удалить из избранного';
+
+  @override
+  String get noFavorites => 'Отметьте пункты меню, чтобы добавить в избранное';
+
+  @override
+  String get globalSearch => 'Глобальный поиск';
+
+  @override
+  String get boardNotSupported => 'Панели пока не поддерживаются.';
+
+  @override
+  String get selectMenuEntry => 'Выберите пункт меню';
 }

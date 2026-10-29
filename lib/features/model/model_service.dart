@@ -55,10 +55,41 @@ class ModelService {
     Map<String, dynamic>? context,
     bool processException = true,
   }) {
-    Future<T> call() => _execute<T>('model.$model.$method', params, context);
+    Future<T> call() => _batched<T>(model, method, params, context);
     final processor = errorProcessor;
     if (!processException || processor == null) return call();
     return processor.process<T>(call);
+  }
+
+  /// Records per call for the methods with an id list as first parameter
+  /// (server `records_limit`, spec 2.8).
+  static const batchSize = 1000;
+  static const _batchMethods = {'read', 'write', 'delete', 'copy', 'export_data'};
+
+  /// Large id lists in batches of [batchSize]; the results of `read`,
+  /// `copy` and `export_data` are joined.
+  Future<T> _batched<T>(String model, String method, List<dynamic> params,
+      Map<String, dynamic>? context) async {
+    final ids = params.isNotEmpty ? params.first : null;
+    final single = method != 'write' || params.length == 2;
+    if (!_batchMethods.contains(method) ||
+        !single ||
+        ids is! List ||
+        ids.length <= batchSize) {
+      return _execute<T>('model.$model.$method', params, context);
+    }
+    final results = <dynamic>[];
+    var anyList = false;
+    for (var i = 0; i < ids.length; i += batchSize) {
+      final batch = ids.sublist(i, i + batchSize > ids.length ? ids.length : i + batchSize);
+      final result = await _execute<dynamic>(
+          'model.$model.$method', [batch, ...params.skip(1)], context);
+      if (result is List) {
+        anyList = true;
+        results.addAll(result);
+      }
+    }
+    return (anyList ? results : null) as T;
   }
 
   /// Calls [method] by its full name (e.g. `wizard.<name>.execute`) with

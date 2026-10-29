@@ -142,6 +142,8 @@ class TrytonSession {
     busUrlHost = null;
     context = {'client': clientId};
     rpcClient.auth = null;
+    // Cached results belong to the session (spec 2.7).
+    rpcClient.cache.clear();
   }
 
   /// Saves the session token in secure storage for the next app start.

@@ -829,6 +829,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'To'**
   String get rangeTo;
+
+  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get favorites;
+
+  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favorites'**
+  String get addToFavorites;
+
+  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favorites'**
+  String get removeFromFavorites;
+
+  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
+  ///
+  /// In en, this message translates to:
+  /// **'Check menu entries to add favorites'**
+  String get noFavorites;
+
+  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
+  ///
+  /// In en, this message translates to:
+  /// **'Global search'**
+  String get globalSearch;
+
+  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboards are not supported yet.'**
+  String get boardNotSupported;
+
+  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a menu entry'**
+  String get selectMenuEntry;
 }
 
 class _AppLocalizationsDelegate

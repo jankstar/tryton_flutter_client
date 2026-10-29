@@ -398,4 +398,25 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get rangeTo => 'Hasta';
+
+  @override
+  String get favorites => 'Favoritos';
+
+  @override
+  String get addToFavorites => 'Añadir a favoritos';
+
+  @override
+  String get removeFromFavorites => 'Quitar de favoritos';
+
+  @override
+  String get noFavorites => 'Marque entradas del menú para añadir favoritos';
+
+  @override
+  String get globalSearch => 'Búsqueda global';
+
+  @override
+  String get boardNotSupported => 'Los paneles aún no son compatibles.';
+
+  @override
+  String get selectMenuEntry => 'Elija una entrada del menú';
 }

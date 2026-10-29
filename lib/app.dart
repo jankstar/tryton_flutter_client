@@ -10,10 +10,10 @@ import 'core/rpc/reauth_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/auth/session_bootstrap.dart';
 import 'features/model/metadata_service.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
-import 'features/model/model_service.dart';
 import 'features/shell/app_shell.dart';
 import 'l10n/app_localizations.dart';
 
@@ -49,37 +49,14 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
     });
   }
 
-  /// Start sequence after login (spec 3.2; the context was loaded with
-  /// get_preferences): metadata caches, then the language (model names
-  /// are loaded again in the new language).
+  /// Start sequence after login (spec 3.2): see [SessionBootstrap].
   Future<void> _startSession() async {
-    final metadata = ref.read(metadataServiceProvider);
-    await metadata.load();
-    await _applyServerLocale();
-    metadata.clearNames();
-  }
-
-  /// After login: read res.user.language.code from the server and apply it.
-  Future<void> _applyServerLocale() async {
+    // The metadata service is attached to the ModelService on first read.
+    ref.read(metadataServiceProvider);
     try {
-      final session = ref.read(sessionProvider);
-      final svc = ref.read(modelServiceProvider);
-      if (session.userId == null) return;
-      final users = await svc.read('res.user', [session.userId!], ['language']);
-      if (users.isEmpty) return;
-      final lang = users.first['language'];
-      // language comes as [id, rec_name] from read(); rec_name is the language
-      // name, not the code. We need a second read on ir.lang for the code.
-      int? langId;
-      if (lang is List && lang.isNotEmpty) langId = lang[0] as int?;
-      if (lang is int) langId = lang;
-      if (langId == null) return;
-      final langs = await svc.read('ir.lang', [langId], ['code']);
-      if (langs.isEmpty) return;
-      final code = langs.first['code']?.toString();
-      await ref.read(localeProvider.notifier).applyServerLanguage(code);
+      await ref.read(sessionBootstrapProvider).run();
     } catch (_) {
-      // Language loading is non-critical; keep current locale.
+      // The app stays usable; menu/user chip show their error state.
     }
   }
 
@@ -100,8 +77,8 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
         _startSession();
       } else if (next.status == AuthStatus.unauthenticated &&
           prev?.status == AuthStatus.authenticated) {
-        // Logout: all metadata caches are cleared.
-        ref.read(metadataServiceProvider).clear();
+        // Logout: preferences (menu, user chip) and metadata are cleared.
+        ref.read(sessionBootstrapProvider).clear();
       }
     });
 
@@ -118,6 +95,11 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
       theme: currentTheme.buildThemeData(),
       themeMode: ThemeMode.light,
       routerConfig: _router,
+      // Writing direction of the user's language (language_direction).
+      builder: (context, child) => Directionality(
+        textDirection: ref.watch(textDirectionProvider),
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

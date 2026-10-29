@@ -13,7 +13,7 @@ import '../model/field_support.dart';
 import '../model/model_rpc.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
-import '../tabs/model_browser_screen.dart' show menuProvider;
+import '../auth/session_bootstrap.dart';
 import '../views/wizard_widget.dart';
 
 /// Interaction of [ActionService] with the user (messages, selection,
@@ -291,16 +291,18 @@ class ActionService {
   }
 }
 
-final actionServiceProvider = Provider<ActionService>((ref) => ActionService(
+final Provider<ActionService> actionServiceProvider =
+    Provider<ActionService>((ref) => ActionService(
       ref.read(modelServiceProvider),
       ref.read(tabsProvider.notifier),
       sessionContext: () => ref.read(sessionProvider).context,
       userId: () => ref.read(sessionProvider).userId,
+      // reload context / reload menu: preferences again (menu and user
+      // chip are rebuilt from them, spec 3.4).
       clientAction: (action) async {
         if (action == 'reload context' || action == 'reload menu') {
-          await ref.read(sessionProvider).reloadContext();
+          await ref.read(sessionBootstrapProvider).reload();
         }
-        if (action == 'reload menu') ref.invalidate(menuProvider);
       },
     ));
 

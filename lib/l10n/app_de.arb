@@ -372,5 +372,12 @@
   "modifiedBy": "Geändert von",
   "modifiedAt": "Geändert am",
   "rangeFrom": "Von",
-  "rangeTo": "Bis"
+  "rangeTo": "Bis",
+  "favorites": "Favoriten",
+  "addToFavorites": "Zu Favoriten hinzufügen",
+  "removeFromFavorites": "Aus Favoriten entfernen",
+  "noFavorites": "Menüeinträge mit dem Stern als Favoriten markieren",
+  "globalSearch": "Globale Suche",
+  "boardNotSupported": "Dashboards werden noch nicht unterstützt.",
+  "selectMenuEntry": "Wähle einen Menüeintrag"
 }

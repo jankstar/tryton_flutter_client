@@ -9,13 +9,12 @@ import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
 import '../../shared/widgets/concurrency_dialog.dart';
 import '../actions/action_service.dart';
-import '../auth/auth_provider.dart';
 import '../model/concurrency.dart';
 import '../model/field_support.dart';
 import '../model/model_rpc.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
-import '../tabs/model_browser_screen.dart' show menuProvider;
+import '../auth/session_bootstrap.dart';
 import 'dynamic_form_screen.dart';
 import 'list_view_screen.dart';
 
@@ -33,6 +32,10 @@ class ScreenWidget extends ConsumerStatefulWidget {
   /// "Close" of the screen: closes the tab or pops the route.
   final Future<void> Function()? onClose;
 
+  /// The screen is the root of a tab: the tab asks it whether its first
+  /// view is active (an identical tab is activated then, spec 10.2).
+  final bool tabRoot;
+
   /// A form opened for a new record closes itself after saving (e.g.
   /// "Add attachment") and pops the new id.
   final bool closeOnSaveNew;
@@ -43,6 +46,7 @@ class ScreenWidget extends ConsumerStatefulWidget {
     required this.title,
     this.onClose,
     this.closeOnSaveNew = false,
+    this.tabRoot = false,
   });
 
   @override
@@ -61,8 +65,23 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
     _init();
   }
 
+  String? _tabId;
+  TabsNotifier? _tabs;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!widget.tabRoot || _tabId != null) return;
+    _tabId = TabScope.of(context);
+    _tabs = ref.read(tabsProvider.notifier);
+    if (_tabId != null) {
+      _tabs!.setFirstViewCheck(_tabId!, () => (_screen?.viewIndex ?? 0) <= 0);
+    }
+  }
+
   @override
   void dispose() {
+    if (_tabId != null) _tabs?.setFirstViewCheck(_tabId!, null);
     _screen?.removeListener(_onScreenChanged);
     _screen?.dispose();
     super.dispose();
@@ -114,8 +133,10 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
     final screen = TrytonScreen(widget.attributes, session: _modelSession(svc))
       ..screenSize = _screenSize
       ..onClose = (() async => widget.onClose?.call())
-      ..onReloadContext = (() => ref.read(sessionProvider).reloadContext())
-      ..onReloadMenu = (() async => ref.invalidate(menuProvider));
+      ..onReloadContext =
+          (() async => ref.read(sessionBootstrapProvider).reload())
+      ..onReloadMenu =
+          (() async => ref.read(sessionBootstrapProvider).reload());
     screen
       ..onViewAdded = ((v) => markUnsupportedFields(screen.model, v))
       ..onConfirm = _confirm

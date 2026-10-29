@@ -28,6 +28,12 @@ class AppTab {
   }) : navigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tab-$id');
 
   String get model => attributes.model;
+
+  /// Board views (`board`) are not supported yet (E33): placeholder.
+  bool get isBoard =>
+      wizard == null &&
+      attributes.mode.isNotEmpty &&
+      attributes.mode.first == 'board';
 }
 
 class TabsState {
@@ -72,6 +78,43 @@ class TabsNotifier extends StateNotifier<TabsState> {
   void addCloseGuard(String tabId, TabCloseGuard guard) =>
       _closeGuards.putIfAbsent(tabId, () => []).add(guard);
 
+  /// Whether the tab shows its first view (set by the tab's screen); only
+  /// then an identical tab is activated instead of opened (spec 10.2).
+  final Map<String, bool Function()> _firstView = {};
+
+  void setFirstViewCheck(String tabId, bool Function()? check) {
+    if (check == null) {
+      _firstView.remove(tabId);
+    } else {
+      _firstView[tabId] = check;
+    }
+  }
+
+  /// Closes all tabs, each after its guards (logout, spec 2.5.6/10.4);
+  /// false when one was cancelled (that tab and the rest stay open).
+  Future<bool> requestCloseAll() async {
+    for (final tab in [...state.tabs].reversed) {
+      if (!await requestCloseTab(tab.id)) {
+        final idx = state.tabs.indexWhere((t) => t.id == tab.id);
+        if (idx >= 0) activateTab(idx);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Next / previous tab (keyboard navigation, cyclic).
+  void nextTab() {
+    if (state.tabs.isEmpty) return;
+    activateTab((state.activeIndex + 1) % state.tabs.length);
+  }
+
+  void previousTab() {
+    if (state.tabs.isEmpty) return;
+    activateTab(
+        (state.activeIndex - 1 + state.tabs.length) % state.tabs.length);
+  }
+
   void removeCloseGuard(String tabId, TabCloseGuard guard) =>
       _closeGuards[tabId]?.remove(guard);
 
@@ -94,17 +137,31 @@ class TabsNotifier extends StateNotifier<TabsState> {
     ScreenAttributes? attributes,
     TrytonWizard? wizard,
   }) {
+    final attrs = attributes ??
+        ScreenAttributes(
+          model ?? wizard?.action ?? '',
+          mode: resId != null ? const ['form', 'tree'] : const ['tree', 'form'],
+          domain: List.unmodifiable(initialDomain),
+          resId: resId,
+        );
+    // An identical tab at its first view is activated instead (SAO
+    // `Tab.create` + `compare`, spec 10.2).
+    if (wizard == null) {
+      for (var i = 0; i < state.tabs.length; i++) {
+        final tab = state.tabs[i];
+        if (tab.wizard == null &&
+            tab.attributes.sameAs(attrs) &&
+            (_firstView[tab.id]?.call() ?? true)) {
+          activateTab(i);
+          return;
+        }
+      }
+    }
     final tab = AppTab(
       id: _uuid.v4(),
       title: title,
       wizard: wizard,
-      attributes: attributes ??
-          ScreenAttributes(
-            model ?? wizard?.action ?? '',
-            mode: resId != null ? const ['form', 'tree'] : const ['tree', 'form'],
-            domain: List.unmodifiable(initialDomain),
-            resId: resId,
-          ),
+      attributes: attrs,
     );
     final newTabs = [...state.tabs, tab];
     state = state.copyWith(tabs: newTabs, activeIndex: newTabs.length - 1);
@@ -114,6 +171,7 @@ class TabsNotifier extends StateNotifier<TabsState> {
     final idx = state.tabs.indexWhere((t) => t.id == id);
     if (idx < 0) return;
     _closeGuards.remove(id);
+    _firstView.remove(id);
     final newTabs = [...state.tabs]..removeAt(idx);
     int newActive = state.activeIndex;
     if (newTabs.isEmpty) {

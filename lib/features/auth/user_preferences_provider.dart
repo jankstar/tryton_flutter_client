@@ -1,87 +1,69 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../model/model_service.dart';
 import 'auth_provider.dart';
 
 // ─── Data model ───────────────────────────────────────────────────────────────
 
+/// The user chip of the preferences (spec 3.2 step 6, SAO `user_menu`):
+/// `status_bar` (name, company, currency) and the avatar.
 class UserPreferences {
-  final String name;
-  final String? currency;
+  /// `status_bar`, e.g. "Administrator [EUR]".
+  final String statusBar;
 
-  const UserPreferences({required this.name, this.currency});
+  /// Absolute URLs of the avatar and its badge (GET), or null.
+  final String? avatarUrl;
+  final String? avatarBadgeUrl;
 
-  String get statusBar =>
-      currency != null ? '$name ($currency)' : name;
+  const UserPreferences(
+      {required this.statusBar, this.avatarUrl, this.avatarBadgeUrl});
+
+  /// Name without the bracketed part of the status bar.
+  String get name {
+    final i = statusBar.indexOf(' [');
+    return i > 0 ? statusBar.substring(0, i) : statusBar;
+  }
 
   /// Initials for the avatar circle (e.g. "JK" for "Jan Kramer").
   String get initials {
     final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
+    if (parts.length >= 2 && parts.first.isNotEmpty && parts.last.isNotEmpty) {
       return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
     }
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
-}
 
-// ─── Session-level cache (one load per login session) ────────────────────────
-
-UserPreferences? _cachedPrefs;
-int? _cachedUserId;
-
-void clearUserPreferencesCache() {
-  _cachedPrefs = null;
-  _cachedUserId = null;
-}
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
-
-final userPreferencesProvider =
-    FutureProvider<UserPreferences?>((ref) async {
-  // The session object stays the same across logins: the login state
-  // makes the provider load again (another user after logout/login).
-  // Full start sequence with get_preferences(false)/status_bar: B10.
-  ref.watch(authProvider.select((state) => state.status));
-  final session = ref.watch(sessionProvider);
-  if (!session.isLoggedIn) {
-    clearUserPreferencesCache();
-    return null;
-  }
-
-  final userId = session.userId;
-  if (userId == null || userId <= 0) return null;
-
-  // Return cached value if the user hasn't changed
-  if (_cachedUserId == userId && _cachedPrefs != null) {
-    return _cachedPrefs;
-  }
-
-  try {
-    final svc = ref.read(modelServiceProvider);
-
-    // Load name from res.user (single clean RPC call)
-    final users = await svc.read('res.user', [userId], ['name', 'rec_name']);
-    final name = users.isNotEmpty
-        ? (users.first['name']?.toString() ??
-            users.first.recName)
-        : 'User #$userId';
-
-    // Try to get currency from the session context (set after login)
-    String? currency;
-    try {
-      final ctxCurrency = session.context['currency'];
-      if (ctxCurrency != null && ctxCurrency != false) {
-        currency = ctxCurrency.toString();
-      }
-    } catch (_) {
-      // Currency is optional
+  /// From `get_preferences(false)`; relative avatar URLs are resolved
+  /// against the server root ([serverUrl]) – they are no RPC paths, and
+  /// the endpoint only answers GET (POST/`<db>/…` give 405).
+  factory UserPreferences.fromPreferences(
+      Map<String, dynamic> preferences, String serverUrl) {
+    String? absolute(dynamic url) {
+      if (url is! String || url.isEmpty) return null;
+      final uri = Uri.parse(url);
+      if (uri.hasScheme) return url;
+      return Uri.parse(serverUrl.endsWith('/') ? serverUrl : '$serverUrl/')
+          .resolve(url)
+          .toString();
     }
 
-    final prefs = UserPreferences(name: name, currency: currency);
-    _cachedUserId = userId;
-    _cachedPrefs = prefs;
-    return prefs;
-  } catch (_) {
-    return UserPreferences(name: 'User #$userId');
+    return UserPreferences(
+      statusBar: '${preferences['status_bar'] ?? ''}',
+      avatarUrl: absolute(preferences['avatar_url']),
+      avatarBadgeUrl: absolute(preferences['avatar_badge_url']),
+    );
   }
+}
+
+// ─── Providers ────────────────────────────────────────────────────────────────
+
+/// `res.user.get_preferences(false)` of the session (set by the
+/// SessionBootstrap, null when logged out).
+final preferencesProvider = StateProvider<Map<String, dynamic>?>((ref) => null);
+
+/// The user chip from [preferencesProvider]; follows each login/logout.
+final userPreferencesProvider = Provider<UserPreferences?>((ref) {
+  final preferences = ref.watch(preferencesProvider);
+  if (preferences == null) return null;
+  return UserPreferences.fromPreferences(
+      preferences, ref.read(rpcClientProvider).baseUrl);
 });

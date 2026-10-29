@@ -398,4 +398,25 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get rangeTo => 'Asti';
+
+  @override
+  String get favorites => 'Suosikit';
+
+  @override
+  String get addToFavorites => 'Lisää suosikkeihin';
+
+  @override
+  String get removeFromFavorites => 'Poista suosikeista';
+
+  @override
+  String get noFavorites => 'Merkitse valikon kohtia suosikeiksi';
+
+  @override
+  String get globalSearch => 'Yleinen haku';
+
+  @override
+  String get boardNotSupported => 'Koontinäyttöjä ei vielä tueta.';
+
+  @override
+  String get selectMenuEntry => 'Valitse valikon kohta';
 }

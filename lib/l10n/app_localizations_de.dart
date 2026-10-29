@@ -399,4 +399,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get rangeTo => 'Bis';
+
+  @override
+  String get favorites => 'Favoriten';
+
+  @override
+  String get addToFavorites => 'Zu Favoriten hinzufügen';
+
+  @override
+  String get removeFromFavorites => 'Aus Favoriten entfernen';
+
+  @override
+  String get noFavorites =>
+      'Menüeinträge mit dem Stern als Favoriten markieren';
+
+  @override
+  String get globalSearch => 'Globale Suche';
+
+  @override
+  String get boardNotSupported => 'Dashboards werden noch nicht unterstützt.';
+
+  @override
+  String get selectMenuEntry => 'Wähle einen Menüeintrag';
 }

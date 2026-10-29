@@ -372,5 +372,12 @@
   "modifiedBy": "Ändrad av",
   "modifiedAt": "Ändrad",
   "rangeFrom": "Från",
-  "rangeTo": "Till"
+  "rangeTo": "Till",
+  "favorites": "Favoriter",
+  "addToFavorites": "Lägg till i favoriter",
+  "removeFromFavorites": "Ta bort från favoriter",
+  "noFavorites": "Markera menyposter för att lägga till favoriter",
+  "globalSearch": "Global sökning",
+  "boardNotSupported": "Instrumentpaneler stöds inte ännu.",
+  "selectMenuEntry": "Välj en menypost"
 }

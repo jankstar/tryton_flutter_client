@@ -7,7 +7,7 @@ import '../../core/screen/screen.dart';
 import '../../core/rpc/error_processing.dart';
 import '../../core/xml/view_definition.dart';
 import '../auth/auth_provider.dart';
-import '../auth/user_preferences_provider.dart';
+import '../auth/session_bootstrap.dart';
 import '../model/model_service.dart';
 import '../model/toolbar_data.dart';
 import '../shell/app_shell.dart';
@@ -308,19 +308,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// 3. clear userPreferences cache so name/currency in header chip refreshes
   Future<void> _reloadUserContext() async {
     try {
-      final session = ref.read(sessionProvider);
-      // Refresh session.context (language, company, employee, …)
-      await session.reloadContext();
-      // Apply new language to Flutter UI
-      final langCode = session.context['language']?.toString();
-      if (langCode != null) {
-        await ref.read(localeProvider.notifier).applyServerLanguage(langCode);
-      }
-      // Model names in the new language (MODELNAME, spec 4)
-      ref.read(modelServiceProvider).metadata?.clearNames();
-      // Clear cached preferences so header chip reloads name/currency
-      clearUserPreferencesCache();
-      ref.invalidate(userPreferencesProvider);
+      // Context, preferences, language, menu and user chip (spec 3.2/3.4).
+      await ref.read(sessionBootstrapProvider).reload();
     } catch (_) {}
   }
 

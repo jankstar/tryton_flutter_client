@@ -398,4 +398,25 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get rangeTo => 'Til';
+
+  @override
+  String get favorites => 'Favoritter';
+
+  @override
+  String get addToFavorites => 'Føj til favoritter';
+
+  @override
+  String get removeFromFavorites => 'Fjern fra favoritter';
+
+  @override
+  String get noFavorites => 'Markér menupunkter for at tilføje favoritter';
+
+  @override
+  String get globalSearch => 'Global søgning';
+
+  @override
+  String get boardNotSupported => 'Dashboards understøttes endnu ikke.';
+
+  @override
+  String get selectMenuEntry => 'Vælg et menupunkt';
 }

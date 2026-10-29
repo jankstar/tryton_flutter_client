@@ -372,5 +372,12 @@
   "modifiedBy": "Muokannut",
   "modifiedAt": "Muokattu",
   "rangeFrom": "Alkaen",
-  "rangeTo": "Asti"
+  "rangeTo": "Asti",
+  "favorites": "Suosikit",
+  "addToFavorites": "Lisää suosikkeihin",
+  "removeFromFavorites": "Poista suosikeista",
+  "noFavorites": "Merkitse valikon kohtia suosikeiksi",
+  "globalSearch": "Yleinen haku",
+  "boardNotSupported": "Koontinäyttöjä ei vielä tueta.",
+  "selectMenuEntry": "Valitse valikon kohta"
 }

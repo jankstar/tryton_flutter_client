@@ -399,4 +399,25 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get rangeTo => 'Do';
+
+  @override
+  String get favorites => 'Ulubione';
+
+  @override
+  String get addToFavorites => 'Dodaj do ulubionych';
+
+  @override
+  String get removeFromFavorites => 'Usuń z ulubionych';
+
+  @override
+  String get noFavorites => 'Zaznacz pozycje menu, aby dodać ulubione';
+
+  @override
+  String get globalSearch => 'Wyszukiwanie globalne';
+
+  @override
+  String get boardNotSupported => 'Pulpity nie są jeszcze obsługiwane.';
+
+  @override
+  String get selectMenuEntry => 'Wybierz pozycję menu';
 }

@@ -397,4 +397,25 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get rangeTo => 'Till';
+
+  @override
+  String get favorites => 'Favoriter';
+
+  @override
+  String get addToFavorites => 'Lägg till i favoriter';
+
+  @override
+  String get removeFromFavorites => 'Ta bort från favoriter';
+
+  @override
+  String get noFavorites => 'Markera menyposter för att lägga till favoriter';
+
+  @override
+  String get globalSearch => 'Global sökning';
+
+  @override
+  String get boardNotSupported => 'Instrumentpaneler stöds inte ännu.';
+
+  @override
+  String get selectMenuEntry => 'Välj en menypost';
 }

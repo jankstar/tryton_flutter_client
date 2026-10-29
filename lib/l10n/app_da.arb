@@ -372,5 +372,12 @@
   "modifiedBy": "Ændret af",
   "modifiedAt": "Ændret",
   "rangeFrom": "Fra",
-  "rangeTo": "Til"
+  "rangeTo": "Til",
+  "favorites": "Favoritter",
+  "addToFavorites": "Føj til favoritter",
+  "removeFromFavorites": "Fjern fra favoritter",
+  "noFavorites": "Markér menupunkter for at tilføje favoritter",
+  "globalSearch": "Global søgning",
+  "boardNotSupported": "Dashboards understøttes endnu ikke.",
+  "selectMenuEntry": "Vælg et menupunkt"
 }

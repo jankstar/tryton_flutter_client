@@ -372,5 +372,12 @@
   "modifiedBy": "Zmienione przez",
   "modifiedAt": "Zmieniono",
   "rangeFrom": "Od",
-  "rangeTo": "Do"
+  "rangeTo": "Do",
+  "favorites": "Ulubione",
+  "addToFavorites": "Dodaj do ulubionych",
+  "removeFromFavorites": "Usuń z ulubionych",
+  "noFavorites": "Zaznacz pozycje menu, aby dodać ulubione",
+  "globalSearch": "Wyszukiwanie globalne",
+  "boardNotSupported": "Pulpity nie są jeszcze obsługiwane.",
+  "selectMenuEntry": "Wybierz pozycję menu"
 }

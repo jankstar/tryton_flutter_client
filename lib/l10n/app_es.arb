@@ -372,5 +372,12 @@
   "modifiedBy": "Modificado por",
   "modifiedAt": "Modificado el",
   "rangeFrom": "Desde",
-  "rangeTo": "Hasta"
+  "rangeTo": "Hasta",
+  "favorites": "Favoritos",
+  "addToFavorites": "Añadir a favoritos",
+  "removeFromFavorites": "Quitar de favoritos",
+  "noFavorites": "Marque entradas del menú para añadir favoritos",
+  "globalSearch": "Búsqueda global",
+  "boardNotSupported": "Los paneles aún no son compatibles.",
+  "selectMenuEntry": "Elija una entrada del menú"
 }

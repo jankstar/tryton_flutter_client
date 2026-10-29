@@ -398,4 +398,25 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get rangeTo => 'Tot';
+
+  @override
+  String get favorites => 'Favorieten';
+
+  @override
+  String get addToFavorites => 'Aan favorieten toevoegen';
+
+  @override
+  String get removeFromFavorites => 'Uit favorieten verwijderen';
+
+  @override
+  String get noFavorites => 'Vink menu-items aan om favorieten toe te voegen';
+
+  @override
+  String get globalSearch => 'Globaal zoeken';
+
+  @override
+  String get boardNotSupported => 'Dashboards worden nog niet ondersteund.';
+
+  @override
+  String get selectMenuEntry => 'Kies een menu-item';
 }

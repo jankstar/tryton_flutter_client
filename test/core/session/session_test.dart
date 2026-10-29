@@ -307,7 +307,9 @@ void main() {
   test('logout → common.db.logout with header, token deleted', () async {
     final (session, adapter) = make(server);
     await session.loginWithParams('tryton', 'admin', {'password': 'pw'});
+    session.rpcClient.cache.set('m', 'k', 60, '{}');
     await session.logout();
+    expect(session.rpcClient.cache.length, 0); // RPC cache cleared (B7)
     final logout = adapter.requests.last;
     expect(logout.method, 'common.db.logout');
     expect(logout.auth, _sessionHeader('admin', 1, 'tok123'));

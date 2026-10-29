@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../tabs/model_browser_screen.dart' show ModelBrowserSidebar, UserChip;
+import 'package:flutter/services.dart';
+
+import '../../core/l10n/locale_provider.dart';
+import '../tabs/menu_sidebar.dart';
+import '../tabs/user_chip.dart';
 import '../../core/screen/screen.dart';
 import '../views/screen_widget.dart';
 import '../views/wizard_widget.dart';
@@ -23,7 +27,27 @@ class _AppShellState extends ConsumerState<AppShell> {
     final tabsState = ref.watch(tabsProvider);
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    // Keyboard (desktop): Ctrl/Cmd+K global search, Ctrl+Tab /
+    // Ctrl+Shift+Tab and Ctrl+PageDown/PageUp next/previous tab (10.1/10.2).
+    final tabs = ref.read(tabsProvider.notifier);
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
+            showGlobalSearch(context, ref),
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () =>
+            showGlobalSearch(context, ref),
+        const SingleActivator(LogicalKeyboardKey.tab, control: true):
+            tabs.nextTab,
+        const SingleActivator(LogicalKeyboardKey.tab,
+            control: true, shift: true): tabs.previousTab,
+        const SingleActivator(LogicalKeyboardKey.pageDown, control: true):
+            tabs.nextTab,
+        const SingleActivator(LogicalKeyboardKey.pageUp, control: true):
+            tabs.previousTab,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
       body: Row(
         children: [
           // ── Sidebar (animated) ─────────────────────────────────────────
@@ -37,7 +61,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 maxWidth: _sidebarWidth,
                 child: SizedBox(
                   width: _sidebarWidth,
-                  child: const ModelBrowserSidebar(),
+                  child: const MenuSidebar(),
                 ),
               ),
             ),
@@ -68,7 +92,9 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ],
       ),
-    );
+    ), // Scaffold
+      ), // Focus
+    ); // CallbackShortcuts
   }
 
   Widget _buildTabBar(TabsState state) {
@@ -128,7 +154,10 @@ class _AppShellState extends ConsumerState<AppShell> {
       onGenerateRoute: (settings) => MaterialPageRoute(
         builder: (_) => tab.wizard != null
             ? WizardWidget(wizard: tab.wizard!)
+            : tab.isBoard
+                ? _BoardPlaceholder(title: tab.title)
             : ScreenWidget(
+          tabRoot: true,
           attributes: tab.attributes,
           title: tab.title,
           onClose: () async {
@@ -147,7 +176,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         Icon(Icons.tab_outlined, size: 64, color: cs.outline),
         const SizedBox(height: 12),
         Text(
-          'Wähle einen Menüeintrag',
+          context.l10n.selectMenuEntry,
           style: Theme.of(context)
               .textTheme
               .bodyLarge
@@ -233,4 +262,29 @@ Future<void> pushFormScreen(
       closeOnSaveNew: recordId < 0,
     ),
   ));
+}
+
+/// Board tabs (`board` view, E33) are not supported yet.
+class _BoardPlaceholder extends StatelessWidget {
+  final String title;
+  const _BoardPlaceholder({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: cs.surfaceContainerHighest,
+        scrolledUnderElevation: 0,
+        title: Text(title),
+      ),
+      body: Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.dashboard_outlined, size: 56, color: cs.outline),
+          const SizedBox(height: 12),
+          Text(context.l10n.boardNotSupported),
+        ]),
+      ),
+    );
+  }
 }

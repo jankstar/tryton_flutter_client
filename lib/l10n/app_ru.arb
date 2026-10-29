@@ -372,5 +372,12 @@
   "modifiedBy": "Изменено",
   "modifiedAt": "Дата изменения",
   "rangeFrom": "С",
-  "rangeTo": "По"
+  "rangeTo": "По",
+  "favorites": "Избранное",
+  "addToFavorites": "Добавить в избранное",
+  "removeFromFavorites": "Удалить из избранного",
+  "noFavorites": "Отметьте пункты меню, чтобы добавить в избранное",
+  "globalSearch": "Глобальный поиск",
+  "boardNotSupported": "Панели пока не поддерживаются.",
+  "selectMenuEntry": "Выберите пункт меню"
 }

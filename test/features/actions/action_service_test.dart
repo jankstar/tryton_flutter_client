@@ -167,7 +167,13 @@ void main() {
           'ids': [1]
         },
         keyword: true);
-    expect(tabs.state.tabs.last.title, 'Invoices (P1)');
+    // Same screen attributes (the name is not compared, 10.2): the
+    // existing tab is activated instead of a duplicate.
+    expect(tabs.state.tabs, hasLength(1));
+    expect(rpc.named('model.party.party.read').last.params, [
+      [1],
+      ['rec_name']
+    ]);
   });
 
   test('action as id → ir.action.get_action_value', () async {

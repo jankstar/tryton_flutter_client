@@ -372,5 +372,12 @@
   "modifiedBy": "Gewijzigd door",
   "modifiedAt": "Gewijzigd op",
   "rangeFrom": "Van",
-  "rangeTo": "Tot"
+  "rangeTo": "Tot",
+  "favorites": "Favorieten",
+  "addToFavorites": "Aan favorieten toevoegen",
+  "removeFromFavorites": "Uit favorieten verwijderen",
+  "noFavorites": "Vink menu-items aan om favorieten toe te voegen",
+  "globalSearch": "Globaal zoeken",
+  "boardNotSupported": "Dashboards worden nog niet ondersteund.",
+  "selectMenuEntry": "Kies een menu-item"
 }

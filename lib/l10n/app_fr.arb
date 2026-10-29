@@ -372,5 +372,12 @@
   "modifiedBy": "Modifié par",
   "modifiedAt": "Modifié le",
   "rangeFrom": "De",
-  "rangeTo": "À"
+  "rangeTo": "À",
+  "favorites": "Favoris",
+  "addToFavorites": "Ajouter aux favoris",
+  "removeFromFavorites": "Retirer des favoris",
+  "noFavorites": "Cochez des entrées du menu pour ajouter des favoris",
+  "globalSearch": "Recherche globale",
+  "boardNotSupported": "Les tableaux de bord ne sont pas encore pris en charge.",
+  "selectMenuEntry": "Choisissez une entrée de menu"
 }

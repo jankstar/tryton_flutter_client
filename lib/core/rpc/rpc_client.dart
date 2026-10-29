@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../serialization/tryton_serializer.dart';
 import 'reauth_service.dart';
+import 'rpc_cache.dart';
 import 'rpc_exceptions.dart';
 
 /// Credentials of a logged-in session: `common.db.login` returns
@@ -29,6 +30,9 @@ class RpcClient {
   /// Session sent as `Authorization` header on every request; null = none.
   SessionAuth? auth;
 
+  /// Results marked with `X-Tryton-Cache` (spec 2.7); cleared at logout.
+  final RpcCache cache;
+
   /// Waits before a 503 retry; replaceable in tests.
   final Future<void> Function(Duration) _sleep;
 
@@ -39,7 +43,9 @@ class RpcClient {
     required String baseUrl,
     @visibleForTesting Dio? dio,
     @visibleForTesting Future<void> Function(Duration)? sleep,
+    RpcCache? cache,
   })  : _baseUrl = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/',
+        cache = cache ?? RpcCache(),
         _sleep = sleep ?? Future.delayed,
         _dio = dio ??
             Dio(BaseOptions(
@@ -77,11 +83,19 @@ class RpcClient {
     final id = ++_requestId;
     final url = '$_baseUrl${Uri.encodeComponent(database)}/rpc/';
 
+    final encodedParams = TrytonSerializer.encodeList(params);
     final body = jsonEncode({
       'id': id,
       'method': method,
-      'params': TrytonSerializer.encodeList(params),
+      'params': encodedParams,
     });
+    // Cached result of a method marked with X-Tryton-Cache (spec 2.7).
+    final cacheMethod = method;
+    final cacheKey = '$database|${jsonEncode(encodedParams)}';
+    if (cache.cached(cacheMethod)) {
+      final hit = cache.get(cacheMethod, cacheKey);
+      if (hit != null) return _decodeBody(hit, 200);
+    }
 
     var attempts503 = 0;
     var reAuthed = false;
@@ -92,7 +106,14 @@ class RpcClient {
           data: body,
           options: _options,
         );
-        return _handleResponse(response);
+        final result = _handleResponse(response);
+        final seconds =
+            int.tryParse(response.headers.value('x-tryton-cache') ?? '');
+        final data = response.data;
+        if (seconds != null && seconds > 0 && data != null) {
+          cache.set(cacheMethod, cacheKey, seconds, data);
+        }
+        return result;
       } on DioException catch (e) {
         final status = e.response?.statusCode;
         if (status == 503 && ++attempts503 < max503Attempts) {
@@ -200,9 +221,11 @@ class RpcClient {
     return e.message ?? 'Network error.';
   }
 
-  dynamic _handleResponse(Response<String> response) {
+  dynamic _handleResponse(Response<String> response) =>
+      _decodeBody(response.data, response.statusCode ?? 0);
+
+  dynamic _decodeBody(String? body, int statusCode) {
     // Some endpoints (e.g. logout) return null or an empty body.
-    final body = response.data;
     if (body == null || body.isEmpty) return null;
 
     final dynamic decoded;
@@ -210,7 +233,7 @@ class RpcClient {
       decoded = jsonDecode(body);
     } on FormatException {
       // Not JSON, e.g. an HTML error page. Never return null silently.
-      final status = response.statusCode ?? 0;
+      final status = statusCode;
       if (status != 200) {
         throw RpcHttpException(status, 'HTTP error $status.');
       }

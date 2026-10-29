@@ -399,4 +399,27 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get rangeTo => 'À';
+
+  @override
+  String get favorites => 'Favoris';
+
+  @override
+  String get addToFavorites => 'Ajouter aux favoris';
+
+  @override
+  String get removeFromFavorites => 'Retirer des favoris';
+
+  @override
+  String get noFavorites =>
+      'Cochez des entrées du menu pour ajouter des favoris';
+
+  @override
+  String get globalSearch => 'Recherche globale';
+
+  @override
+  String get boardNotSupported =>
+      'Les tableaux de bord ne sont pas encore pris en charge.';
+
+  @override
+  String get selectMenuEntry => 'Choisissez une entrée de menu';
 }

@@ -28,16 +28,21 @@ class MetadataService {
 
   /// Start sequence (3.2): model list, history models, notification
   /// fields and saved searches in parallel; errors leave a cache empty.
-  Future<void> load() async {
+  /// [locale] of the already loaded preferences (else they are read).
+  Future<void> load({Map<String, dynamic>? locale}) async {
     _access.clear();
+    if (locale != null) _locale = locale;
     await Future.wait([
       loadModels(),
       loadHistory(),
       loadNotification(),
       loadSearches(),
-      loadLocale(),
+      if (locale == null) loadLocale(),
     ]);
   }
+
+  /// Locale of new preferences (after `reload context`).
+  set locale(Map<String, dynamic>? value) => _locale = value;
 
   /// Everything is forgotten (logout).
   void clear() {

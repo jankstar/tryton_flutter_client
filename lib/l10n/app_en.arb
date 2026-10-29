@@ -567,5 +567,33 @@
   "rangeTo": "To",
   "@rangeTo": {
     "description": "Search bar (spec 8.4)"
+  },
+  "favorites": "Favorites",
+  "@favorites": {
+    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
+  },
+  "addToFavorites": "Add to favorites",
+  "@addToFavorites": {
+    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
+  },
+  "removeFromFavorites": "Remove from favorites",
+  "@removeFromFavorites": {
+    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
+  },
+  "noFavorites": "Check menu entries to add favorites",
+  "@noFavorites": {
+    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
+  },
+  "globalSearch": "Global search",
+  "@globalSearch": {
+    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
+  },
+  "boardNotSupported": "Dashboards are not supported yet.",
+  "@boardNotSupported": {
+    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
+  },
+  "selectMenuEntry": "Choose a menu entry",
+  "@selectMenuEntry": {
+    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
   }
 }
