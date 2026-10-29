@@ -99,16 +99,6 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
         ),
       );
 
-  /// Fields without an own widget (E13) are never written: as readonly
-  /// they are left out of create/write (`Record.get`).
-  static void _markUnsupported(TrytonModel model, ScreenView view) {
-    final root = view.formRoot;
-    if (root == null) return;
-    for (final name in unsupportedFieldNames(view.definition.fields, root)) {
-      model.fields[name]?.description['readonly'] = true;
-    }
-  }
-
   /// Logical size of the window (`screen_size`), without depending on an
   /// inherited widget (the first view is loaded from initState).
   static List<int> _screenSize() {
@@ -127,7 +117,7 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
       ..onReloadContext = (() => ref.read(sessionProvider).reloadContext())
       ..onReloadMenu = (() async => ref.invalidate(menuProvider));
     screen
-      ..onViewAdded = ((v) => _markUnsupported(screen.model, v))
+      ..onViewAdded = ((v) => markUnsupportedFields(screen.model, v))
       ..onConfirm = _confirm
       ..onPreValidationFailed = _preValidationFailed
       ..invalidTexts = _invalidTexts
@@ -137,12 +127,13 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
               data: data,
               context: context,
               keyword: true,
-              ui: DialogActionUi(this.context));
+              ui: DialogActionUi(this.context),
+              screen: screen);
     final cs = screen.contextScreen;
     if (cs != null) {
       cs
         ..screenSize = _screenSize
-        ..onViewAdded = (v) => _markUnsupported(cs.model, v);
+        ..onViewAdded = (v) => markUnsupportedFields(cs.model, v);
     }
     return screen;
   }

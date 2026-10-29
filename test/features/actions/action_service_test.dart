@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/rpc/error_processing.dart';
+import 'package:tryton_flutter_client/core/wizard/wizard.dart';
 import 'package:tryton_flutter_client/features/actions/action_service.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
 import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
@@ -24,6 +26,16 @@ class _FakeUi implements ActionUi {
 
   @override
   Future<void> openUrl(String url) async => urls.add(url);
+
+  @override
+  Future<void> runWizard(TrytonWizard wizard,
+      {required bool window, required String title}) async {
+    await wizard.run();
+    if (!wizard.done) await wizard.cancel();
+  }
+
+  @override
+  RpcErrorProcessor? get errorProcessor => null;
 
   @override
   String get noActionDefined => 'No action defined.';
@@ -60,9 +72,6 @@ void main() {
       userId: () => 42,
     );
   });
-
-  Map<String, dynamic> eval(String name, [dynamic d]) =>
-      {'__class__': 'Eval', 'v': name, 'd': d};
 
   test('act_window: PYSON environment, domains, views and tab', () async {
     await service.execute({
@@ -173,7 +182,10 @@ void main() {
     expect(tabs.state.tabs.single.model, 'party.party');
   });
 
-  test('url opens externally, wizard is a placeholder', () async {
+  test('url opens externally, wizard runs create → execute → delete', () async {
+    rpc.handlers['wizard.w.create'] = (_) => [1, 'start', 'end'];
+    rpc.handlers['wizard.w.execute'] = (_) => <String, dynamic>{};
+    rpc.handlers['wizard.w.delete'] = (_) => null;
     final ui = _FakeUi();
     await service.execute(
         {'type': 'ir.action.url', 'name': 'Web', 'url': 'https://x.org'},
@@ -182,7 +194,8 @@ void main() {
     await service.execute(
         {'type': 'ir.action.wizard', 'name': 'Wiz', 'wiz_name': 'w'},
         ui: ui);
-    expect(ui.messages, ['Wiz: wizard']);
+    expect(rpc.calls.map((c) => c.method),
+        containsAllInOrder(['wizard.w.create', 'wizard.w.execute', 'wizard.w.delete']));
     expect(tabs.state.tabs, isEmpty);
   });
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/actions/action_service.dart';
+import '../../core/screen/screen.dart';
 import '../../core/xml/view_definition.dart';
 import '../../features/model/toolbar_data.dart';
 
@@ -25,6 +26,9 @@ class ToolbarDropdownButton extends ConsumerWidget {
   /// Form buttons shown in this menu as well (`keyword`, spec 8.6), run
   /// with [onButton] (without [beforeExecute]: the button saves itself).
   final List<ButtonNode> buttons;
+
+  /// The calling screen (reloaded after a wizard, spec 13).
+  final TrytonScreen? screen;
   final Future<void> Function(ButtonNode)? onButton;
 
   const ToolbarDropdownButton({
@@ -38,6 +42,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
     this.beforeExecute,
     this.buttons = const [],
     this.onButton,
+    this.screen,
   });
 
   Future<void> _execute(
@@ -56,6 +61,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
             },
             keyword: true,
             ui: DialogActionUi(context),
+            screen: screen,
           );
     } catch (e) {
       if (context.mounted) {

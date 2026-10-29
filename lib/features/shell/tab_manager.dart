@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/screen/screen.dart';
+import '../../core/wizard/wizard.dart';
 
 /// One open tab in the app shell – a screen of a model (spec 8.1), opened
 /// from a menu action, a toolbar action or a form.
@@ -13,6 +14,9 @@ class AppTab {
   /// Attributes of the tab's screen (model, views, domain, tabs, …).
   final ScreenAttributes attributes;
 
+  /// A wizard shown in this tab (`window` wizards) instead of a screen.
+  final TrytonWizard? wizard;
+
   /// Per-tab Navigator key – keeps the navigation stack alive in IndexedStack.
   final GlobalKey<NavigatorState> navigatorKey;
 
@@ -20,6 +24,7 @@ class AppTab {
     required this.id,
     required this.title,
     required this.attributes,
+    this.wizard,
   }) : navigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tab-$id');
 
   String get model => attributes.model;
@@ -87,13 +92,15 @@ class TabsNotifier extends StateNotifier<TabsState> {
     List<dynamic> initialDomain = const [],
     int? resId,
     ScreenAttributes? attributes,
+    TrytonWizard? wizard,
   }) {
     final tab = AppTab(
       id: _uuid.v4(),
       title: title,
+      wizard: wizard,
       attributes: attributes ??
           ScreenAttributes(
-            model!,
+            model ?? wizard?.action ?? '',
             mode: resId != null ? const ['form', 'tree'] : const ['tree', 'form'],
             domain: List.unmodifiable(initialDomain),
             resId: resId,

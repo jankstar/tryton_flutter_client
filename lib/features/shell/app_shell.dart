@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../tabs/model_browser_screen.dart' show ModelBrowserSidebar, UserChip;
 import '../../core/screen/screen.dart';
 import '../views/screen_widget.dart';
+import '../views/wizard_widget.dart';
 import 'tab_manager.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -125,7 +126,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: Navigator(
       key: tab.navigatorKey,
       onGenerateRoute: (settings) => MaterialPageRoute(
-        builder: (_) => ScreenWidget(
+        builder: (_) => tab.wizard != null
+            ? WizardWidget(wizard: tab.wizard!)
+            : ScreenWidget(
           attributes: tab.attributes,
           title: tab.title,
           onClose: () async {

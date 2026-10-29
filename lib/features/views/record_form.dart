@@ -97,13 +97,16 @@ class _RecordFormState extends State<RecordForm> {
       }
     }
 
-    final rows = <Widget>[];
+    // Rows of cells (List<_Cell>) or full-width widgets (notebook,
+    // separator); the grid rows are built at the end with the number of
+    // columns actually used.
+    final rows = <Object>[];
     final currentRow = <_Cell>[];
     int currentColUsed = 0;
 
     void flushRow() {
       if (currentRow.isEmpty) return;
-      rows.add(_GridRow(cells: List.from(currentRow), totalCols: totalCol));
+      rows.add(List<_Cell>.from(currentRow));
       currentRow.clear();
       currentColUsed = 0;
     }
@@ -152,9 +155,27 @@ class _RecordFormState extends State<RecordForm> {
     }
     flushRow();
 
+    // Unused columns collapse (like the GTK/SAO grid, spec 9.2.2): e.g.
+    // `<form col="10">` with groups of colspan 1 gives each group the full
+    // width instead of 1/10.
+    var usedCols = 1;
+    for (final row in rows) {
+      if (row is List<_Cell>) {
+        final used = row.fold(0, (sum, c) => sum + c.colspan);
+        if (used > usedCols) usedCols = used;
+      }
+    }
+    final cols = usedCols.clamp(1, totalCol);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rows,
+      children: [
+        for (final row in rows)
+          if (row is List<_Cell>)
+            _GridRow(cells: row, totalCols: cols)
+          else
+            row as Widget,
+      ],
     );
   }
 
@@ -659,9 +680,11 @@ class _GridRow extends StatelessWidget {
     final curRow = <_Cell>[];
     int curUsed = 0;
 
+    // A wrapped row fills the width (no gap on the right: the columns are
+    // no longer aligned anyway).
     void flush() {
       if (curRow.isEmpty) return;
-      rows.add(_buildRow(List.from(curRow), effectiveCols));
+      rows.add(_buildRow(List.from(curRow), curUsed));
       curRow.clear();
       curUsed = 0;
     }

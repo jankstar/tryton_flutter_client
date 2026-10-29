@@ -56,6 +56,20 @@ class ModelService {
     return processor.process<T>(call);
   }
 
+  /// Calls [method] by its full name (e.g. `wizard.<name>.execute`) with
+  /// the context and error processing of [execute].
+  Future<T> executeMethod<T>(
+    String method,
+    List<dynamic> params, {
+    Map<String, dynamic>? context,
+    bool processException = true,
+  }) {
+    Future<T> call() => _execute<T>(method, params, context);
+    final processor = errorProcessor;
+    if (!processException || processor == null) return call();
+    return processor.process<T>(call);
+  }
+
   Future<T> _execute<T>(
     String fullMethod,
     List<dynamic> params,

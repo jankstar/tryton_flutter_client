@@ -3,10 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/locale_provider.dart';
+import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
+import '../../core/wizard/wizard.dart';
+import '../../shared/errors/error_dialogs.dart';
+import '../../shared/errors/error_handler.dart';
 import '../auth/auth_provider.dart';
+import '../model/field_support.dart';
+import '../model/model_rpc.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
+import '../tabs/model_browser_screen.dart' show menuProvider;
+import '../views/wizard_widget.dart';
 
 /// Interaction of [ActionService] with the user (messages, selection,
 /// external URLs); [DialogActionUi] for the app, fakes in tests.
@@ -21,6 +29,14 @@ abstract interface class ActionUi {
   /// Opens [url] outside the app.
   Future<void> openUrl(String url);
 
+  /// Shows [wizard] (dialog, or with [window] a tab named [title]) and
+  /// runs it; completes when the wizard has ended.
+  Future<void> runWizard(TrytonWizard wizard,
+      {required bool window, required String title});
+
+  /// Error dialogs of the server calls (null: errors reach the caller).
+  RpcErrorProcessor? get errorProcessor;
+
   /// Localised texts.
   String get noActionDefined;
   String get nameSeparator;
@@ -31,7 +47,7 @@ abstract interface class ActionUi {
 
 /// Executes Tryton actions (spec 12.1–12.6, SAO `Sao.Action`, Python
 /// client `Action`): act_window opens a tab, url the browser, report runs
-/// the report (file output with G2), wizard is a placeholder (G3).
+/// the report (file output with G2), wizard runs a [TrytonWizard] (13).
 class ActionService {
   final ModelService _svc;
   final TabsNotifier _tabs;
@@ -39,8 +55,14 @@ class ActionService {
   final Map<String, dynamic> Function() sessionContext;
   final int? Function() userId;
 
+  /// Client action without calling screen (end of a wizard from the
+  /// menu: `reload menu`, `reload context`).
+  final Future<void> Function(String action)? clientAction;
+
   ActionService(this._svc, this._tabs,
-      {required this.sessionContext, required this.userId});
+      {required this.sessionContext,
+      required this.userId,
+      this.clientAction});
 
   /// Default keywords of [execute] with `keyword` (name suffix).
   static const _keywords = {
@@ -52,13 +74,15 @@ class ActionService {
   /// Runs [action] (values or id → `ir.action.get_action_value`) for
   /// [data] (`model`, `id`, `ids` of the calling records) with [context]
   /// (SAO `Action.execute`). With [keyword] the action's keyword defaults
-  /// by type, which adds the record names to the tab name.
+  /// by type, which adds the record names to the tab name. [screen] is the
+  /// calling screen (reloaded after a wizard).
   Future<void> execute(
     dynamic action, {
     Map<String, dynamic> data = const {},
     Map<String, dynamic> context = const {},
     bool keyword = false,
     ActionUi? ui,
+    TrytonScreen? screen,
   }) async {
     Map<String, dynamic> values;
     if (action is int) {
@@ -74,7 +98,8 @@ class ActionService {
       final defaultKeyword = _keywords[values['type']];
       if (defaultKeyword != null) values['keyword'] = defaultKeyword;
     }
-    await execAction(values, data: data, context: context, ui: ui);
+    await execAction(values,
+        data: data, context: context, ui: ui, screen: screen);
   }
 
   /// Runs the action [values] by type (SAO `exec_action`); the context
@@ -84,7 +109,9 @@ class ActionService {
     Map<String, dynamic> data = const {},
     Map<String, dynamic> context = const {},
     ActionUi? ui,
+    TrytonScreen? screen,
   }) async {
+    data = {...data, 'action_id': action['id']};
     final ctx = {...context}
       ..remove('active_id')
       ..remove('active_ids')
@@ -110,10 +137,76 @@ class ActionService {
       case 'ir.action.report':
         await _executeReport(action, data, ctx, ui);
       case 'ir.action.wizard':
-        // Wizards follow with G3.
-        await ui?.message(ui.notSupported(name, 'wizard'));
+        final title = (action['keyword'] ?? 'form_action') == 'form_action'
+            ? await _nameWithSuffix(name, data, ctx, ui)
+            : name;
+        await _runWizard(action, data, ctx, title, ui, screen);
       default:
         await ui?.message(ui.notSupported(name, '${action['type']}'));
+    }
+  }
+
+  /// A wizard session (spec 13) in a dialog or (`window`) a tab; at the
+  /// end the calling [screen] is reloaded (its records or, for a wizard
+  /// of a child record, the current record) and the result of `delete`
+  /// runs as client action there.
+  Future<void> _runWizard(
+      Map<String, dynamic> action,
+      Map<String, dynamic> data,
+      Map<String, dynamic> context,
+      String title,
+      ActionUi? ui,
+      TrytonScreen? screen) async {
+    final wizName = action['wiz_name'];
+    if (wizName is! String) return;
+    final processor = ui?.errorProcessor;
+    final wizard = TrytonWizard(
+      action: wizName,
+      name: title,
+      data: data,
+      context: context,
+      session: modelSessionFor(_svc, processor: processor),
+      rpc: (method, params, {context}) => processor == null
+          ? _svc.executeMethod<dynamic>(method, params,
+              context: context, processException: false)
+          : processor.process(() => _svc.executeMethod<dynamic>(
+              method, params,
+              context: context, processException: false)),
+    )
+      ..onAction = (a, d, c) => execute(a, data: d, context: c, ui: ui);
+    wizard.onScreen = (s) =>
+        s.onViewAdded = (v) => markUnsupportedFields(s.model, v);
+    try {
+      if (ui != null) {
+        await ui.runWizard(wizard, window: action['window'] == true, title: title);
+      } else {
+        await wizard.run();
+        if (!wizard.done) await wizard.cancel();
+      }
+      final result = await wizard.finished;
+      await _afterWizard(result, data, screen);
+    } finally {
+      wizard.dispose();
+    }
+  }
+
+  Future<void> _afterWizard(String? result, Map<String, dynamic> data,
+      TrytonScreen? screen) async {
+    if (screen != null) {
+      final current = screen.currentRecord;
+      if (screen.model.name == data['model']) {
+        final ids = [
+          for (final id in (data['ids'] as List? ?? const []))
+            if (id is int) id
+        ];
+        await screen.reload(ids, written: true);
+      } else if (current != null) {
+        // Wizard of a child record: reload the parent record.
+        await screen.reload([current.id], written: true);
+      }
+      if (result != null) await screen.clientAction(result);
+    } else if (result != null) {
+      await clientAction?.call(result);
     }
   }
 
@@ -170,6 +263,7 @@ class ActionService {
     Map<String, dynamic> context = const {},
     bool warning = true,
     ActionUi? ui,
+    TrytonScreen? screen,
   }) async {
     final result = await _svc.execute<dynamic>('ir.action.keyword',
         'get_keyword', [
@@ -186,7 +280,8 @@ class ActionService {
     }
     final action = actions.length == 1 ? actions.first : await ui?.choose(actions);
     if (action == null) return;
-    await execAction(action, data: data, context: context, ui: ui);
+    await execAction(action,
+        data: data, context: context, ui: ui, screen: screen);
   }
 }
 
@@ -195,6 +290,12 @@ final actionServiceProvider = Provider<ActionService>((ref) => ActionService(
       ref.read(tabsProvider.notifier),
       sessionContext: () => ref.read(sessionProvider).context,
       userId: () => ref.read(sessionProvider).userId,
+      clientAction: (action) async {
+        if (action == 'reload context' || action == 'reload menu') {
+          await ref.read(sessionProvider).reloadContext();
+        }
+        if (action == 'reload menu') ref.invalidate(menuProvider);
+      },
     ));
 
 /// [ActionUi] with snack bars and a selection dialog.
@@ -232,6 +333,31 @@ class DialogActionUi implements ActionUi {
   Future<void> openUrl(String url) async {
     final uri = Uri.tryParse(url);
     if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Future<void> runWizard(TrytonWizard wizard,
+      {required bool window, required String title}) async {
+    if (!context.mounted) return;
+    if (window) {
+      // The tab runs the wizard and closes itself at the end.
+      ProviderScope.containerOf(context, listen: false)
+          .read(tabsProvider.notifier)
+          .openTab(title: title, wizard: wizard);
+      await wizard.finished;
+    } else {
+      await runWizardDialog(context, wizard);
+    }
+  }
+
+  @override
+  RpcErrorProcessor? get errorProcessor {
+    final svc = ProviderScope.containerOf(context, listen: false)
+        .read(modelServiceProvider);
+    return ErrorHandler(
+      presenter: DialogErrorPresenter(context),
+      skipWarning: (name, always) => skipUserWarning(svc, name, always),
+    );
   }
 
   @override

@@ -6,7 +6,6 @@ import '../../core/model/model.dart';
 import '../../core/screen/screen.dart';
 import '../../core/rpc/error_processing.dart';
 import '../../core/xml/view_definition.dart';
-import '../model/field_definition.dart';
 import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/model_service.dart';
@@ -200,24 +199,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// [viewDef] with the options of all method-based selections for the
   /// current values of [record].
   Future<ViewDefinition> _withSelections(
-      ViewDefinition viewDef, Record record) async {
-    final values = recordWidgetValues(record);
-    final fields = Map<String, FieldDefinition>.from(viewDef.fields);
-    await Future.wait(viewDef.fields.values
-        .where(SelectionLoader.isDynamic)
-        .map((fd) async {
-      final opts = await _selections.load(fd, values, viewDef.fields);
-      fields[fd.name] = fd.copyWithSelection(opts);
-    }));
-    return ViewDefinition(
-      arch: viewDef.arch,
-      fields: fields,
-      viewId: viewDef.viewId,
-      type: viewDef.type,
-      fieldChilds: viewDef.fieldChilds,
-      rawFields: viewDef.rawFields,
-    );
-  }
+          ViewDefinition viewDef, Record record) =>
+      _selections.applyTo(viewDef, recordWidgetValues(record));
 
   /// Reloads the selections that depend on changed values (cached per
   /// value combination, like SAO's update_selection).
@@ -225,11 +208,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     final viewDef = _screen.currentView?.definition;
     final record = _record;
     if (viewDef == null || record == null) return;
-    if (!viewDef.fields.values.any((fd) =>
-        SelectionLoader.isDynamic(fd) &&
-        (fd.selectionChangeWith?.isNotEmpty ?? false))) {
-      return;
-    }
+    if (!SelectionLoader.hasChangeWith(viewDef)) return;
     final updated = await _withSelections(viewDef, record);
     if (mounted && identical(_record, record)) {
       setState(() => _viewDef = updated);
@@ -792,6 +771,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           // Always shown like in SAO original (disabled when no items).
           if (!_isNew) ...[
             ToolbarDropdownButton(
+              screen: _screen,
               icon: Icons.rocket_launch_outlined, // tryton-launch
               tooltip: l.launchActions,
               items: _toolbar.actions,
@@ -805,6 +785,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onButton: _executeButton,
             ),
             ToolbarDropdownButton(
+              screen: _screen,
               icon: Icons.link,                   // tryton-link
               tooltip: l.relatedRecords,
               items: _toolbar.relate,
@@ -818,6 +799,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onButton: _executeButton,
             ),
             ToolbarDropdownButton(
+              screen: _screen,
               icon: Icons.print_outlined,         // tryton-print
               tooltip: l.reports,
               items: _toolbar.print,
@@ -831,6 +813,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onButton: _executeButton,
             ),
             ToolbarDropdownButton(
+              screen: _screen,
               icon: Icons.email_outlined,         // tryton-email
               tooltip: l.email,
               items: _toolbar.emails,

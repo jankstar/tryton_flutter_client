@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../core/serialization/tryton_serializer.dart';
+import '../../core/xml/view_definition.dart';
 import 'field_definition.dart';
 
 /// Loads `[[key, label], …]` for method-based selection fields.
@@ -84,4 +85,27 @@ class SelectionLoader {
       _pending.remove(key);
     }
   }
+
+  /// [viewDef] with the options of all method-based selections for the
+  /// record [values] (FieldWidget format, `recordWidgetValues`).
+  Future<ViewDefinition> applyTo(
+      ViewDefinition viewDef, Map<String, dynamic> values) async {
+    final fields = Map<String, FieldDefinition>.from(viewDef.fields);
+    await Future.wait(viewDef.fields.values.where(isDynamic).map((fd) async {
+      final opts = await load(fd, values, viewDef.fields);
+      fields[fd.name] = fd.copyWithSelection(opts);
+    }));
+    return ViewDefinition(
+      arch: viewDef.arch,
+      fields: fields,
+      viewId: viewDef.viewId,
+      type: viewDef.type,
+      fieldChilds: viewDef.fieldChilds,
+      rawFields: viewDef.rawFields,
+    );
+  }
+
+  /// Whether a selection of [viewDef] depends on other values.
+  static bool hasChangeWith(ViewDefinition viewDef) => viewDef.fields.values
+      .any((fd) => isDynamic(fd) && (fd.selectionChangeWith?.isNotEmpty ?? false));
 }

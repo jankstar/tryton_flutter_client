@@ -426,6 +426,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
           // ── Action / Relate / Print / Email (require selection) ───────
           ToolbarDropdownButton(
+            screen: _screen,
             icon: Icons.rocket_launch_outlined,
             tooltip: l.launchActions,
             items: _toolbar.actions,
@@ -434,6 +435,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             enabled: hasSelection,
           ),
           ToolbarDropdownButton(
+            screen: _screen,
             icon: Icons.link,
             tooltip: l.relatedRecords,
             items: _toolbar.relate,
@@ -442,6 +444,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             enabled: hasSelection,
           ),
           ToolbarDropdownButton(
+            screen: _screen,
             icon: Icons.print_outlined,
             tooltip: l.reports,
             items: _toolbar.print,
@@ -450,6 +453,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             enabled: hasSelection,
           ),
           ToolbarDropdownButton(
+            screen: _screen,
             icon: Icons.email_outlined,
             tooltip: l.email,
             items: _toolbar.emails,

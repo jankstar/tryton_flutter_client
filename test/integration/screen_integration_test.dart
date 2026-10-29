@@ -4,8 +4,10 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/rpc/error_processing.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
+import 'package:tryton_flutter_client/core/wizard/wizard.dart';
 import 'package:tryton_flutter_client/features/actions/action_service.dart';
 import 'package:tryton_flutter_client/features/model/model_rpc.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
@@ -18,6 +20,43 @@ import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 ///     TRYTON_PASSWORD=… flutter test --run-skipped -t integration
 const _server = 'http://127.0.0.1:8000';
 const _database = 'tryton';
+
+/// [ActionUi] that runs a wizard up to its first view and cancels it
+/// (records what it saw).
+class _CancelUi implements ActionUi {
+  String? viewModel;
+  List<WizardButton> buttons = const [];
+
+  @override
+  Future<void> runWizard(TrytonWizard wizard,
+      {required bool window, required String title}) async {
+    await wizard.run();
+    viewModel = wizard.screen?.model.name;
+    buttons = wizard.buttons;
+    if (!wizard.done) await wizard.cancel();
+  }
+
+  @override
+  RpcErrorProcessor? get errorProcessor => null;
+  @override
+  Future<void> message(String text) async {}
+  @override
+  Future<Map<String, dynamic>?> choose(
+          List<Map<String, dynamic>> actions) async =>
+      null;
+  @override
+  Future<void> openUrl(String url) async {}
+  @override
+  String get noActionDefined => '';
+  @override
+  String get nameSeparator => ', ';
+  @override
+  String generatingReport() => '';
+  @override
+  String reportGenerated(String name, String format) => '';
+  @override
+  String notSupported(String name, String type) => '';
+}
 
 void main() {
   final env = Platform.environment;
@@ -187,5 +226,45 @@ void main() {
     await related.switchView();
     expect(await related.searchFilter(), isTrue);
     expect(related.searchCount, greaterThanOrEqualTo(0));
+  });
+
+  test('read: wizard party.check_vies on a party without VAT id → cancel',
+      () async {
+    if (password == null) {
+      markTestSkipped('TRYTON_PASSWORD not set');
+      return;
+    }
+    final wizardIds = await svc.execute<List>('ir.action.wizard', 'search', [
+      [
+        ['wiz_name', '=', 'party.check_vies']
+      ],
+      0,
+      1,
+      null
+    ]);
+    if (wizardIds.isEmpty) {
+      markTestSkipped('party.check_vies not installed');
+      return;
+    }
+    // A party without identifiers: check_vies changes nothing.
+    final parties = await svc.searchRead('party.party',
+        fields: ['identifiers'], limit: 200);
+    final party = parties.firstWhere(
+        (p) => (p['identifiers'] as List? ?? const []).isEmpty);
+
+    final ui = _CancelUi();
+    final service = ActionService(svc, TabsNotifier(),
+        sessionContext: () => context, userId: () => null);
+    await service.execute(wizardIds.first as int,
+        data: {
+          'model': 'party.party',
+          'id': party.id,
+          'ids': [party.id]
+        },
+        keyword: true,
+        ui: ui);
+    expect(ui.viewModel, 'party.check_vies.result',
+        reason: 'transition "check", then the result view');
+    expect(ui.buttons.map((b) => (b.state, b.isDefault)), [('end', true)]);
   });
 }

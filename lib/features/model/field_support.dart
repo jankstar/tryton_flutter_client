@@ -1,3 +1,5 @@
+import '../../core/model/model.dart' show TrytonModel;
+import '../../core/screen/screen.dart' show ScreenView;
 import '../../core/xml/view_definition.dart';
 import 'field_definition.dart';
 
@@ -68,4 +70,14 @@ Set<String> unsupportedFieldNames(
     if (widgets.every((w) => unsupportedWidgets.contains(w))) result.add(name);
   }
   return result;
+}
+
+/// Fields of [view] without an own widget (E13) are never written: as
+/// readonly they are left out of create/write (`Record.get`).
+void markUnsupportedFields(TrytonModel model, ScreenView view) {
+  final root = view.formRoot;
+  if (root == null) return;
+  for (final name in unsupportedFieldNames(view.definition.fields, root)) {
+    model.fields[name]?.description['readonly'] = true;
+  }
 }
