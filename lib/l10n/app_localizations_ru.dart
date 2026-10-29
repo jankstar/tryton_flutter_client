@@ -356,4 +356,46 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get selectRevision => 'Выберите ревизию';
+
+  @override
+  String get filters => 'Фильтры';
+
+  @override
+  String get bookmarkFilter => 'Добавить фильтр в закладки';
+
+  @override
+  String get removeBookmark => 'Удалить закладку';
+
+  @override
+  String get bookmarks => 'Закладки';
+
+  @override
+  String get bookmarkName => 'Имя закладки:';
+
+  @override
+  String get showInactive => 'Показать неактивные записи';
+
+  @override
+  String get showActive => 'Показать активные записи';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Создано';
+
+  @override
+  String get createdAt => 'Дата создания';
+
+  @override
+  String get modifiedBy => 'Изменено';
+
+  @override
+  String get modifiedAt => 'Дата изменения';
+
+  @override
+  String get rangeFrom => 'С';
+
+  @override
+  String get rangeTo => 'По';
 }

@@ -1,4 +1,5 @@
 import '../../core/rpc/error_processing.dart';
+import '../../core/domain/domain_parser.dart';
 import '../../core/rpc/rpc_exceptions.dart';
 
 /// Answer to the UserWarning dialog (spec 2.6).
@@ -97,8 +98,8 @@ class ErrorHandler implements RpcErrorProcessor {
   Future<void> show(Object error) {
     return switch (error) {
       HandledRpcError() => Future<void>.value(),
-      UserError(:final message, :final description) =>
-        presenter.userError(message, description),
+      UserError(:final message) =>
+        presenter.userError(message, userErrorDescription(error)),
       UserWarning(:final message, :final description) =>
         presenter.userError(message, description),
       ConcurrencyException() => presenter.concurrency(),
@@ -116,6 +117,24 @@ class ErrorHandler implements RpcErrorProcessor {
   }
 
   /// Short one-line text, e.g. for an error placeholder in a page.
+  /// Description of a UserError with its violated domain as search text
+  /// (Python client: `DomainParser(fields).string(domain)` when stringable).
+  static String userErrorDescription(UserError error) {
+    final domain = error.domain;
+    final fields = error.domainFields;
+    if (domain == null || domain.isEmpty || fields == null) {
+      return error.description;
+    }
+    try {
+      final parser = DomainParser(fields);
+      if (!parser.stringable(domain)) return error.description;
+      final text = parser.string(domain);
+      return error.description.isEmpty ? text : '${error.description}\n$text';
+    } catch (_) {
+      return error.description;
+    }
+  }
+
   static String describe(Object error) => switch (error) {
         HandledRpcError(:final error) => describe(error),
         UserError(:final message) => message,

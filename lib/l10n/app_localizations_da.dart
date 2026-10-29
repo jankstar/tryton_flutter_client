@@ -356,4 +356,46 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get selectRevision => 'Vælg en revision';
+
+  @override
+  String get filters => 'Filtre';
+
+  @override
+  String get bookmarkFilter => 'Bogmærk dette filter';
+
+  @override
+  String get removeBookmark => 'Fjern bogmærke';
+
+  @override
+  String get bookmarks => 'Bogmærker';
+
+  @override
+  String get bookmarkName => 'Bogmærkets navn:';
+
+  @override
+  String get showInactive => 'Vis inaktive poster';
+
+  @override
+  String get showActive => 'Vis aktive poster';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Oprettet af';
+
+  @override
+  String get createdAt => 'Oprettet';
+
+  @override
+  String get modifiedBy => 'Ændret af';
+
+  @override
+  String get modifiedAt => 'Ændret';
+
+  @override
+  String get rangeFrom => 'Fra';
+
+  @override
+  String get rangeTo => 'Til';
 }

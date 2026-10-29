@@ -357,4 +357,46 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get selectRevision => 'Revision auswählen';
+
+  @override
+  String get filters => 'Filter';
+
+  @override
+  String get bookmarkFilter => 'Filter als Lesezeichen speichern';
+
+  @override
+  String get removeBookmark => 'Lesezeichen entfernen';
+
+  @override
+  String get bookmarks => 'Lesezeichen';
+
+  @override
+  String get bookmarkName => 'Name des Lesezeichens:';
+
+  @override
+  String get showInactive => 'Inaktive Datensätze anzeigen';
+
+  @override
+  String get showActive => 'Aktive Datensätze anzeigen';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Erstellt von';
+
+  @override
+  String get createdAt => 'Erstellt am';
+
+  @override
+  String get modifiedBy => 'Geändert von';
+
+  @override
+  String get modifiedAt => 'Geändert am';
+
+  @override
+  String get rangeFrom => 'Von';
+
+  @override
+  String get rangeTo => 'Bis';
 }

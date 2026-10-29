@@ -356,4 +356,46 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get selectRevision => 'Valitse versio';
+
+  @override
+  String get filters => 'Suodattimet';
+
+  @override
+  String get bookmarkFilter => 'Lisää suodatin kirjanmerkkeihin';
+
+  @override
+  String get removeBookmark => 'Poista kirjanmerkki';
+
+  @override
+  String get bookmarks => 'Kirjanmerkit';
+
+  @override
+  String get bookmarkName => 'Kirjanmerkin nimi:';
+
+  @override
+  String get showInactive => 'Näytä passiiviset tietueet';
+
+  @override
+  String get showActive => 'Näytä aktiiviset tietueet';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Luonut';
+
+  @override
+  String get createdAt => 'Luotu';
+
+  @override
+  String get modifiedBy => 'Muokannut';
+
+  @override
+  String get modifiedAt => 'Muokattu';
+
+  @override
+  String get rangeFrom => 'Alkaen';
+
+  @override
+  String get rangeTo => 'Asti';
 }

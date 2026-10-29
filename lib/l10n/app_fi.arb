@@ -358,5 +358,19 @@
   "createNamed": "Luo \"{name}\"…",
   "revisions": "Versiot…",
   "currentRevision": "Nykyinen",
-  "selectRevision": "Valitse versio"
+  "selectRevision": "Valitse versio",
+  "filters": "Suodattimet",
+  "bookmarkFilter": "Lisää suodatin kirjanmerkkeihin",
+  "removeBookmark": "Poista kirjanmerkki",
+  "bookmarks": "Kirjanmerkit",
+  "bookmarkName": "Kirjanmerkin nimi:",
+  "showInactive": "Näytä passiiviset tietueet",
+  "showActive": "Näytä aktiiviset tietueet",
+  "fieldId": "ID",
+  "createdBy": "Luonut",
+  "createdAt": "Luotu",
+  "modifiedBy": "Muokannut",
+  "modifiedAt": "Muokattu",
+  "rangeFrom": "Alkaen",
+  "rangeTo": "Asti"
 }

@@ -511,5 +511,61 @@
   "selectRevision": "Select a revision",
   "@selectRevision": {
     "description": "Revision view (spec 11.7)"
+  },
+  "filters": "Filters",
+  "@filters": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "bookmarkFilter": "Bookmark this filter",
+  "@bookmarkFilter": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "removeBookmark": "Remove this bookmark",
+  "@removeBookmark": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "bookmarks": "Bookmarks",
+  "@bookmarks": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "bookmarkName": "Bookmark Name:",
+  "@bookmarkName": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "showInactive": "Show inactive records",
+  "@showInactive": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "showActive": "Show active records",
+  "@showActive": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "fieldId": "ID",
+  "@fieldId": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "createdBy": "Created by",
+  "@createdBy": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "createdAt": "Created at",
+  "@createdAt": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "modifiedBy": "Modified by",
+  "@modifiedBy": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "modifiedAt": "Modified at",
+  "@modifiedAt": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "rangeFrom": "From",
+  "@rangeFrom": {
+    "description": "Search bar (spec 8.4)"
+  },
+  "rangeTo": "To",
+  "@rangeTo": {
+    "description": "Search bar (spec 8.4)"
   }
 }

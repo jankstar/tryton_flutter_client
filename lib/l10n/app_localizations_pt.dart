@@ -356,4 +356,46 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get selectRevision => 'Selecione uma revisão';
+
+  @override
+  String get filters => 'Filtros';
+
+  @override
+  String get bookmarkFilter => 'Favoritar este filtro';
+
+  @override
+  String get removeBookmark => 'Remover favorito';
+
+  @override
+  String get bookmarks => 'Favoritos';
+
+  @override
+  String get bookmarkName => 'Nome do favorito:';
+
+  @override
+  String get showInactive => 'Mostrar registros inativos';
+
+  @override
+  String get showActive => 'Mostrar registros ativos';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Criado por';
+
+  @override
+  String get createdAt => 'Criado em';
+
+  @override
+  String get modifiedBy => 'Modificado por';
+
+  @override
+  String get modifiedAt => 'Modificado em';
+
+  @override
+  String get rangeFrom => 'De';
+
+  @override
+  String get rangeTo => 'Até';
 }

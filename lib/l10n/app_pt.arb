@@ -358,5 +358,19 @@
   "createNamed": "Criar \"{name}\"…",
   "revisions": "Revisões…",
   "currentRevision": "Atual",
-  "selectRevision": "Selecione uma revisão"
+  "selectRevision": "Selecione uma revisão",
+  "filters": "Filtros",
+  "bookmarkFilter": "Favoritar este filtro",
+  "removeBookmark": "Remover favorito",
+  "bookmarks": "Favoritos",
+  "bookmarkName": "Nome do favorito:",
+  "showInactive": "Mostrar registros inativos",
+  "showActive": "Mostrar registros ativos",
+  "fieldId": "ID",
+  "createdBy": "Criado por",
+  "createdAt": "Criado em",
+  "modifiedBy": "Modificado por",
+  "modifiedAt": "Modificado em",
+  "rangeFrom": "De",
+  "rangeTo": "Até"
 }

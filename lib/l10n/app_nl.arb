@@ -358,5 +358,19 @@
   "createNamed": "\"{name}\" aanmaken…",
   "revisions": "Revisies…",
   "currentRevision": "Huidig",
-  "selectRevision": "Kies een revisie"
+  "selectRevision": "Kies een revisie",
+  "filters": "Filters",
+  "bookmarkFilter": "Filter als bladwijzer opslaan",
+  "removeBookmark": "Bladwijzer verwijderen",
+  "bookmarks": "Bladwijzers",
+  "bookmarkName": "Naam van de bladwijzer:",
+  "showInactive": "Inactieve records tonen",
+  "showActive": "Actieve records tonen",
+  "fieldId": "ID",
+  "createdBy": "Aangemaakt door",
+  "createdAt": "Aangemaakt op",
+  "modifiedBy": "Gewijzigd door",
+  "modifiedAt": "Gewijzigd op",
+  "rangeFrom": "Van",
+  "rangeTo": "Tot"
 }

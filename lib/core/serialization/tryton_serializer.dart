@@ -156,6 +156,17 @@ class TrytonTime {
   @override
   String toString() =>
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}:${second.toString().padLeft(2, '0')}';
+
+  @override
+  bool operator ==(Object other) =>
+      other is TrytonTime &&
+      hour == other.hour &&
+      minute == other.minute &&
+      second == other.second &&
+      microsecond == other.microsecond;
+
+  @override
+  int get hashCode => Object.hash(hour, minute, second, microsecond);
 }
 
 /// Binary data – explicit wrapper so that int lists are not accidentally

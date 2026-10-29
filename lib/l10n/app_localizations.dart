@@ -745,6 +745,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select a revision'**
   String get selectRevision;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get filters;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmark this filter'**
+  String get bookmarkFilter;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this bookmark'**
+  String get removeBookmark;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmarks'**
+  String get bookmarks;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmark Name:'**
+  String get bookmarkName;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Show inactive records'**
+  String get showInactive;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Show active records'**
+  String get showActive;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'ID'**
+  String get fieldId;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Created by'**
+  String get createdBy;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Created at'**
+  String get createdAt;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Modified by'**
+  String get modifiedBy;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'Modified at'**
+  String get modifiedAt;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get rangeFrom;
+
+  /// Search bar (spec 8.4)
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get rangeTo;
 }
 
 class _AppLocalizationsDelegate

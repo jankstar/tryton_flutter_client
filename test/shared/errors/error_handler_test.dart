@@ -79,6 +79,23 @@ void main() {
     );
   }
 
+  test('UserError: the violated domain as search text (A5, C4)', () {
+    const error = UserError('Invalid', description: 'The value is wrong.',
+        domain: [
+          ['name', '=', 'Doe']
+        ],
+        domainFields: {
+          'name': {'string': 'Name', 'type': 'char'}
+        });
+    expect(ErrorHandler.userErrorDescription(error),
+        'The value is wrong.\nName: =Doe');
+    // Not stringable (unknown field): description only.
+    const other = UserError('Invalid', description: 'D', domain: [
+      ['x', '=', 1]
+    ], domainFields: {});
+    expect(ErrorHandler.userErrorDescription(other), 'D');
+  });
+
   group('process (RpcErrorProcessor, ModelService processException)', () {
     test('success returns the value without dialog', () async {
       expect(await handler.process(() async => 42), 42);

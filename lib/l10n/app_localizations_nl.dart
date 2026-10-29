@@ -356,4 +356,46 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get selectRevision => 'Kies een revisie';
+
+  @override
+  String get filters => 'Filters';
+
+  @override
+  String get bookmarkFilter => 'Filter als bladwijzer opslaan';
+
+  @override
+  String get removeBookmark => 'Bladwijzer verwijderen';
+
+  @override
+  String get bookmarks => 'Bladwijzers';
+
+  @override
+  String get bookmarkName => 'Naam van de bladwijzer:';
+
+  @override
+  String get showInactive => 'Inactieve records tonen';
+
+  @override
+  String get showActive => 'Actieve records tonen';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Aangemaakt door';
+
+  @override
+  String get createdAt => 'Aangemaakt op';
+
+  @override
+  String get modifiedBy => 'Gewijzigd door';
+
+  @override
+  String get modifiedAt => 'Gewijzigd op';
+
+  @override
+  String get rangeFrom => 'Van';
+
+  @override
+  String get rangeTo => 'Tot';
 }

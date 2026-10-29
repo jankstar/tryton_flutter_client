@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart' show ChangeNotifier;
 import 'package:xml/xml.dart';
 
 import '../domain/domain_inversion.dart' as inversion;
+import '../domain/domain_parser.dart';
 import '../model/model.dart';
 import '../pyson/pyson_environment.dart';
 import '../pyson/pyson_evaluator.dart';
@@ -686,14 +687,7 @@ class TrytonScreen extends ChangeNotifier {
   List<dynamic> searchDomain({String? text, bool withTab = true}) {
     List<dynamic> result;
     if (group.parent == null) {
-      final search = text ?? searchText;
-      if (search.isNotEmpty) {
-        result = [
-          ['rec_name', 'ilike', '%$search%'],
-        ];
-      } else {
-        result = _initialSearchValue ?? const [];
-      }
+      result = _searchPart(text);
     } else {
       result = [
         [
@@ -707,6 +701,16 @@ class TrytonScreen extends ChangeNotifier {
       if (domain.isNotEmpty) result = ['AND', result, domain];
     } else {
       result = domain;
+    }
+    if (showInactive && hasActiveField) {
+      result = result.isNotEmpty
+          ? [
+              result,
+              ['active', '=', false],
+            ]
+          : [
+              ['active', '=', false],
+            ];
     }
     final cd = contextDomain;
     if (cd != null) {
@@ -725,6 +729,151 @@ class TrytonScreen extends ChangeNotifier {
 
   late List<dynamic>? _initialSearchValue = attributes.searchValue;
 
+  /// Domain of the search text: parsed by [domainParser] (or the action's
+  /// `search_value` for the first search), without parser `rec_name ilike`.
+  List<dynamic> _searchPart(String? text) {
+    final parser = domainParser;
+    final initial = _initialSearchValue;
+    if (parser != null) {
+      if (text == null && initial != null) return initial;
+      return parser.parse(text ?? searchText);
+    }
+    final search = text ?? searchText;
+    if (search.isNotEmpty) {
+      return [
+        ['rec_name', 'ilike', '%$search%'],
+      ];
+    }
+    return initial ?? const [];
+  }
+
+  // ── Search bar (8.4) ──────────────────────────────────────────────────────
+
+  /// Parser of the search text (spec 7.3); null until
+  /// [loadDomainParser] (the text is then `rec_name ilike`).
+  DomainParser? domainParser;
+
+  /// Locale of the parser (`date_format`, `decimal_point`,
+  /// `thousands_sep` of the preferences).
+  Map<String, dynamic> parserContext = const {};
+
+  /// Labels of the common fields (translated by the UI).
+  Map<String, String> commonFieldStrings = const {
+    'id': 'ID',
+    'create_uid': 'Created by',
+    'create_date': 'Created at',
+    'write_uid': 'Modified by',
+    'write_date': 'Modified at',
+  };
+
+  /// "Show inactive records" (`active = false`, `active_test = false`).
+  bool showInactive = false;
+
+  /// The tree view has a field `active` (toggle shown, spec 8.4).
+  bool get hasActiveField => views.any((v) =>
+      v.viewType == 'tree' && v.definition.rawFields.containsKey('active'));
+
+  /// Context of the searches (`active_test = false` for inactive records).
+  Map<String, dynamic> get _searchContext => {
+        ...context,
+        if (showInactive && hasActiveField) 'active_test': false,
+      };
+
+  /// Builds [domainParser] from the tree view (SAO `domain_parser`): the
+  /// fields of the XML (first definition, `string`/`factor` of the node,
+  /// `symbol` fields) plus id/create_uid/create_date/write_uid/write_date,
+  /// only searchable ones; selection methods are resolved.
+  Future<DomainParser> loadDomainParser() async {
+    ScreenView? tree;
+    for (final v in views) {
+      if (v.viewType == 'tree') {
+        tree = v;
+        break;
+      }
+    }
+    final ViewDefinition definition;
+    if (tree != null) {
+      definition = tree.definition;
+    } else {
+      final ctx = context..['view_tree_width'] = true;
+      final result =
+          await model.execute('fields_view_get', [null, 'tree'], context: ctx);
+      definition = ViewDefinition.fromJson(Map<String, dynamic>.from(result as Map));
+    }
+    final all = <String, Map<String, dynamic>>{
+      for (final MapEntry(:key, :value) in definition.rawFields.entries)
+        if (value is Map) key: Map<String, dynamic>.from(value),
+    };
+    for (final MapEntry(key: name, value: props) in all.entries) {
+      final type = props['type'];
+      if ((type == 'selection' ||
+              type == 'multiselection' ||
+              type == 'reference') &&
+          props['selection'] is String) {
+        all[name] = {...props, 'selection': await _selection(props)};
+      }
+    }
+    final fields = <String, dynamic>{};
+    final root = XmlDocument.parse(definition.arch).rootElement;
+    for (final node in root.childElements) {
+      if (node.name.local != 'field') continue;
+      final name = node.getAttribute('name');
+      if (name == null) continue;
+      if (!fields.containsKey(name) && all[name] != null) {
+        final props = {...all[name]!};
+        for (final attr in ['string', 'factor']) {
+          final value = node.getAttribute(attr);
+          if (value != null && value.isNotEmpty) props[attr] = value;
+        }
+        fields[name] = props;
+      }
+      final symbol = node.getAttribute('symbol');
+      if (symbol != null && !fields.containsKey(symbol) && all[symbol] != null) {
+        fields[symbol] = all[symbol];
+      }
+    }
+    const common = {
+      'id': 'integer',
+      'create_uid': 'many2one',
+      'create_date': 'datetime',
+      'write_uid': 'many2one',
+      'write_date': 'datetime',
+    };
+    for (final MapEntry(key: name, value: type) in common.entries) {
+      fields.putIfAbsent(name, () => {
+            'string': commonFieldStrings[name] ?? name,
+            'name': name,
+            'type': type,
+            if (type == 'datetime') 'format': '"%H:%M:%S"',
+          });
+    }
+    return domainParser = DomainParser(fields, parserContext);
+  }
+
+  /// `[[value, label], …]` of a selection method, sorted by label (SAO
+  /// `get_selection`); empty on error.
+  Future<List<dynamic>> _selection(Map<String, dynamic> props) async {
+    final changeWith = props['selection_change_with'];
+    try {
+      final result = await model.execute(
+          '${props['selection']}',
+          [
+            if (changeWith is List && changeWith.isNotEmpty)
+              {for (final f in changeWith) '$f': null},
+          ],
+          context: context,
+          processException: false);
+      final list = [
+        for (final e in (result as List? ?? const []))
+          if (e is List && e.length >= 2) [e[0], e[1]]
+      ];
+      list.sort((a, b) => '${a[1]}'.compareTo('${b[1]}'));
+      return list;
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Searches with [text] and loads the first page (SAO `search_filter`,
   /// spec 8.3). Returns false when the context form is invalid.
   Future<bool> searchFilter([String? text]) async {
@@ -742,13 +891,19 @@ class TrytonScreen extends ChangeNotifier {
       newGroup({...group.localContext, ...screenContext});
     }
     final searchDomain = this.searchDomain();
+    // The text is shown normalized (`string(domain)`), the action's
+    // search_value as the first search.
+    final parser = domainParser;
+    if (parser != null && group.parent == null) {
+      searchText = parser.string(_searchPart(text));
+    }
     _initialSearchValue = null;
     final canonical = inversion.canonicalize(searchDomain);
     if (!inversion.domainEquals(canonical, _currentDomain)) {
       _currentDomain = canonical;
       offset = 0;
     }
-    final ctx = context;
+    final ctx = _searchContext;
     var ids = await _search(searchDomain, ctx, offset);
     while (ids.isEmpty && offset > 0) {
       offset = math.max(offset - (limit ?? 0), 0);
@@ -832,7 +987,7 @@ class TrytonScreen extends ChangeNotifier {
   Future<void> searchMore() async {
     if (!hasMore) return;
     final searchDomain = this.searchDomain();
-    final ids = await _search(searchDomain, context, loadedCount);
+    final ids = await _search(searchDomain, _searchContext, loadedCount);
     _lastSearchLength = ids.length;
     if (searchCount < loadedCount + ids.length) {
       searchCount = loadedCount + ids.length;

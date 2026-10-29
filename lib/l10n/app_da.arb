@@ -358,5 +358,19 @@
   "createNamed": "Opret \"{name}\"…",
   "revisions": "Revisioner…",
   "currentRevision": "Aktuel",
-  "selectRevision": "Vælg en revision"
+  "selectRevision": "Vælg en revision",
+  "filters": "Filtre",
+  "bookmarkFilter": "Bogmærk dette filter",
+  "removeBookmark": "Fjern bogmærke",
+  "bookmarks": "Bogmærker",
+  "bookmarkName": "Bogmærkets navn:",
+  "showInactive": "Vis inaktive poster",
+  "showActive": "Vis aktive poster",
+  "fieldId": "ID",
+  "createdBy": "Oprettet af",
+  "createdAt": "Oprettet",
+  "modifiedBy": "Ændret af",
+  "modifiedAt": "Ændret",
+  "rangeFrom": "Fra",
+  "rangeTo": "Til"
 }

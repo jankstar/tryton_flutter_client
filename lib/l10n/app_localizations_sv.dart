@@ -355,4 +355,46 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get selectRevision => 'Välj en revision';
+
+  @override
+  String get filters => 'Filter';
+
+  @override
+  String get bookmarkFilter => 'Bokmärk detta filter';
+
+  @override
+  String get removeBookmark => 'Ta bort bokmärke';
+
+  @override
+  String get bookmarks => 'Bokmärken';
+
+  @override
+  String get bookmarkName => 'Bokmärkets namn:';
+
+  @override
+  String get showInactive => 'Visa inaktiva poster';
+
+  @override
+  String get showActive => 'Visa aktiva poster';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Skapad av';
+
+  @override
+  String get createdAt => 'Skapad';
+
+  @override
+  String get modifiedBy => 'Ändrad av';
+
+  @override
+  String get modifiedAt => 'Ändrad';
+
+  @override
+  String get rangeFrom => 'Från';
+
+  @override
+  String get rangeTo => 'Till';
 }

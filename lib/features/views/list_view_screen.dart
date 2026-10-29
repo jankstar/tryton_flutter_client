@@ -19,6 +19,7 @@ import '../model/toolbar_data.dart';
 import '../actions/action_service.dart';
 import '../shell/tab_manager.dart';
 import 'record_cells.dart';
+import 'search_box.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 
@@ -133,6 +134,19 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final screen = _screen;
     screen.addListener(_onScreenChanged);
     screen.contextScreen?.addListener(_onScreenChanged);
+    // Search text of the screen (normalized, or the action's search_value).
+    _searchCtrl.text = screen.searchText;
+    if (screen.domainParser == null && screen.group.parent == null) {
+      // The list was opened after the form: parser for the search bar.
+      screen.parserContext =
+          ref.read(modelServiceProvider).metadata?.parserContext ?? const {};
+      screen
+          .loadDomainParser()
+          .then((_) {
+            if (mounted) setState(() {});
+          })
+          .catchError((Object _) {});
+    }
     // The current record (e.g. from the form) is the selection.
     final current = screen.currentRecord;
     _setSelected(current != null ? [current] : screen.selectedRecords);
@@ -183,6 +197,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         });
         try {
           await screen.searchFilter(_searchCtrl.text.trim());
+          // The text normalized by the DomainParser (spec 8.3).
+          _searchCtrl.text = screen.searchText;
         } finally {
           if (mounted) setState(() => _loading = false);
         }
@@ -503,10 +519,10 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final rows = _rows;
     final searchBar = Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      child: _SearchBar(
+      child: SearchBox(
+        screen: _screen,
         controller: _searchCtrl,
-        hint: context.l10n.search,
-        onSearch: (_) => _search(),
+        onSearch: _search,
       ),
     );
 
@@ -1026,68 +1042,6 @@ class _AttachmentButtonState extends ConsumerState<_AttachmentButton> {
       title: 'Attachments',
       model: 'ir.attachment',
       initialDomain: [['resource', '=', '${widget.model},$id']],
-    );
-  }
-}
-
-// ─── Search bar with explicit search button ───────────────────────────────────
-
-/// Like the SAO search bar: the request is only sent when the user
-/// explicitly clicks the search button or presses Enter – not on every
-/// keystroke.
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final void Function(String query) onSearch;
-
-  const _SearchBar({
-    required this.controller,
-    required this.hint,
-    required this.onSearch,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: const Icon(Icons.search, size: 20),
-        // Search button on the right – like SAO's explicit search trigger
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Clear button (only shown when text is present)
-            ValueListenableBuilder<TextEditingValue>(
-              valueListenable: controller,
-              builder: (ctx, value, _) => value.text.isEmpty
-                  ? const SizedBox.shrink()
-                  : IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
-                      tooltip: context.l10n.clearSearch,
-                      onPressed: () {
-                        controller.clear();
-                        onSearch('');
-                      },
-                    ),
-            ),
-            // Explicit search button
-            IconButton(
-              icon: Icon(Icons.search, color: primary),
-              tooltip: context.l10n.search,
-              onPressed: () => onSearch(controller.text.trim()),
-            ),
-          ],
-        ),
-        isDense: true,
-        border: const OutlineInputBorder(),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      ),
-      // Enter key also triggers search (like SAO)
-      onSubmitted: (q) => onSearch(q.trim()),
-      textInputAction: TextInputAction.search,
     );
   }
 }

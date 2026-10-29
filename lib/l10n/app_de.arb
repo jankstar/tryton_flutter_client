@@ -358,5 +358,19 @@
   "createNamed": "„{name}“ anlegen…",
   "revisions": "Revisionen…",
   "currentRevision": "Aktuell",
-  "selectRevision": "Revision auswählen"
+  "selectRevision": "Revision auswählen",
+  "filters": "Filter",
+  "bookmarkFilter": "Filter als Lesezeichen speichern",
+  "removeBookmark": "Lesezeichen entfernen",
+  "bookmarks": "Lesezeichen",
+  "bookmarkName": "Name des Lesezeichens:",
+  "showInactive": "Inaktive Datensätze anzeigen",
+  "showActive": "Aktive Datensätze anzeigen",
+  "fieldId": "ID",
+  "createdBy": "Erstellt von",
+  "createdAt": "Erstellt am",
+  "modifiedBy": "Geändert von",
+  "modifiedAt": "Geändert am",
+  "rangeFrom": "Von",
+  "rangeTo": "Bis"
 }

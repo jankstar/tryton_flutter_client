@@ -357,4 +357,46 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get selectRevision => 'Wybierz wersję';
+
+  @override
+  String get filters => 'Filtry';
+
+  @override
+  String get bookmarkFilter => 'Dodaj filtr do zakładek';
+
+  @override
+  String get removeBookmark => 'Usuń zakładkę';
+
+  @override
+  String get bookmarks => 'Zakładki';
+
+  @override
+  String get bookmarkName => 'Nazwa zakładki:';
+
+  @override
+  String get showInactive => 'Pokaż nieaktywne rekordy';
+
+  @override
+  String get showActive => 'Pokaż aktywne rekordy';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Utworzone przez';
+
+  @override
+  String get createdAt => 'Utworzono';
+
+  @override
+  String get modifiedBy => 'Zmienione przez';
+
+  @override
+  String get modifiedAt => 'Zmieniono';
+
+  @override
+  String get rangeFrom => 'Od';
+
+  @override
+  String get rangeTo => 'Do';
 }

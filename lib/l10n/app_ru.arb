@@ -358,5 +358,19 @@
   "createNamed": "Создать «{name}»…",
   "revisions": "Ревизии…",
   "currentRevision": "Текущая",
-  "selectRevision": "Выберите ревизию"
+  "selectRevision": "Выберите ревизию",
+  "filters": "Фильтры",
+  "bookmarkFilter": "Добавить фильтр в закладки",
+  "removeBookmark": "Удалить закладку",
+  "bookmarks": "Закладки",
+  "bookmarkName": "Имя закладки:",
+  "showInactive": "Показать неактивные записи",
+  "showActive": "Показать активные записи",
+  "fieldId": "ID",
+  "createdBy": "Создано",
+  "createdAt": "Дата создания",
+  "modifiedBy": "Изменено",
+  "modifiedAt": "Дата изменения",
+  "rangeFrom": "С",
+  "rangeTo": "По"
 }

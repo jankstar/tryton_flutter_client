@@ -24,6 +24,7 @@ class MetadataService {
   Map<String, List<String>>? _notification;
   Set<String>? _chat;
   Map<String, List<dynamic>> _searches = const {};
+  Map<String, dynamic>? _locale;
 
   /// Start sequence (3.2): model list, history models, notification
   /// fields and saved searches in parallel; errors leave a cache empty.
@@ -34,6 +35,7 @@ class MetadataService {
       loadHistory(),
       loadNotification(),
       loadSearches(),
+      loadLocale(),
     ]);
   }
 
@@ -46,6 +48,7 @@ class MetadataService {
     _notification = null;
     _chat = null;
     _searches = const {};
+    _locale = null;
   }
 
   Future<dynamic> _call(String model, String method,
@@ -210,6 +213,56 @@ class MetadataService {
 
   /// Saved searches of [model]: `[[id, name, domain, access], …]`.
   List<dynamic> searches(String model) => _searches[model] ?? const [];
+
+  /// Saves a search (`ir.ui.view_search.set(name, model, pyson domain)`).
+  Future<void> addSearch(String model, String name, List<dynamic> domain,
+      String encodedDomain) async {
+    final id = await _svc.execute<dynamic>(
+        'ir.ui.view_search', 'set', [name, model, encodedDomain]);
+    _searches = {
+      ..._searches,
+      model: [
+        ...searches(model),
+        [id, name, domain, true]
+      ],
+    };
+  }
+
+  /// Removes a saved search (`ir.ui.view_search.unset(id)`).
+  Future<void> removeSearch(String model, dynamic id) async {
+    await _svc.execute<dynamic>('ir.ui.view_search', 'unset', [id]);
+    _searches = {
+      ..._searches,
+      model: [
+        for (final s in searches(model))
+          if (s is! List || s.isEmpty || s[0] != id) s
+      ],
+    };
+  }
+
+  // ── Preferences locale (spec 3.2 step 2) ──────────────────────────────────
+
+  /// `locale` of `res.user.get_preferences(false)` (date, decimal point,
+  /// grouping); loaded with the start sequence.
+  Future<void> loadLocale() async {
+    try {
+      final prefs = await _call('res.user', 'get_preferences', [false]);
+      final locale = prefs is Map ? prefs['locale'] : null;
+      _locale = locale is Map ? Map<String, dynamic>.from(locale) : null;
+    } catch (_) {
+      _locale = null;
+    }
+  }
+
+  /// Context of the DomainParser from the locale (`date_format`,
+  /// `decimal_point`, `thousands_sep`).
+  Map<String, dynamic> get parserContext => {
+        if (_locale?['date'] case final String date) 'date_format': date,
+        if (_locale?['decimal_point'] case final String point)
+          'decimal_point': point,
+        if (_locale?['thousands_sep'] case final String sep)
+          'thousands_sep': sep,
+      };
 }
 
 final metadataServiceProvider = Provider<MetadataService>((ref) {

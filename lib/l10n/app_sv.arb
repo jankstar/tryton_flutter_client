@@ -358,5 +358,19 @@
   "createNamed": "Skapa \"{name}\"…",
   "revisions": "Revisioner…",
   "currentRevision": "Aktuell",
-  "selectRevision": "Välj en revision"
+  "selectRevision": "Välj en revision",
+  "filters": "Filter",
+  "bookmarkFilter": "Bokmärk detta filter",
+  "removeBookmark": "Ta bort bokmärke",
+  "bookmarks": "Bokmärken",
+  "bookmarkName": "Bokmärkets namn:",
+  "showInactive": "Visa inaktiva poster",
+  "showActive": "Visa aktiva poster",
+  "fieldId": "ID",
+  "createdBy": "Skapad av",
+  "createdAt": "Skapad",
+  "modifiedBy": "Ändrad av",
+  "modifiedAt": "Ändrad",
+  "rangeFrom": "Från",
+  "rangeTo": "Till"
 }

@@ -190,6 +190,28 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
     );
   }
 
+  /// DomainParser of the search bar with the locale of the preferences
+  /// and translated common fields (spec 7.3, 8.4); without it the text is
+  /// searched as `rec_name`.
+  Future<void> _loadDomainParser(TrytonScreen screen) async {
+    final l = context.l10n;
+    screen
+      ..parserContext =
+          ref.read(modelServiceProvider).metadata?.parserContext ?? const {}
+      ..commonFieldStrings = {
+        'id': l.fieldId,
+        'create_uid': l.createdBy,
+        'create_date': l.createdAt,
+        'write_uid': l.modifiedBy,
+        'write_date': l.modifiedAt,
+      };
+    try {
+      await screen.loadDomainParser();
+    } catch (_) {
+      // search without parser
+    }
+  }
+
   Future<void> _init() async {
     _screen?.removeListener(_onScreenChanged);
     _screen?.dispose();
@@ -218,6 +240,7 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
       await loadAccess?.call(relationModels(screen.model));
       final view = screen.currentView;
       if (view?.viewType == 'tree' && resId == null) {
+        await _loadDomainParser(screen);
         await screen.searchFilter();
       } else if (view?.viewType == 'form' && screen.currentRecord == null) {
         await screen.newRecord();

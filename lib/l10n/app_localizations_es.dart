@@ -356,4 +356,46 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get selectRevision => 'Seleccione una revisión';
+
+  @override
+  String get filters => 'Filtros';
+
+  @override
+  String get bookmarkFilter => 'Marcar este filtro';
+
+  @override
+  String get removeBookmark => 'Quitar marcador';
+
+  @override
+  String get bookmarks => 'Marcadores';
+
+  @override
+  String get bookmarkName => 'Nombre del marcador:';
+
+  @override
+  String get showInactive => 'Mostrar registros inactivos';
+
+  @override
+  String get showActive => 'Mostrar registros activos';
+
+  @override
+  String get fieldId => 'ID';
+
+  @override
+  String get createdBy => 'Creado por';
+
+  @override
+  String get createdAt => 'Creado el';
+
+  @override
+  String get modifiedBy => 'Modificado por';
+
+  @override
+  String get modifiedAt => 'Modificado el';
+
+  @override
+  String get rangeFrom => 'Desde';
+
+  @override
+  String get rangeTo => 'Hasta';
 }

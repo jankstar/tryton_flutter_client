@@ -372,4 +372,30 @@ void main() {
     addTearDown(screen.dispose);
     expect(screen.model.access.read, isTrue);
   });
+
+  test('read: search bar – DomainParser from the party tree view', () async {
+    if (password == null) {
+      markTestSkipped('TRYTON_PASSWORD not set');
+      return;
+    }
+    final metadata = MetadataService(svc);
+    await metadata.load();
+    final screen = TrytonScreen(
+        const ScreenAttributes('party.party', mode: ['tree']),
+        session: modelSessionFor(svc))
+      ..parserContext = metadata.parserContext;
+    addTearDown(screen.dispose);
+    await screen.switchView();
+    final parser = await screen.loadDomainParser();
+    expect(parser.fields.keys, containsAll(['name', 'id', 'create_date']));
+    final label = '${parser.fields['name']!['string']}';
+    expect(await screen.searchFilter('$label: a'), isTrue);
+    expect(screen.searchText, '$label: a');
+    final count = await svc.execute<int>('party.party', 'search_count', [
+      [
+        ['name', 'ilike', '%a%']
+      ]
+    ]);
+    expect(screen.searchCount, count);
+  });
 }
