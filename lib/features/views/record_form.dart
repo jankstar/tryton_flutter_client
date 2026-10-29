@@ -8,6 +8,7 @@ import '../../core/xml/view_definition.dart';
 import '../../shared/widgets/field_widget.dart';
 import '../model/field_definition.dart';
 import 'embedded_tree_widget.dart';
+import 'record_many2one.dart';
 import 'record_widget_values.dart';
 
 /// Form layout of one [Record] (spec 9.2): fields, labels, groups,
@@ -28,6 +29,9 @@ class RecordForm extends StatefulWidget {
   final void Function(String, dynamic) onChangedImmediate;
 
   final bool isReadOnly;
+
+  /// Breadcrumb of the popups opened from this form.
+  final List<String> breadcrumb;
   /// Called when the user activates a <button> in the form.
   final Future<void> Function(ButtonNode)? onButton;
 
@@ -42,6 +46,7 @@ class RecordForm extends StatefulWidget {
     required this.onChangedImmediate,
     required this.isReadOnly,
     this.onButton,
+    this.breadcrumb = const [],
   });
 
   @override
@@ -204,7 +209,26 @@ class _RecordFormState extends State<RecordForm> {
 
     // One2Many / Many2Many → inline table
     if (fd.type == 'one2many' || fd.type == 'many2many') {
-      return _buildX2ManyField(fd, field, readOnly);
+      return _buildX2ManyField(fd, field, readOnly, node);
+    }
+
+    // Many2One / One2One / Reference → widget on the record (9.2.6)
+    if (fd.type == 'many2one' ||
+        fd.type == 'one2one' ||
+        fd.type == 'reference') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: RecordMany2One(
+          record: _record,
+          node: node,
+          fieldDef: fd,
+          readOnly: readOnly,
+          required: PYSONEvaluator.truthy(attrs['required']),
+          invalid: invalid,
+          breadcrumb: widget.breadcrumb,
+          onChanged: (value) => widget.onChangedImmediate(node.name, value),
+        ),
+      );
     }
 
     // Text-input fields: kept locally on keystroke, written to the record
@@ -223,7 +247,6 @@ class _RecordFormState extends State<RecordForm> {
         isRequired: PYSONEvaluator.truthy(attrs['required']),
         invalid: invalid,
         recordValues: _values,
-        searchDomain: field is Many2OneField ? field.getDomain(_record) : null,
         // XML attr takes precedence; fall back to fields_get 'symbol'.
         symbolField: node.symbol ?? fd.symbol,
         // Resolve the relation model of the symbol field so _NumericField
@@ -246,7 +269,8 @@ class _RecordFormState extends State<RecordForm> {
     return widget.viewDef.fields[symbolFieldName]?.relation;
   }
 
-  Widget _buildX2ManyField(FieldDefinition fd, Field field, bool readOnly) {
+  Widget _buildX2ManyField(
+      FieldDefinition fd, Field field, bool readOnly, FieldNode node) {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -271,7 +295,9 @@ class _RecordFormState extends State<RecordForm> {
             key: ValueKey('x2m_${fd.name}'),
             parent: _record,
             fieldDef: fd,
+            node: node,
             readOnly: readOnly,
+            breadcrumb: widget.breadcrumb,
           ),
         ),
         const SizedBox(height: 8),

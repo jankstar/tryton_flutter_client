@@ -9,7 +9,7 @@ FieldDefinition fd(String name, String type) =>
 void main() {
   group('isUnsupportedField', () {
     for (final type in [
-      'binary', 'dict', 'reference', 'multiselection', 'timedelta', 'time',
+      'binary', 'dict', 'multiselection', 'timedelta', 'time',
     ]) {
       test('type $type', () => expect(isUnsupportedField(type), isTrue));
     }
@@ -45,8 +45,8 @@ void main() {
     };
 
     test('without a view: only unsupported types', () {
-      expect(unsupportedFieldNames(fields),
-          {'photo', 'attrs', 'origin', 'duration'});
+      expect(unsupportedFieldNames(fields), {'photo', 'attrs', 'duration'},
+          reason: 'reference has its own widget');
     });
 
     test('unsupported widgets anywhere in the form tree', () {
@@ -60,7 +60,7 @@ void main() {
         ]),
       ]);
       expect(unsupportedFieldNames(fields, root),
-          {'photo', 'attrs', 'origin', 'duration', 'colour', 'notes'});
+          {'photo', 'attrs', 'duration', 'colour', 'notes'});
     });
 
     test('a supported second occurrence keeps the field writable', () {

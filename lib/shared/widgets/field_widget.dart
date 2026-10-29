@@ -2,17 +2,13 @@ import 'dart:async';
 
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/domain/field_domain.dart';
-import '../../core/pyson/pyson_environment.dart';
 import '../../core/serialization/tryton_serializer.dart';
 import '../../features/model/field_definition.dart';
 import '../../features/model/field_support.dart';
 import '../../features/model/model_service.dart';
-import '../../features/shell/app_shell.dart' show pushFormScreen;
 import '../../core/l10n/locale_provider.dart';
 import '../utils/date_format_utils.dart';
 import '../utils/number_format_utils.dart';
@@ -50,11 +46,6 @@ class FieldWidget extends ConsumerWidget {
   /// Field is invalid (required/domain, spec 9.2.3 `has-error`): red border.
   final bool invalid;
 
-  /// Search domain of a many2one computed by the data layer
-  /// (`field.getDomain(record)`); when null the field `domain` is evaluated
-  /// with [recordValues].
-  final List<dynamic>? searchDomain;
-
   const FieldWidget({
     super.key,
     required this.field,
@@ -70,7 +61,6 @@ class FieldWidget extends ConsumerWidget {
     this.widgetOverride,
     this.model,
     this.invalid = false,
-    this.searchDomain,
   });
 
   @override
@@ -202,15 +192,16 @@ class FieldWidget extends ConsumerWidget {
           onBlur: onBlur,
         );
 
+      // Many2One/One2One/Reference are edited with RecordMany2One (on the
+      // record); here only the name is shown.
       case 'many2one':
-        return _Many2OneField(
-          field: field,
-          value: value,
-          readOnly: effective,
-          onChanged: onChanged,
-          recordValues: recordValues,
-          searchDomain: searchDomain,
-          invalid: invalid,
+      case 'one2one':
+        return _TextInputField(
+          initialValue: value is List && value.length > 1 && value[1] is String
+              ? value[1] as String
+              : '',
+          decoration: _decoration(context),
+          readOnly: true,
         );
 
       case 'one2many':
@@ -630,350 +621,6 @@ class _NumericFieldState extends ConsumerState<_NumericField> {
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       onChanged: (v) => widget.onChanged?.call(_parse(v, locale)),
       onBlur: widget.onBlur,
-    );
-  }
-}
-
-// ─── Many2One field ───────────────────────────────────────────────────────────
-
-/// Many2One field with:
-/// - Link icon (indicates: foreign key to another model)
-/// - When a value is set: "Open" button (navigates to the linked record)
-/// - In edit mode: search with autocomplete dropdown + "Clear" button
-/// - Like the original: primary = Open, secondary = Search/Clear
-class _Many2OneField extends ConsumerStatefulWidget {
-  final FieldDefinition field;
-  final dynamic value;
-  final bool readOnly;
-  final void Function(dynamic)? onChanged;
-  final Map<String, dynamic> recordValues;
-  final List<dynamic>? searchDomain;
-  final bool invalid;
-
-  const _Many2OneField({
-    required this.field,
-    this.value,
-    required this.readOnly,
-    this.onChanged,
-    this.recordValues = const {},
-    this.searchDomain,
-    this.invalid = false,
-  });
-
-  @override
-  ConsumerState<_Many2OneField> createState() => _Many2OneFieldState();
-}
-
-class _Many2OneFieldState extends ConsumerState<_Many2OneField> {
-  int? _id;
-  String _name = '';
-  bool _searching = false;
-
-  final TextEditingController _ctrl = TextEditingController();
-  final FocusNode _focus = FocusNode();
-  List<Map<String, dynamic>> _suggestions = [];
-  bool _showSuggestions = false;
-  bool _loadingSuggestions = false;
-  Timer? _debounce;
-
-  @override
-  void initState() {
-    super.initState();
-    _updateFromValue(widget.value);
-    _focus.addListener(() {
-      if (!_focus.hasFocus) {
-        // Delay hiding the dropdown so onTap on a dropdown item fires first.
-        // Without the delay, focus loss dismisses the dropdown before the tap
-        // is registered (classic Flutter autocomplete race condition).
-        Future.delayed(const Duration(milliseconds: 150), () {
-          if (mounted && !_focus.hasFocus) {
-            if (_ctrl.text != _name) _ctrl.text = _name;
-            setState(() {
-              _showSuggestions = false;
-              _searching = false;
-            });
-          }
-        });
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(_Many2OneField old) {
-    super.didUpdateWidget(old);
-    // value can be a List ([id, rec_name]) – use listEquals to avoid
-    // false positives when the content is the same but the object differs.
-    final changed = old.value is List && widget.value is List
-        ? !listEquals(old.value as List, widget.value as List)
-        : old.value != widget.value;
-    if (changed) _updateFromValue(widget.value);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    _focus.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _updateFromValue(dynamic v) {
-    if (v is List && v.isNotEmpty && v[0] != null && v[0] != false) {
-      _id = (v[0] as num?)?.toInt();
-      final rawName = v.length > 1 ? v[1] : null;
-      if (rawName != null && rawName != false && rawName.toString().isNotEmpty) {
-        _name = rawName.toString();
-      } else {
-        // ID present, name missing → placeholder + load asynchronously
-        _name = '';
-        if (_id != null) _loadRecName();
-      }
-    } else if (v is int && v > 0) {
-      _id = v;
-      _name = '';
-      _loadRecName(); // load asynchronously
-    } else {
-      _id = null;
-      _name = '';
-    }
-    _ctrl.text = _name;
-    _searching = false;
-  }
-
-  /// Loads the rec_name asynchronously if it is not included in the value.
-  Future<void> _loadRecName() async {
-    final id = _id;
-    final relation = widget.field.relation;
-    if (id == null || relation == null) return;
-    try {
-      final records = await ref.read(modelServiceProvider).read(relation, [id], ['rec_name']);
-      if (!mounted) return;
-      final name = records.isNotEmpty ? records.first['rec_name']?.toString() ?? '' : '';
-      if (name.isNotEmpty && _id == id) {
-        setState(() {
-          _name = name;
-          _ctrl.text = _name;
-        });
-      }
-    } catch (_) {
-      // Silently ignore error – ID remains as fallback
-    }
-  }
-
-  void _startSearch() {
-    setState(() {
-      _searching = true;
-      _suggestions = [];
-      _showSuggestions = false;
-    });
-    _ctrl.clear();
-    _focus.requestFocus();
-    _doSearch('');
-  }
-
-  void _onTyped(String text) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 280), () => _doSearch(text));
-  }
-
-  Future<void> _doSearch(String query) async {
-    if (widget.field.relation == null) return;
-    setState(() => _loadingSuggestions = true);
-    try {
-      // Apply field domain to restrict results (e.g. [['translatable','=',True]]
-      // on ir.lang so only installed languages are shown).
-      final domain = _evalFieldDomain();
-      final results = await ref
-          .read(modelServiceProvider)
-          .searchName(widget.field.relation!, query, domain: domain, limit: 12);
-      if (mounted) {
-        setState(() {
-          _suggestions = results;
-          _showSuggestions = results.isNotEmpty;
-          _loadingSuggestions = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingSuggestions = false);
-    }
-  }
-
-  /// Evaluates the field's domain against the current record values.
-  /// Mirrors SAO's `record.expr_eval(this.description.domain)`:
-  /// PYSON expressions like Eval('party') are resolved using recordValues.
-  List<dynamic> _evalFieldDomain() {
-    final domain = widget.searchDomain;
-    if (domain != null) return domain;
-    // Many2One values are [id, name] – expose the id for Eval('field')
-    return evalFieldDomain(
-        widget.field.domainRaw, formEvalValues(widget.recordValues));
-  }
-
-  void _select(Map<String, dynamic> record) {
-    final id = (record['id'] as num?)?.toInt();
-    final name = record['rec_name']?.toString() ?? '';
-    setState(() {
-      _id = id;
-      _name = name;
-      _ctrl.text = name;
-      _searching = false;
-      _showSuggestions = false;
-    });
-    widget.onChanged?.call([id, name]);
-    _focus.unfocus();
-  }
-
-  void _clear() {
-    setState(() {
-      _id = null;
-      _name = '';
-      _ctrl.clear();
-      _searching = false;
-      _showSuggestions = false;
-    });
-    widget.onChanged?.call(null);
-  }
-
-  void _open(BuildContext ctx) {
-    if (_id == null || widget.field.relation == null) return;
-    // Own screen with only the form (no Prev/Next).
-    pushFormScreen(
-      ctx,
-      model: widget.field.relation!,
-      recordId: _id!,
-      title: _name.isNotEmpty ? _name : widget.field.label,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasValue = _id != null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextFormField(
-          controller: _ctrl,
-          focusNode: _focus,
-          readOnly: widget.readOnly && !_searching,
-          decoration: InputDecoration(
-            labelText: widget.field.label,
-            border: const OutlineInputBorder(),
-            // Link icon: indicates foreign key character
-            prefixIcon: Tooltip(
-              message: widget.field.relation ?? 'Referenz',
-              child: const Icon(Icons.account_tree_outlined, size: 16),
-            ),
-            suffixIcon: _buildSuffix(context, hasValue),
-            errorText: widget.invalid ? '' : null,
-            errorStyle: widget.invalid
-                ? const TextStyle(height: 0, fontSize: 0)
-                : null,
-          ),
-          onTap: widget.readOnly
-              ? null
-              : () {
-                  if (!_searching) _startSearch();
-                },
-          onChanged: _searching ? _onTyped : null,
-        ),
-        // Autocomplete-Dropdown
-        if (_searching && (_showSuggestions || _loadingSuggestions))
-          _Dropdown(loading: _loadingSuggestions, items: _suggestions, onSelect: _select),
-      ],
-    );
-  }
-
-  Widget? _buildSuffix(BuildContext context, bool hasValue) {
-    final btns = <Widget>[];
-
-    // Primary button: open record (like SAO's "tryton-open")
-    if (hasValue && widget.field.relation != null) {
-      btns.add(_IconBtn(icon: Icons.open_in_new, tooltip: context.l10n.openRecord, onPressed: () => _open(context)));
-    }
-
-    if (!widget.readOnly) {
-      if (hasValue) {
-        // Secondary button: clear (like SAO's "tryton-clear")
-        btns.add(_IconBtn(icon: Icons.clear, tooltip: context.l10n.clearField, onPressed: _clear));
-      } else if (!_searching) {
-        // Secondary button: search (like SAO's "tryton-search")
-        btns.add(_IconBtn(icon: Icons.search, tooltip: context.l10n.searchRecord, onPressed: _startSearch));
-      } else {
-        // Cancel search
-        btns.add(
-          _IconBtn(
-            icon: Icons.cancel_outlined,
-            tooltip: context.l10n.cancel,
-            onPressed: () {
-              setState(() {
-                _searching = false;
-                _showSuggestions = false;
-                _ctrl.text = _name;
-              });
-              _focus.unfocus();
-            },
-          ),
-        );
-      }
-    }
-
-    if (btns.isEmpty) return null;
-    return Row(mainAxisSize: MainAxisSize.min, children: btns);
-  }
-}
-
-// ─── Helper methods ───────────────────────────────────────────────────────────
-
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-  const _IconBtn({required this.icon, required this.tooltip, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) => IconButton(
-    icon: Icon(icon, size: 16),
-    tooltip: tooltip,
-    onPressed: onPressed,
-    padding: EdgeInsets.zero,
-    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-  );
-}
-
-class _Dropdown extends StatelessWidget {
-  final bool loading;
-  final List<Map<String, dynamic>> items;
-  final void Function(Map<String, dynamic>) onSelect;
-  const _Dropdown({required this.loading, required this.items, required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      elevation: 4,
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 220),
-        child: loading && items.isEmpty
-            ? const LinearProgressIndicator(minHeight: 3)
-            : ListView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                itemCount: items.length,
-                itemBuilder: (ctx, i) {
-                  final rec = items[i];
-                  final name = rec['rec_name']?.toString() ?? '#${rec['id']}';
-                  return InkWell(
-                    onTap: () => onSelect(rec),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      child: Text(name, style: const TextStyle(fontSize: 13)),
-                    ),
-                  );
-                },
-              ),
-      ),
     );
   }
 }

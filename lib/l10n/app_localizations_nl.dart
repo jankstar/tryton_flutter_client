@@ -313,4 +313,38 @@ class AppLocalizationsNl extends AppLocalizations {
   String buttonClickedBy(String users) {
     return 'Door: $users';
   }
+
+  @override
+  String get discardChanges => 'Wijzigingen verwerpen';
+
+  @override
+  String get saveAndNew => 'Opslaan en nieuw';
+
+  @override
+  String get addAndNew => 'Toevoegen en nieuw';
+
+  @override
+  String get applyChanges => 'Wijzigingen toepassen';
+
+  @override
+  String get find => 'Zoeken';
+
+  @override
+  String get remove => 'Verwijderen';
+
+  @override
+  String get searchMenu => 'Zoeken…';
+
+  @override
+  String get createMenu => 'Aanmaken…';
+
+  @override
+  String searchTitle(String title) {
+    return '$title zoeken';
+  }
+
+  @override
+  String createNamed(String name) {
+    return '\"$name\" aanmaken…';
+  }
 }

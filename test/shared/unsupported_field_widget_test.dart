@@ -22,7 +22,6 @@ void main() {
   for (final (type, widget) in [
     ('binary', null),
     ('dict', null),
-    ('reference', null),
     ('multiselection', null),
     ('timedelta', null),
     ('time', null),

@@ -5,14 +5,16 @@ import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart';
 import '../../core/rpc/error_processing.dart';
+import '../../core/screen/screen.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../model/field_definition.dart';
+import '../model/field_support.dart';
 import '../model/model_service.dart';
+import 'form_dialog.dart';
+import 'search_dialog.dart';
 import 'record_cells.dart';
-import 'record_form.dart';
-import 'record_widget_values.dart';
 
 /// Views of x2many relations (`fields_view_get`), loaded once per
 /// relation and view type (values, not futures: a cached future would be
@@ -42,13 +44,22 @@ void clearEmbeddedViewCache() => _viewCache.clear();
 class EmbeddedTreeWidget extends ConsumerStatefulWidget {
   final Record parent;
   final FieldDefinition fieldDef;
+
+  /// The `<field>` of the form (attributes `view_ids`, `add_remove`,
+  /// `size`, `delete`, `create`).
+  final FieldNode? node;
   final bool readOnly;
+
+  /// Breadcrumb of the popups.
+  final List<String> breadcrumb;
 
   const EmbeddedTreeWidget({
     super.key,
     required this.parent,
     required this.fieldDef,
+    this.node,
     this.readOnly = false,
+    this.breadcrumb = const [],
   });
 
   @override
@@ -58,16 +69,11 @@ class EmbeddedTreeWidget extends ConsumerStatefulWidget {
 class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   TreeViewDefinition? _treeDef;
   ViewDefinition? _treeView;
-  ViewDefinition? _formView;
-  FormRoot? _formRoot;
 
   final Set<Record> _selected = {};
 
-  /// Record shown in the sub-form (null = table).
-  Record? _open;
-
-  /// Text input of the sub-form not yet written (on focus loss).
-  final Map<String, dynamic> _pending = {};
+  /// A popup is open.
+  bool _popup = false;
 
   /// Records whose row values are being loaded.
   final Set<Record> _loading = {};
@@ -164,39 +170,183 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _ensureFormView(RecordGroup group) async {
-    if (_formView == null) {
-      final view = await _view(ref.read(modelServiceProvider), _relModel, 'form');
-      _formView = view;
-      _formRoot = FormXmlParser().parse(view.arch);
-    }
-    _ensureFields(group, _formView);
+  Field get _field => widget.parent.model.fields[widget.fieldDef.name]!;
+
+  /// Attribute of the view, else of the field description.
+  dynamic _attr(String name) =>
+      widget.node?.attributes[name] ?? _field.description[name];
+
+  bool _flag(String name) {
+    final value = _attr(name);
+    if (value == null) return true;
+    if (value is bool) return value;
+    return (int.tryParse('$value') ?? 1) != 0;
   }
 
-  Future<void> _openRecord(Record record) => _run(() async {
+  /// `add_remove` evaluated with the parent (null = not set).
+  dynamic get _addRemove {
+    final raw = _attr('add_remove');
+    if (raw == null || raw == '' || raw == false) return null;
+    final value = widget.parent.exprEval(raw);
+    return value == null || value == false ? null : value;
+  }
+
+  bool get _canAdd => _isMany2Many || _addRemove != null;
+  bool get _canDelete => !_isMany2Many && _flag('delete');
+  bool get _canRemove => _isMany2Many || _addRemove != null;
+  bool get _canCreate => _flag('create');
+
+  /// `size` reached: New/Add disabled (spec 9.2.7).
+  bool get _sizeLimitReached {
+    final size = widget.parent.exprEval(_attr('size'));
+    if (size is! num || size < 0) return false;
+    return _field.getEval(widget.parent).length >= size;
+  }
+
+  /// Remaining records for "… and New" (−1 unlimited).
+  int get _remaining {
+    final size = widget.parent.exprEval(_attr('size'));
+    if (size is! num || size < 0) return -1;
+    return (size - _field.getEval(widget.parent).length).toInt();
+  }
+
+  List<int?> get _viewIds => [
+        for (final part in '${_attr('view_ids') ?? ''}'.split(','))
+          if (part.trim().isNotEmpty) int.tryParse(part.trim())
+      ];
+
+  /// Form view of the relation as preload (from the field description or
+  /// the session-wide view cache).
+  Future<Map<String, Map<String, dynamic>>> _formPreload() async {
+    final views = _field.description['views'];
+    if (views is Map && views['form'] is Map) {
+      return {'form': Map<String, dynamic>.from(views['form'] as Map)};
+    }
+    final ids = _viewIds;
+    if (ids.length > 1) return const {};
+    final view = await _view(ref.read(modelServiceProvider), _relModel, 'form');
+    return {
+      'form': {
+        'type': view.type,
+        'view_id': view.viewId,
+        'arch': view.arch,
+        'fields': view.rawFields,
+        'field_childs': view.fieldChilds,
+      }
+    };
+  }
+
+  /// A form screen on the child group (popups stay in the group).
+  Future<TrytonScreen> _childScreen(RecordGroup group) async {
+    final ids = _viewIds;
+    final screen = TrytonScreen.forGroup(
+      ScreenAttributes(
+        _relModel,
+        mode: const ['form'],
+        viewIds: ids.length > 1 ? ids.sublist(1) : const [],
+        viewsPreload: await _formPreload(),
+        readonly: widget.readOnly,
+      ),
+      group,
+    );
+    screen.onViewAdded = (v) => markUnsupportedFields(screen.model, v);
+    return screen;
+  }
+
+  Future<void> _popupRun(Future<void> Function() action) async {
+    if (_popup) return;
+    _popup = true;
+    try {
+      await _run(action);
+    } finally {
+      _popup = false;
+    }
+  }
+
+  /// Open: form popup on the record of the child group (spec 11.1).
+  Future<void> _openRecord(Record record) => _popupRun(() async {
         final group = _group;
         if (group == null) return;
-        await _ensureFormView(group);
-        if (record.id >= 0) await record.load('*');
-        if (mounted) setState(() => _open = record);
+        final screen = await _childScreen(group);
+        try {
+          await screen.switchView();
+          screen.currentRecord = record;
+          if (!mounted) return;
+          await showFormDialog(context, screen,
+              x2many: true,
+              removeOnDelete: _isMany2Many,
+              title: widget.fieldDef.label,
+              breadcrumb: widget.breadcrumb);
+        } finally {
+          screen.dispose();
+        }
       });
 
-  Future<void> _newRecord() => _run(() async {
+  /// New: form popup with a new record in the child group ("Add and New"
+  /// up to the `size` limit).
+  Future<void> _newRecord() => _popupRun(() async {
         final group = _group;
-        if (group == null) return;
-        await _ensureFormView(group);
-        final record = await group.newRecordWithDefaults();
-        group.add(record);
-        await record.idle;
-        if (mounted) setState(() => _open = record);
+        if (group == null || _sizeLimitReached) return;
+        final screen = await _childScreen(group);
+        try {
+          if (!mounted) return;
+          await showFormDialog(context, screen,
+              newRecord: true,
+              many: _remaining,
+              x2many: true,
+              removeOnDelete: _isMany2Many,
+              title: widget.fieldDef.label,
+              breadcrumb: widget.breadcrumb);
+        } finally {
+          screen.dispose();
+        }
       });
 
-  /// one2many: delete, many2many: remove the link – both only marked.
-  void _markSelected() {
+  /// Add (many2many / `add_remove`): search dialog with multiple
+  /// selection, domain `add_remove` AND field domain without the records
+  /// already contained; the chosen records are loaded as added.
+  Future<void> _addRecords() => _popupRun(() async {
+        final group = _group;
+        if (group == null || _sizeLimitReached) return;
+        final parent = widget.parent;
+        var domain = <dynamic>[_field.getDomain(parent)];
+        final addRemove = _addRemove;
+        if (addRemove is List && addRemove.isNotEmpty) domain.add(addRemove);
+        final existing = [
+          for (final id in _field.getEval(parent) as List)
+            if (id is int && id >= 0) id
+        ];
+        if (existing.isNotEmpty) {
+          domain = [
+            domain,
+            ['id', 'not in', existing]
+          ];
+        }
+        final result = await showSearchDialog(
+          context,
+          model: _relModel,
+          session: group.model.session,
+          domain: domain,
+          searchContext: _field.getSearchContext(parent),
+          order: _asList(_field.description['order']),
+          viewIds: _viewIds,
+          multi: true,
+          allowNew: _canCreate,
+          title: widget.fieldDef.label,
+          okLabel: context.l10n.add,
+        );
+        if (result.isEmpty) return;
+        group.load([for (final r in result) r.id], modified: true);
+      });
+
+  static List<dynamic>? _asList(dynamic value) => value is List ? value : null;
+
+  /// Delete (one2many) or remove the link – both only marked.
+  void _markSelected({required bool remove}) {
     final group = _group;
     if (group == null) return;
     for (final r in _selected.toList()) {
-      group.remove(r, remove: _isMany2Many);
+      group.remove(r, remove: remove);
       if (!group.contains(r)) _selected.remove(r);
     }
     setState(() {});
@@ -209,32 +359,6 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       if (r.deleted || r.removed) group.unremove(r);
     }
     setState(() {});
-  }
-
-  // ─── Sub-form ─────────────────────────────────────────────────────────────
-
-  Future<void> _write(String name, dynamic value) => _run(() async {
-        final record = _open;
-        if (record != null) await setRecordWidgetValue(record, name, value);
-      });
-
-  Future<void> _flushPending() async {
-    final record = _open;
-    if (record == null) return;
-    final pending = Map<String, dynamic>.from(_pending);
-    _pending.clear();
-    for (final MapEntry(key: name, value: value) in pending.entries) {
-      await _write(name, value);
-    }
-    await record.idle;
-  }
-
-  Future<void> _showRecord(Record? record) async {
-    await _flushPending();
-    if (record != null && record.id >= 0) {
-      await _run(() => record.load('*'));
-    }
-    if (mounted) setState(() => _open = record);
   }
 
   // ─── Build ────────────────────────────────────────────────────────────────
@@ -252,78 +376,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     _ensureFields(group, _treeView);
 
     // The parent was reloaded: its group (and records) are new.
-    final open = _open;
-    if (open != null && !group.contains(open)) _open = null;
     _selected.removeWhere((r) => !group.contains(r));
 
-    return _open != null ? _buildSubForm(group, _open!) : _buildTable(group);
-  }
-
-  Widget _buildSubForm(RecordGroup group, Record record) {
-    final l = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final records = [for (final r in group) if (!r.deleted && !r.removed) r];
-    final index = records.indexOf(record);
-    final hasPrev = index > 0;
-    final hasNext = index >= 0 && index < records.length - 1;
-    return SizedBox(
-      height: 500,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            color: cs.surfaceContainerHighest,
-            child: Row(children: [
-              _TBtn(icon: Icons.arrow_back, tip: l.close, onPressed: () => _showRecord(null)),
-              _TBtn(
-                icon: Icons.arrow_back_ios,
-                tip: l.previousRecord,
-                onPressed: hasPrev ? () => _showRecord(records[index - 1]) : null,
-              ),
-              if (records.length > 1)
-                Text('${index + 1} / ${records.length}', style: TextStyle(fontSize: 11, color: cs.outline)),
-              _TBtn(
-                icon: Icons.arrow_forward_ios,
-                tip: l.nextRecord,
-                onPressed: hasNext ? () => _showRecord(records[index + 1]) : null,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  widget.fieldDef.label,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ]),
-          ),
-          Expanded(
-            child: (_formView == null || _formRoot == null)
-                ? const SizedBox.shrink()
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(8),
-                    child: RecordForm(
-                      key: ObjectKey(record),
-                      model: _relModel,
-                      root: _formRoot!,
-                      viewDef: _formView!,
-                      record: record,
-                      onTextChanged: (name, value) => _pending[name] = value,
-                      onBlur: (name) {
-                        if (_pending.containsKey(name)) {
-                          _write(name, _pending.remove(name));
-                        }
-                      },
-                      onChangedImmediate: _write,
-                      isReadOnly: widget.readOnly || record.readonly,
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
+    return _buildTable(group);
   }
 
   Widget _buildTable(RecordGroup group) {
@@ -337,6 +392,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     final selectedAreMarked = hasSelection && _selected.every(isMarked);
     final selectedHaveMarked = _selected.any(isMarked);
     final markedCount = group.recordDeleted.length + group.recordRemoved.length;
+    final limitReached = _sizeLimitReached;
     // Row values: one eager load reads the neighbours too.
     if (columns.isNotEmpty) {
       for (final r in records) {
@@ -378,19 +434,46 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                         onPressed: hasSelection ? () => _openRecord(_selected.first) : null,
                       ),
                       if (!widget.readOnly) ...[
-                        _TBtn(icon: Icons.add, tip: l.createNew, onPressed: _newRecord),
+                        if (_canCreate)
+                          _TBtn(
+                            key: const ValueKey('x2m-new'),
+                            icon: Icons.add,
+                            tip: l.createNew,
+                            onPressed: limitReached ? null : _newRecord,
+                          ),
+                        if (_canAdd)
+                          _TBtn(
+                            key: const ValueKey('x2m-add'),
+                            icon: Icons.playlist_add,
+                            tip: l.add,
+                            onPressed: limitReached ? null : _addRecords,
+                          ),
                         _TBtn(
                           icon: Icons.undo,
                           tip: l.undelete,
                           color: selectedHaveMarked ? Colors.green : null,
                           onPressed: selectedHaveMarked ? _unmarkSelected : null,
                         ),
-                        _TBtn(
-                          icon: _isMany2Many ? Icons.link_off : Icons.delete_outline,
-                          tip: l.delete,
-                          color: hasSelection && !selectedAreMarked ? errorColor : null,
-                          onPressed: hasSelection && !selectedAreMarked ? _markSelected : null,
-                        ),
+                        if (_canRemove)
+                          _TBtn(
+                            key: const ValueKey('x2m-remove'),
+                            icon: Icons.link_off,
+                            tip: l.remove,
+                            color: hasSelection && !selectedAreMarked ? errorColor : null,
+                            onPressed: hasSelection && !selectedAreMarked
+                                ? () => _markSelected(remove: true)
+                                : null,
+                          ),
+                        if (_canDelete)
+                          _TBtn(
+                            key: const ValueKey('x2m-delete'),
+                            icon: Icons.delete_outline,
+                            tip: l.delete,
+                            color: hasSelection && !selectedAreMarked ? errorColor : null,
+                            onPressed: hasSelection && !selectedAreMarked
+                                ? () => _markSelected(remove: false)
+                                : null,
+                          ),
                       ],
                     ],
                   ),
@@ -526,7 +609,7 @@ class _TBtn extends StatelessWidget {
   final String tip;
   final Color? color;
   final VoidCallback? onPressed;
-  const _TBtn({required this.icon, required this.tip, this.color, this.onPressed});
+  const _TBtn({super.key, required this.icon, required this.tip, this.color, this.onPressed});
 
   @override
   Widget build(BuildContext context) => IconButton(

@@ -667,6 +667,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'By: {users}'**
   String buttonClickedBy(String users);
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get discardChanges;
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Save and New'**
+  String get saveAndNew;
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Add and New'**
+  String get addAndNew;
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Apply changes'**
+  String get applyChanges;
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Find'**
+  String get find;
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Search...'**
+  String get searchMenu;
+
+  /// Popup/search dialog text
+  ///
+  /// In en, this message translates to:
+  /// **'Create...'**
+  String get createMenu;
+
+  /// Title of the search dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Search {title}'**
+  String searchTitle(String title);
+
+  /// Autocomplete entry creating a record with the typed text
+  ///
+  /// In en, this message translates to:
+  /// **'Create \"{name}\"...'**
+  String createNamed(String name);
 }
 
 class _AppLocalizationsDelegate

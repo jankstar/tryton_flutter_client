@@ -345,5 +345,15 @@
   "selectAction": "Seleccione su acción",
   "noActionDefined": "No hay ninguna acción definida.",
   "preValidation": "Validación previa",
-  "buttonClickedBy": "Por: {users}"
+  "buttonClickedBy": "Por: {users}",
+  "discardChanges": "Descartar cambios",
+  "saveAndNew": "Guardar y nuevo",
+  "addAndNew": "Añadir y nuevo",
+  "applyChanges": "Aplicar cambios",
+  "find": "Buscar",
+  "remove": "Quitar",
+  "searchMenu": "Buscar…",
+  "createMenu": "Crear…",
+  "searchTitle": "Buscar {title}",
+  "createNamed": "Crear \"{name}\"…"
 }

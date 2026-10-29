@@ -345,5 +345,15 @@
   "selectAction": "Välj åtgärd",
   "noActionDefined": "Ingen åtgärd definierad.",
   "preValidation": "Förhandsvalidering",
-  "buttonClickedBy": "Av: {users}"
+  "buttonClickedBy": "Av: {users}",
+  "discardChanges": "Ignorera ändringar",
+  "saveAndNew": "Spara och ny",
+  "addAndNew": "Lägg till och ny",
+  "applyChanges": "Verkställ ändringar",
+  "find": "Sök",
+  "remove": "Ta bort",
+  "searchMenu": "Sök…",
+  "createMenu": "Skapa…",
+  "searchTitle": "Sök {title}",
+  "createNamed": "Skapa \"{name}\"…"
 }

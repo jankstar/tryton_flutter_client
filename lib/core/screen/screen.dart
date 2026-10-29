@@ -360,10 +360,35 @@ class TrytonScreen extends ChangeNotifier {
     _setGroup(RecordGroup(model, context: attributes.context));
   }
 
+  /// A screen on an existing [group] (x2many child group of a form): the
+  /// records stay in that group (popups, spec 11.1). Modifications are
+  /// announced by the root group, so the screen listens there.
+  TrytonScreen.forGroup(this.attributes, RecordGroup group)
+      : model = group.model,
+        _viewIds = [...attributes.viewIds],
+        _viewToLoad = [...attributes.mode],
+        domain = attributes.domain,
+        contextDomain = null,
+        limit = null,
+        order = null,
+        defaultOrder = null,
+        screenReadonly = attributes.readonly,
+        tabDomain = const [],
+        contextScreen = null {
+    tabCounters = const [];
+    this.group = group;
+    _listened = group.rootGroup..addListener(_onGroupChanged);
+  }
+
+  /// Group whose notifications this screen follows (the root group of a
+  /// child group).
+  RecordGroup? _listened;
+
   @override
   void dispose() {
     _disposed = true;
     group.removeListener(_onGroupChanged);
+    _listened?.removeListener(_onGroupChanged);
     contextScreen?.dispose();
     super.dispose();
   }

@@ -312,4 +312,38 @@ class AppLocalizationsSv extends AppLocalizations {
   String buttonClickedBy(String users) {
     return 'Av: $users';
   }
+
+  @override
+  String get discardChanges => 'Ignorera ändringar';
+
+  @override
+  String get saveAndNew => 'Spara och ny';
+
+  @override
+  String get addAndNew => 'Lägg till och ny';
+
+  @override
+  String get applyChanges => 'Verkställ ändringar';
+
+  @override
+  String get find => 'Sök';
+
+  @override
+  String get remove => 'Ta bort';
+
+  @override
+  String get searchMenu => 'Sök…';
+
+  @override
+  String get createMenu => 'Skapa…';
+
+  @override
+  String searchTitle(String title) {
+    return 'Sök $title';
+  }
+
+  @override
+  String createNamed(String name) {
+    return 'Skapa \"$name\"…';
+  }
 }

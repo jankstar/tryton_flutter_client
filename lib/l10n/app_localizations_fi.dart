@@ -313,4 +313,38 @@ class AppLocalizationsFi extends AppLocalizations {
   String buttonClickedBy(String users) {
     return 'Käyttäjät: $users';
   }
+
+  @override
+  String get discardChanges => 'Hylkää muutokset';
+
+  @override
+  String get saveAndNew => 'Tallenna ja uusi';
+
+  @override
+  String get addAndNew => 'Lisää ja uusi';
+
+  @override
+  String get applyChanges => 'Ota muutokset käyttöön';
+
+  @override
+  String get find => 'Etsi';
+
+  @override
+  String get remove => 'Poista';
+
+  @override
+  String get searchMenu => 'Etsi…';
+
+  @override
+  String get createMenu => 'Luo…';
+
+  @override
+  String searchTitle(String title) {
+    return 'Etsi $title';
+  }
+
+  @override
+  String createNamed(String name) {
+    return 'Luo \"$name\"…';
+  }
 }

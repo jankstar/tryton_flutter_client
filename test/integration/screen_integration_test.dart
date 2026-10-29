@@ -4,6 +4,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/model/model.dart';
 import 'package:tryton_flutter_client/core/rpc/error_processing.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
@@ -266,5 +267,81 @@ void main() {
     expect(ui.viewModel, 'party.check_vies.result',
         reason: 'transition "check", then the result view');
     expect(ui.buttons.map((b) => (b.state, b.isDefault)), [('end', true)]);
+  });
+
+  test('party → add and remove a category without saving', () async {
+    if (password == null) {
+      markTestSkipped('TRYTON_PASSWORD not set');
+      return;
+    }
+    final ids = await svc.execute<List>('party.party', 'search', [
+      <dynamic>[],
+      0,
+      1,
+      null
+    ]);
+    final id = ids.first as int;
+    final form = TrytonScreen(
+        ScreenAttributes('party.party', mode: const ['form'], resId: id),
+        session: modelSessionFor(svc));
+    addTearDown(form.dispose);
+    form.load([id]);
+    form.currentRecord = form.group.first;
+    await form.switchView();
+    final record = form.currentRecord!;
+    final field = record.model.fields['categories'];
+    if (field == null) {
+      markTestSkipped('party form without categories');
+      return;
+    }
+    final group = record.fieldGetClient('categories') as RecordGroup;
+    final existing = [for (final r in group) r.id];
+
+    // Add: like the search dialog, a category not contained yet.
+    final candidates = await svc.execute<List>('party.category', 'search', [
+      [
+        field.getDomain(record),
+        ['id', 'not in', existing]
+      ],
+      0,
+      1,
+      null
+    ]);
+    if (candidates.isEmpty) {
+      if (env['TRYTON_WRITE_TEST'] != '1') {
+        markTestSkipped('no further category (TRYTON_WRITE_TEST=1 creates one)');
+        return;
+      }
+      // Temporary category with the test prefix, deleted afterwards.
+      final created = await svc.execute<List>('party.category', 'create', [
+        [
+          {'name': 'CLAUDE-TEST category'}
+        ]
+      ]);
+      addTearDown(() => svc.execute<dynamic>('party.category', 'delete', [created]));
+      candidates.addAll(created);
+    }
+    final added = candidates.first as int;
+    group.load([added], modified: true);
+    expect(record.modified, isTrue);
+    expect(field.get(record), [
+      [
+        'add',
+        [added]
+      ]
+    ]);
+
+    // Remove (unlink) the added one again: no command is left.
+    group.remove(group.get(added)!, remove: true);
+    expect((field.get(record) as List).where((c) => c[0] == 'add'), isEmpty);
+    if (existing.isNotEmpty) {
+      group.remove(group.get(existing.first)!, remove: true);
+      expect(field.get(record), contains([
+        'remove',
+        [existing.first]
+      ]));
+    }
+    // Nothing saved: discard.
+    record.cancel();
   });
 }

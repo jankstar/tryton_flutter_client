@@ -314,4 +314,38 @@ class AppLocalizationsFr extends AppLocalizations {
   String buttonClickedBy(String users) {
     return 'Par : $users';
   }
+
+  @override
+  String get discardChanges => 'Annuler les modifications';
+
+  @override
+  String get saveAndNew => 'Enregistrer et nouveau';
+
+  @override
+  String get addAndNew => 'Ajouter et nouveau';
+
+  @override
+  String get applyChanges => 'Appliquer les modifications';
+
+  @override
+  String get find => 'Rechercher';
+
+  @override
+  String get remove => 'Retirer';
+
+  @override
+  String get searchMenu => 'Rechercher…';
+
+  @override
+  String get createMenu => 'Créer…';
+
+  @override
+  String searchTitle(String title) {
+    return 'Rechercher $title';
+  }
+
+  @override
+  String createNamed(String name) {
+    return 'Créer « $name »…';
+  }
 }

@@ -313,4 +313,38 @@ class AppLocalizationsRu extends AppLocalizations {
   String buttonClickedBy(String users) {
     return 'Кем: $users';
   }
+
+  @override
+  String get discardChanges => 'Отменить изменения';
+
+  @override
+  String get saveAndNew => 'Сохранить и создать';
+
+  @override
+  String get addAndNew => 'Добавить и создать';
+
+  @override
+  String get applyChanges => 'Применить изменения';
+
+  @override
+  String get find => 'Найти';
+
+  @override
+  String get remove => 'Убрать';
+
+  @override
+  String get searchMenu => 'Поиск…';
+
+  @override
+  String get createMenu => 'Создать…';
+
+  @override
+  String searchTitle(String title) {
+    return 'Поиск: $title';
+  }
+
+  @override
+  String createNamed(String name) {
+    return 'Создать «$name»…';
+  }
 }

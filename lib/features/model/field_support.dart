@@ -8,7 +8,6 @@ import 'field_definition.dart';
 const unsupportedFieldTypes = {
   'binary',
   'dict',
-  'reference',
   'multiselection',
   'timedelta',
   'time',

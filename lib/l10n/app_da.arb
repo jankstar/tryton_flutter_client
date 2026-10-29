@@ -345,5 +345,15 @@
   "selectAction": "Vælg handling",
   "noActionDefined": "Ingen handling defineret.",
   "preValidation": "Forhåndsvalidering",
-  "buttonClickedBy": "Af: {users}"
+  "buttonClickedBy": "Af: {users}",
+  "discardChanges": "Kassér ændringer",
+  "saveAndNew": "Gem og ny",
+  "addAndNew": "Tilføj og ny",
+  "applyChanges": "Anvend ændringer",
+  "find": "Find",
+  "remove": "Fjern",
+  "searchMenu": "Søg…",
+  "createMenu": "Opret…",
+  "searchTitle": "Søg {title}",
+  "createNamed": "Opret \"{name}\"…"
 }

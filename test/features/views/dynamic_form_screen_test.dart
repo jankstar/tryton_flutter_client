@@ -152,8 +152,8 @@ void main() {
     await tester.enterText(textFieldOf('Qty'), '3');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
-    // back to the table: the new line is shown
-    await tester.tap(find.descendant(of: list, matching: find.byIcon(Icons.arrow_back)));
+    // "Add" closes the form popup: the new line is shown in the table
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pumpAndSettle();
     expect(find.descendant(of: list, matching: find.byType(DataTable)), findsOneWidget);
     // The child is not saved on its own.

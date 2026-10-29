@@ -345,5 +345,15 @@
   "selectAction": "Valitse toiminto",
   "noActionDefined": "Toimintoa ei ole määritetty.",
   "preValidation": "Esitarkistus",
-  "buttonClickedBy": "Käyttäjät: {users}"
+  "buttonClickedBy": "Käyttäjät: {users}",
+  "discardChanges": "Hylkää muutokset",
+  "saveAndNew": "Tallenna ja uusi",
+  "addAndNew": "Lisää ja uusi",
+  "applyChanges": "Ota muutokset käyttöön",
+  "find": "Etsi",
+  "remove": "Poista",
+  "searchMenu": "Etsi…",
+  "createMenu": "Luo…",
+  "searchTitle": "Etsi {title}",
+  "createNamed": "Luo \"{name}\"…"
 }

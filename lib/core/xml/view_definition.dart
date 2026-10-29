@@ -59,8 +59,14 @@ class FieldNode extends FormNode {
   /// SAO: `symbol` XML attribute on <field>. E.g. symbol="currency" means
   /// the record has a `currency` Many2One whose rec_name provides the symbol.
   final String? symbol;
+
+  /// All XML attributes of the `<field>` (e.g. `view_ids`, `completion`,
+  /// `create`, `delete`, `add_remove`, `size`, `mode`).
+  final Map<String, String> attributes;
+
   const FieldNode({
     required this.name,
+    this.attributes = const {},
     this.colspan = 1,
     this.widget,
     this.readonly,

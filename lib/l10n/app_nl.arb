@@ -345,5 +345,15 @@
   "selectAction": "Kies uw actie",
   "noActionDefined": "Geen actie gedefinieerd.",
   "preValidation": "Voorafgaande validatie",
-  "buttonClickedBy": "Door: {users}"
+  "buttonClickedBy": "Door: {users}",
+  "discardChanges": "Wijzigingen verwerpen",
+  "saveAndNew": "Opslaan en nieuw",
+  "addAndNew": "Toevoegen en nieuw",
+  "applyChanges": "Wijzigingen toepassen",
+  "find": "Zoeken",
+  "remove": "Verwijderen",
+  "searchMenu": "Zoeken…",
+  "createMenu": "Aanmaken…",
+  "searchTitle": "{title} zoeken",
+  "createNamed": "\"{name}\" aanmaken…"
 }

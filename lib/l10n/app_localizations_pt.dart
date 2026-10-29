@@ -313,4 +313,38 @@ class AppLocalizationsPt extends AppLocalizations {
   String buttonClickedBy(String users) {
     return 'Por: $users';
   }
+
+  @override
+  String get discardChanges => 'Descartar alterações';
+
+  @override
+  String get saveAndNew => 'Salvar e novo';
+
+  @override
+  String get addAndNew => 'Adicionar e novo';
+
+  @override
+  String get applyChanges => 'Aplicar alterações';
+
+  @override
+  String get find => 'Procurar';
+
+  @override
+  String get remove => 'Remover';
+
+  @override
+  String get searchMenu => 'Procurar…';
+
+  @override
+  String get createMenu => 'Criar…';
+
+  @override
+  String searchTitle(String title) {
+    return 'Procurar $title';
+  }
+
+  @override
+  String createNamed(String name) {
+    return 'Criar \"$name\"…';
+  }
 }

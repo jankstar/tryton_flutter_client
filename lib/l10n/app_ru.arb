@@ -345,5 +345,15 @@
   "selectAction": "Выберите действие",
   "noActionDefined": "Действие не определено.",
   "preValidation": "Предварительная проверка",
-  "buttonClickedBy": "Кем: {users}"
+  "buttonClickedBy": "Кем: {users}",
+  "discardChanges": "Отменить изменения",
+  "saveAndNew": "Сохранить и создать",
+  "addAndNew": "Добавить и создать",
+  "applyChanges": "Применить изменения",
+  "find": "Найти",
+  "remove": "Убрать",
+  "searchMenu": "Поиск…",
+  "createMenu": "Создать…",
+  "searchTitle": "Поиск: {title}",
+  "createNamed": "Создать «{name}»…"
 }

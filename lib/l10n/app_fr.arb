@@ -345,5 +345,15 @@
   "selectAction": "Sélectionnez votre action",
   "noActionDefined": "Aucune action définie.",
   "preValidation": "Pré-validation",
-  "buttonClickedBy": "Par : {users}"
+  "buttonClickedBy": "Par : {users}",
+  "discardChanges": "Annuler les modifications",
+  "saveAndNew": "Enregistrer et nouveau",
+  "addAndNew": "Ajouter et nouveau",
+  "applyChanges": "Appliquer les modifications",
+  "find": "Rechercher",
+  "remove": "Retirer",
+  "searchMenu": "Rechercher…",
+  "createMenu": "Créer…",
+  "searchTitle": "Rechercher {title}",
+  "createNamed": "Créer « {name} »…"
 }

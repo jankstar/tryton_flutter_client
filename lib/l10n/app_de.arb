@@ -345,5 +345,15 @@
   "selectAction": "Aktion auswählen",
   "noActionDefined": "Keine Aktion definiert.",
   "preValidation": "Vorabprüfung",
-  "buttonClickedBy": "Von: {users}"
+  "buttonClickedBy": "Von: {users}",
+  "discardChanges": "Änderungen verwerfen",
+  "saveAndNew": "Speichern und Neu",
+  "addAndNew": "Hinzufügen und Neu",
+  "applyChanges": "Änderungen übernehmen",
+  "find": "Suchen",
+  "remove": "Entfernen",
+  "searchMenu": "Suchen…",
+  "createMenu": "Neu…",
+  "searchTitle": "{title} suchen",
+  "createNamed": "„{name}“ anlegen…"
 }

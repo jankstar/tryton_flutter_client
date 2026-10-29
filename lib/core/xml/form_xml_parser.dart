@@ -56,6 +56,7 @@ class FormXmlParser {
           invisible: _parseBool(el.getAttribute('invisible')),
           string: el.getAttribute('string'),
           symbol: el.getAttribute('symbol'),
+          attributes: {for (final a in el.attributes) a.localName: a.value},
         );
 
       case 'label':

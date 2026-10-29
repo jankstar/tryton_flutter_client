@@ -449,5 +449,55 @@
         "type": "String"
       }
     }
+  },
+  "discardChanges": "Discard changes",
+  "@discardChanges": {
+    "description": "Popup/search dialog text"
+  },
+  "saveAndNew": "Save and New",
+  "@saveAndNew": {
+    "description": "Popup/search dialog text"
+  },
+  "addAndNew": "Add and New",
+  "@addAndNew": {
+    "description": "Popup/search dialog text"
+  },
+  "applyChanges": "Apply changes",
+  "@applyChanges": {
+    "description": "Popup/search dialog text"
+  },
+  "find": "Find",
+  "@find": {
+    "description": "Popup/search dialog text"
+  },
+  "remove": "Remove",
+  "@remove": {
+    "description": "Popup/search dialog text"
+  },
+  "searchMenu": "Search...",
+  "@searchMenu": {
+    "description": "Popup/search dialog text"
+  },
+  "createMenu": "Create...",
+  "@createMenu": {
+    "description": "Popup/search dialog text"
+  },
+  "searchTitle": "Search {title}",
+  "@searchTitle": {
+    "description": "Title of the search dialog",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "createNamed": "Create \"{name}\"...",
+  "@createNamed": {
+    "description": "Autocomplete entry creating a record with the typed text",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }
