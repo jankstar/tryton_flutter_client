@@ -443,4 +443,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get fuzzy => 'Unscharf';
+
+  @override
+  String get columns => 'Spalten';
+
+  @override
+  String get resetColumnWidths => 'Spaltenbreiten zurücksetzen';
+
+  @override
+  String get copySelectedRows => 'Ausgewählte Zeilen kopieren';
 }

@@ -441,4 +441,13 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get fuzzy => 'Usikker';
+
+  @override
+  String get columns => 'Kolonner';
+
+  @override
+  String get resetColumnWidths => 'Nulstil kolonnebredder';
+
+  @override
+  String get copySelectedRows => 'Kopiér valgte rækker';
 }

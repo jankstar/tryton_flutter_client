@@ -609,5 +609,11 @@
   "edit": "Edit",
   "@edit": {},
   "fuzzy": "Fuzzy",
-  "@fuzzy": {}
+  "@fuzzy": {},
+  "columns": "Columns",
+  "@columns": {},
+  "resetColumnWidths": "Reset column widths",
+  "@resetColumnWidths": {},
+  "copySelectedRows": "Copy selected rows",
+  "@copySelectedRows": {}
 }

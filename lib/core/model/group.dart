@@ -272,6 +272,86 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
     recordDeleted.clear();
   }
 
+  /// Moves [record] to [position] (Python `Group.move`; out of range: to
+  /// the end).
+  void move(Record record, int position) {
+    final index = _records.indexOf(record);
+    if (index < 0) return;
+    final length = _records.length;
+    _records.removeAt(index);
+    if (position >= 0 && position < length) {
+      if (position > index) position -= 1;
+      _records.insert(position, record);
+    } else {
+      _records.add(record);
+    }
+    notifyListeners();
+  }
+
+  /// Renumbers the sequence [field] in the order of the group after a
+  /// move (Python `Group.set_sequence`): records are only changed where
+  /// the order needs it; not loaded records are assumed in order until a
+  /// previous one changed. [position] is the screen's `new_position` (0:
+  /// records without value go before older ids).
+  Future<void> setSequence(
+      {String field = 'sequence', int position = -1}) async {
+    final f = model.fields[field];
+    if (f == null) return;
+    var changed = false;
+    Record? prev;
+    var prevId = 0;
+    bool cmp(int a, int b) => position == 0 ? a > b : a < b;
+    var maxId = 0;
+    for (final r in _records) {
+      if (r.id > maxId) maxId = r.id;
+    }
+    num? numberOf(Record r) {
+      final v = f.get(r);
+      return v is num ? v : null;
+    }
+
+    for (final record in [..._records]) {
+      if (record.isLoaded(field) || changed || record.id < 0) {
+        num? index;
+        if (prev != null) {
+          if (!prev.isLoaded(field) && prev.id >= 0) await prev.load(field);
+          index = numberOf(prev);
+          if (prev.id >= 0) {
+            prevId = prev.id;
+          } else {
+            maxId += 1;
+            prevId = maxId;
+          }
+        }
+        if (!record.isLoaded(field) && record.id >= 0) {
+          await record.load(field);
+        }
+        final value = numberOf(record);
+        var update = false;
+        if (value == null) {
+          if (index != null && index != 0) {
+            update = true;
+          } else if (prev != null) {
+            update = record.id >= 0 ? cmp(record.id, prevId) : position == 0;
+          }
+        } else if (value == index) {
+          if (prev != null) {
+            update = record.id >= 0 ? cmp(record.id, prevId) : position == 0;
+          }
+        } else if (value <= (index ?? 0)) {
+          update = true;
+        }
+        if (update) {
+          index = (index ?? 0) + 1;
+          await f.setClient(record, index);
+          changed = true;
+        }
+      }
+      prev = record;
+    }
+    if (changed) recordModified();
+  }
+
   /// Propagates a modification: in a child group to the parent
   /// (`modified_fields[child_name]`, `field.changed`, validate), in the
   /// root group to the listeners.

@@ -386,5 +386,8 @@
   "saveBeforeTranslate": "U moet het record opslaan voordat u vertalingen toevoegt.",
   "noOtherLanguage": "Geen andere taal beschikbaar.",
   "edit": "Bewerken",
-  "fuzzy": "Onzeker"
+  "fuzzy": "Onzeker",
+  "columns": "Kolommen",
+  "resetColumnWidths": "Kolombreedtes herstellen",
+  "copySelectedRows": "Geselecteerde rijen kopiëren"
 }

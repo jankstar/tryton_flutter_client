@@ -15,7 +15,7 @@ import '../model/field_definition.dart';
 /// time in [dateFormat] / the field's time format, timedelta with the
 /// context converter).
 String recordCellText(Record record, String name, FieldDefinition? fd,
-    {String dateFormat = '%x', String? localeTag}) {
+    {String dateFormat = '%x', String? localeTag, String? widget}) {
   final field = record.model.fields[name];
   if (field == null) return '';
   if (field is Many2OneField) return '${field.getClient(record)}';
@@ -47,13 +47,21 @@ String recordCellText(Record record, String name, FieldDefinition? fd,
   if (val is TrytonDate) {
     return formatDate(val.toDateTime(), dateFormat, localeTag);
   }
-  // datetime: local time without milliseconds.
+  // datetime: local time in the field's `format` (e.g. `%H:%M:%S.%f` of
+  // timestamps); `widget="date"`/`"time"` show only that part.
   if (val is DateTime) {
-    return formatDate(val.toLocal(), '$dateFormat ${timeFormat()}', localeTag);
+    final format = switch (widget) {
+      'date' => dateFormat,
+      'time' => timeFormat(),
+      _ => '$dateFormat ${timeFormat()}',
+    };
+    return formatDate(val.toLocal(), format, localeTag);
   }
   if (val is TrytonTime) {
     return formatDate(
-        DateTime(2000, 1, 1, val.hour, val.minute, val.second), timeFormat());
+        DateTime(2000, 1, 1, val.hour, val.minute, val.second, 0,
+            val.microsecond),
+        timeFormat());
   }
   if (val is Duration) {
     final converter = field is TimeDeltaField ? field.converter(record.group) : null;
@@ -75,15 +83,70 @@ class RecordTextCell extends ConsumerWidget {
   final String name;
   final FieldDefinition? fd;
   final TextStyle? style;
-  const RecordTextCell(this.record, this.name, this.fd, {super.key, this.style});
+
+  /// `widget` of the column (`date`/`time` on datetime fields).
+  final String? widget;
+  const RecordTextCell(this.record, this.name, this.fd,
+      {super.key, this.style, this.widget});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Text(
       recordCellText(record, name, fd,
           dateFormat: ref.watch(dateFormatProvider),
-          localeTag: Localizations.localeOf(context).toLanguageTag()),
+          localeTag: Localizations.localeOf(context).toLanguageTag(),
+          widget: widget),
       overflow: TextOverflow.ellipsis,
       style: style);
+}
+
+/// Text of a `sum="1"` column (Python/SAO `update_with_selection`):
+/// „selected\nall“ of the records of [group] (selected = all when
+/// [selected] is empty), `-` while a record is not loaded; decimals = the
+/// largest `digits` of the records, timedelta with the context converter.
+String recordSumText(RecordGroup group, String name, Iterable<Record> selected,
+    {required String locale, NumberLocale? numberLocale}) {
+  final field = group.model.fields[name];
+  if (field == null) return '';
+  final chosen = selected.toSet();
+  double? sum;
+  double? selectedSum;
+  Duration? dsum;
+  Duration? dselected;
+  int? digit = 0;
+  for (final r in group) {
+    if (!r.isLoaded(name) && r.id >= 0) return '-';
+    final v = field.get(r);
+    if (v == null) continue;
+    final inSelection = chosen.isEmpty || chosen.contains(r);
+    if (v is Duration) {
+      dsum = (dsum ?? Duration.zero) + v;
+      if (inSelection) dselected = (dselected ?? Duration.zero) + v;
+      continue;
+    }
+    final d = v is TrytonDecimal ? v.toDouble() : (v is num ? v.toDouble() : null);
+    if (d == null) continue;
+    sum = (sum ?? 0) + d;
+    if (inSelection) selectedSum = (selectedSum ?? 0) + d;
+    if (field is FloatField && field is! IntegerField) {
+      final digits = field.digits(r);
+      final dec = digits != null && digits.length > 1 ? digits[1] : null;
+      digit = dec != null && digit != null ? (dec > digit ? dec : digit) : null;
+    }
+  }
+  if (field is TimeDeltaField) {
+    final raw = field.converter(group);
+    final conv = raw is Map
+        ? {for (final e in raw.entries) if (e.value is num) '${e.key}': e.value as num}
+        : null;
+    return '${formatTimedelta(dselected ?? Duration.zero, conv)}\n'
+        '${formatTimedelta(dsum ?? Duration.zero, conv)}';
+  }
+  String f(double? v) => formatNumericValue(v ?? 0,
+      digits: [null, digit],
+      locale: locale,
+      numberLocale: numberLocale,
+      isInteger: field is IntegerField);
+  return '${f(selectedSum)}\n${f(sum)}';
 }
 
 /// Touch devices (Android, iOS): tapping a row opens it, a long press
@@ -119,17 +182,35 @@ class RecordNumericCell extends ConsumerStatefulWidget {
   final FieldDefinition field;
   final TextStyle? style;
 
+  /// Column attributes: `factor`, `grouping`, `symbol` (else of the field).
+  final num factor;
+  final bool grouping;
+  final String? symbol;
+
   const RecordNumericCell(
       {super.key,
       required this.record,
       required this.name,
       required this.field,
-      this.style});
+      this.style,
+      this.factor = 1,
+      this.grouping = true,
+      this.symbol});
 
   /// Cell of [name] of [record].
   factory RecordNumericCell.of(Record record, String name, FieldDefinition fd,
-          {TextStyle? style}) =>
-      RecordNumericCell(record: record, name: name, field: fd, style: style);
+          {TextStyle? style,
+          num factor = 1,
+          bool grouping = true,
+          String? symbol}) =>
+      RecordNumericCell(
+          record: record,
+          name: name,
+          field: fd,
+          style: style,
+          factor: factor,
+          grouping: grouping,
+          symbol: symbol);
 
   @override
   ConsumerState<RecordNumericCell> createState() => _RecordNumericCellState();
@@ -141,7 +222,7 @@ class _RecordNumericCellState extends ConsumerState<RecordNumericCell> {
     return f is FloatField ? f : null;
   }
 
-  String? get _symbol => widget.field.symbol;
+  String? get _symbol => widget.symbol ?? widget.field.symbol;
 
   @override
   void initState() {
@@ -177,10 +258,13 @@ class _RecordNumericCellState extends ConsumerState<RecordNumericCell> {
     final record = widget.record;
     final formatted = formatNumericValue(
       field?.get(record),
-      digits: field?.digits(record) ?? widget.field.digits,
+      digits: field?.digits(record, factor: widget.factor) ??
+          widget.field.digits,
       locale: Localizations.localeOf(context).toLanguageTag(),
       numberLocale: ref.watch(numberLocaleProvider),
       isInteger: widget.field.type == 'integer',
+      factor: widget.factor,
+      grouping: widget.grouping,
     );
     final symbolName = _symbol;
     final symbol = symbolName == null || field == null

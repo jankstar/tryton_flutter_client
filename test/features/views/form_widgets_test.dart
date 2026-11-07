@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -720,4 +721,193 @@ void main() {
       expect(ro.named('model.test.lang.search_read'), isEmpty);
     });
   });
+
+  testWidgets('x2many keys: Delete marks, Insert undeletes, F3 new (desktop)',
+      (tester) async {
+    final rpc = server(
+        '<form><field name="lines"/></form>',
+        {
+          'lines': {
+            'type': 'one2many',
+            'string': 'Lines',
+            'relation': 'test.line',
+            'relation_field': 'parent',
+          },
+        },
+        {
+          'lines': [11, 12]
+        },
+        {
+          'model.test.line.fields_view_get': (p) => p[1] == 'tree'
+              ? {
+                  'type': 'tree',
+                  'arch': '<tree><field name="name"/></tree>',
+                  'fields': {
+                    'name': {'type': 'char', 'string': 'Name'}
+                  },
+                }
+              : {
+                  'type': 'form',
+                  'arch': '<form><field name="name"/></form>',
+                  'fields': {
+                    'name': {'type': 'char', 'string': 'Name'}
+                  },
+                },
+          'model.test.line.read': (p) => [
+                for (final id in p[0] as List)
+                  {'id': id, 'name': 'L$id', '_timestamp': '1'}
+              ],
+          'model.test.line.default_get': (_) => <String, dynamic>{},
+        });
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    await tester.tap(find.text('L11'));
+    // the single tap fires after the double tap timeout
+    await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 10));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+    expect(find.text('1 ×'), findsOneWidget, reason: 'marked for deletion');
+    await tester.sendKeyEvent(LogicalKeyboardKey.insert);
+    await tester.pumpAndSettle();
+    expect(find.text('1 ×'), findsNothing, reason: 'undeleted');
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(rpc.named('model.test.form.write').single.params[1], {
+      'lines': [
+        [
+          'delete',
+          [11]
+        ]
+      ]
+    });
+    await tester.tap(find.text('L12'));
+    await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 10));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.f3);
+    await tester.pumpAndSettle();
+    expect(rpc.named('model.test.line.default_get'), hasLength(1),
+        reason: 'F3: new record (form popup)');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('readonly x2many (posted invoice): Switch gives the inline '
+      'form with the fields by their own states, no New/Delete',
+      (tester) async {
+    final rpc = server(
+        '<form><field name="state"/><field name="lines"/></form>',
+        {
+          'state': {'type': 'char', 'string': 'State'},
+          'lines': {
+            'type': 'one2many',
+            'string': 'Lines',
+            'relation': 'test.line',
+            'relation_field': 'invoice',
+            // like account.invoice: readonly when not draft
+            'states': '{"readonly": {"__class__": "Not", "v": {"__class__": '
+                '"Equal", "s1": {"__class__": "Eval", "v": "state", "d": ""}, '
+                '"s2": "draft"}}}',
+          },
+        },
+        {
+          'state': 'posted',
+          'lines': [11, 12]
+        },
+        {
+          'model.test.line.fields_view_get': (p) => p[1] == 'tree'
+              ? {
+                  'type': 'tree',
+                  'arch': '<tree><field name="name"/></tree>',
+                  'fields': {
+                    'name': {'type': 'char', 'string': 'Name'}
+                  },
+                }
+              : {
+                  'type': 'form',
+                  'arch': '<form><field name="sequence"/>'
+                      '<field name="name"/></form>',
+                  'fields': {
+                    'sequence': {'type': 'integer', 'string': 'Sequence'},
+                    // like the invoice line fields: readonly when posted
+                    'name': {
+                      'type': 'char',
+                      'string': 'Name',
+                      'states': '{"readonly": true}'
+                    },
+                  },
+                },
+          'model.test.line.read': (p) => [
+                for (final id in p[0] as List)
+                  {'id': id, 'name': 'L$id', 'sequence': id, '_timestamp': '1'}
+              ],
+        });
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    expect(find.byKey(const ValueKey('x2m-new')), findsNothing,
+        reason: 'readonly x2many: no New');
+    await tester.tap(find.text('L11'));
+    await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 10));
+    await tester.pumpAndSettle();
+    final switchButton = find.ancestor(
+        of: find.byIcon(Icons.compare_arrows), matching: find.byType(IconButton));
+    await tester.tap(switchButton.last);
+    await tester.pumpAndSettle();
+    expect(find.text('1 / 2'), findsOneWidget, reason: 'inline form');
+    final sequence = tester.widget<TextField>(textFieldOf('Sequence'));
+    expect(sequence.readOnly, isFalse, reason: 'no states: editable');
+    expect(sequence.controller!.text, '11');
+    expect(tester.widget<TextField>(textFieldOf('Name')).readOnly, isTrue,
+        reason: 'own states readonly');
+    expect(find.byKey(const ValueKey('x2m-delete')), findsNothing);
+    await tester.enterText(textFieldOf('Sequence'), '5');
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(textFieldOf('Sequence')).controller!.text,
+        '5');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('x2many with sum="1": sum row „selected / all“', (tester) async {
+    final rpc = server(
+        '<form><field name="lines"/></form>',
+        {
+          'lines': {
+            'type': 'one2many',
+            'string': 'Lines',
+            'relation': 'test.line',
+            'relation_field': 'move',
+          },
+        },
+        {
+          'lines': [11, 12, 13]
+        },
+        {
+          'model.test.line.fields_view_get': (p) => {
+                'type': 'tree',
+                'arch': '<tree><field name="name"/>'
+                    '<field name="debit" sum="1"/></tree>',
+                'fields': {
+                  'name': {'type': 'char', 'string': 'Name'},
+                  'debit': {
+                    'type': 'numeric',
+                    'string': 'Debit',
+                    'digits': '[16, 2]'
+                  },
+                },
+              },
+          'model.test.line.read': (p) => [
+                for (final id in p[0] as List)
+                  {
+                    'id': id,
+                    'name': 'L$id',
+                    'debit': TrytonDecimal('${id - 10}.5'),
+                    '_timestamp': '1'
+                  }
+              ],
+        });
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    final sum = find.byKey(const ValueKey('x2m-sum-debit#0'));
+    expect(tester.widget<Text>(sum).data, '7.50\n7.50', reason: '1.5+2.5+3.5');
+    await tester.tap(find.text('L12'));
+    await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 10));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(sum).data, '2.50\n7.50', reason: 'selected / all');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }

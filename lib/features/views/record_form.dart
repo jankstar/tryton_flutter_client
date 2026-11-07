@@ -486,6 +486,8 @@ class _RecordFormState extends State<RecordForm> {
             fieldDef: fd,
             node: node,
             readOnly: readOnly,
+            // the records follow the parent record, not the field state
+            parentReadOnly: widget.isReadOnly,
             breadcrumb: widget.breadcrumb,
           ),
         ),

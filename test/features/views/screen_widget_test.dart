@@ -69,7 +69,7 @@ void main() {
 
     // Double click opens the form of the same record.
     await doubleTap(tester, find.text('N2'));
-    expect(find.byType(DataTable), findsNothing);
+    expect(find.byKey(const ValueKey('list-column-menu')), findsNothing);
     expect(formName(tester), 'N2');
     expect(find.textContaining('2/3'), findsOneWidget);
 
@@ -86,14 +86,14 @@ void main() {
     // Back to the list: no new search, the current record is selected.
     await tester.tap(find.byTooltip('Switch view'));
     await pumpFrames(tester);
-    expect(find.byType(DataTable), findsOneWidget);
+    expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget);
     expect(find.text('1/3'), findsOneWidget);
     expect(rpc.named('model.test.party.search'), hasLength(1));
-    final row = tester
-        .widget<DataTable>(find.byType(DataTable))
-        .rows
-        .firstWhere((r) => r.selected);
-    expect(row, isNotNull);
+    // the row of N1 is selected (its selection checkbox)
+    final row = find.ancestor(of: find.text('N1'), matching: find.byType(InkWell)).first;
+    final checkbox = tester.widget<Checkbox>(
+        find.descendant(of: row, matching: find.byType(Checkbox)));
+    expect(checkbox.value, isTrue);
   });
 
   testWidgets('new from the list opens the form; switching back asks first',
@@ -114,7 +114,7 @@ void main() {
     expect(find.textContaining('This record has been modified'), findsOneWidget);
     await tester.tap(find.text('No'));
     await pumpFrames(tester);
-    expect(find.byType(DataTable), findsOneWidget);
+    expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget);
     expect(find.text('Default'), findsNothing);
     expect(find.text('_/3'), findsOneWidget);
   });
@@ -157,7 +157,7 @@ void main() {
     expect(rpc.named('model.test.party.do_it').single.params, [
       [1]
     ]);
-    expect(find.byType(DataTable), findsOneWidget);
+    expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget);
     expect(find.text('N100'), findsNothing);
     expect(find.text('1/3'), findsOneWidget);
   });

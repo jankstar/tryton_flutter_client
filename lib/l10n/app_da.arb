@@ -386,5 +386,8 @@
   "saveBeforeTranslate": "Du skal gemme posten, før du tilføjer oversættelser.",
   "noOtherLanguage": "Intet andet sprog tilgængeligt.",
   "edit": "Rediger",
-  "fuzzy": "Usikker"
+  "fuzzy": "Usikker",
+  "columns": "Kolonner",
+  "resetColumnWidths": "Nulstil kolonnebredder",
+  "copySelectedRows": "Kopiér valgte rækker"
 }

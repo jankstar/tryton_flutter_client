@@ -386,5 +386,8 @@
   "saveBeforeTranslate": "Debe guardar el registro antes de añadir traducciones.",
   "noOtherLanguage": "No hay otro idioma disponible.",
   "edit": "Editar",
-  "fuzzy": "Aproximada"
+  "fuzzy": "Aproximada",
+  "columns": "Columnas",
+  "resetColumnWidths": "Restablecer anchos de columna",
+  "copySelectedRows": "Copiar filas seleccionadas"
 }

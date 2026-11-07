@@ -97,14 +97,14 @@ void main() {
     await tester.tap(find.text('N2'));
     await tester.pump(kDoubleTapTimeout);
     await pumpFrames(tester, 5);
-    expect(find.byType(DataTable), findsOneWidget, reason: 'still the list');
+    expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget, reason: 'still the list');
     expect(find.text('2/2'), findsOneWidget, reason: 'N2 selected');
 
     await tester.tap(find.text('N2'));
     await tester.pump(kDoubleTapMinTime);
     await tester.tap(find.text('N2'));
     await pumpFrames(tester);
-    expect(find.byType(DataTable), findsNothing, reason: 'form opened');
+    expect(find.byKey(const ValueKey('list-column-menu')), findsNothing, reason: 'form opened');
   });
 
   testWidgets('touch: tapping opens, a long press selects', (tester) async {
@@ -113,10 +113,10 @@ void main() {
         settle: false, metadata: true);
     await tester.longPress(find.text('N2'));
     await pumpFrames(tester, 5);
-    expect(find.byType(DataTable), findsOneWidget);
+    expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget);
     expect(find.text('2/2'), findsOneWidget, reason: 'N2 selected');
     await tester.tap(find.text('N1'));
     await pumpFrames(tester);
-    expect(find.byType(DataTable), findsNothing, reason: 'form opened');
+    expect(find.byKey(const ValueKey('list-column-menu')), findsNothing, reason: 'form opened');
   });
 }

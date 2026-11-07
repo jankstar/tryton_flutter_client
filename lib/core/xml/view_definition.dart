@@ -361,30 +361,156 @@ class TreeViewDefinition {
   /// PYSON expression for row color: evaluates to 'success', 'warning', 'danger' or ''.
   final String? visual;
 
-  const TreeViewDefinition({required this.columns, required this.fields, this.editable = false, this.visual});
+  /// Root attributes (`editable`, `creatable`, `sequence`, `tree_state`,
+  /// `keyword_open`, `on_write`, `visual`, spec 9.3.1).
+  final Map<String, String> attrs;
+
+  /// `<button multiple="1">`: buttons in the footer for the selection.
+  final List<ButtonNode> buttons;
+
+  const TreeViewDefinition(
+      {required this.columns,
+      required this.fields,
+      this.editable = false,
+      this.visual,
+      this.attrs = const {},
+      this.buttons = const []});
+
+  bool _flag(String name, {bool fallback = false}) {
+    final v = attrs[name];
+    return v == null ? fallback : (int.tryParse(v) ?? 0) != 0;
+  }
+
+  /// New records can be created in the list (with [editable]).
+  bool get creatable => _flag('creatable', fallback: true);
+
+  /// Field of the manual order (drag and drop, `set_sequence`).
+  String? get sequence {
+    final v = attrs['sequence'];
+    return v == null || v.isEmpty ? null : v;
+  }
+
+  /// Expanded/selected rows are stored (`ir.ui.view_tree_state`).
+  bool get treeState => _flag('tree_state');
+
+  /// Row activation runs the keyword `tree_open`.
+  bool get keywordOpen => _flag('keyword_open');
+
+  String? get onWrite => attrs['on_write'];
 }
 
+/// A column of a tree view: a `<field>` occurrence or a `<button>`.
 class TreeColumn {
+  /// Position in the view.
+  final int index;
+
+  /// Occurrence of the field in the view (0 for the first; widths are
+  /// stored per occurrence).
+  final int occurrence;
+
+  /// Field name; '' for a button column.
   final String name;
   final String label;
-  final int width; // 0 = flexible
-  final String? widget;
 
-  /// If true, column is hidden by default (tree_invisible="1").
-  final bool treeInvisible;
+  /// Attributes converted and completed from the field description.
+  final Map<String, dynamic> attrs;
 
-  /// Label for the sum footer row (sum="Total").
-  final String? sum;
+  /// `<prefix>`/`<suffix>` children (`name`, `string`, `icon`,
+  /// `icon_type`, `url_size`, `border`, `visual`).
+  final List<Map<String, dynamic>> prefixes;
+  final List<Map<String, dynamic>> suffixes;
 
-  /// If true, column expands to fill available space.
-  final bool expand;
+  /// The button of a button column.
+  final ButtonNode? button;
+
   const TreeColumn({
+    this.index = 0,
+    this.occurrence = 0,
     required this.name,
     required this.label,
-    this.width = 0,
-    this.widget,
-    this.treeInvisible = false,
-    this.sum,
-    this.expand = false,
+    this.attrs = const {},
+    this.prefixes = const [],
+    this.suffixes = const [],
+    this.button,
   });
+
+  /// Key of the column (stable per occurrence).
+  String get key => button != null ? 'button:$index' : '$name#$occurrence';
+
+  bool get isButton => button != null;
+
+  dynamic _attr(String name) => attrs[name];
+
+  bool _flag(String name) {
+    final v = _attr(name);
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    return (int.tryParse('${v ?? ''}') ?? 0) != 0;
+  }
+
+  /// `widget` of the XML, else the field type.
+  String? get widget => _attr('widget') as String?;
+
+  /// `width` (stored width or of the XML), 0 = default of the type.
+  int get width {
+    final v = _attr('width');
+    return v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
+  }
+
+  /// `expand` weight (0 = fixed).
+  int get expand {
+    final v = _attr('expand');
+    return v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
+  }
+
+  /// `tree_invisible`: a PYSON expression (decoded) or a constant.
+  dynamic get treeInvisibleExpr {
+    final v = _attr('tree_invisible');
+    if (v is String) {
+      if (v.isEmpty) return false;
+      final i = int.tryParse(v);
+      if (i != null) return i != 0;
+      if (v == 'True' || v == 'true') return true;
+      if (v == 'False' || v == 'false') return false;
+      try {
+        return jsonDecode(v);
+      } catch (_) {
+        return false;
+      }
+    }
+    return v ?? false;
+  }
+
+  /// `tree_invisible` without evaluation: only constant truth.
+  bool get treeInvisible => treeInvisibleExpr == true;
+
+  /// `sum="1"`: sum in the footer (spec 9.3.2, a flag in 8.0).
+  bool get sum => _flag('sum');
+
+  /// `optional` present: null = not optional, true = hidden by default
+  /// (`1`), false = shown (`0`).
+  bool? get optional {
+    if (!attrs.containsKey('optional')) return null;
+    return _flag('optional');
+  }
+
+  String? get symbol {
+    final v = _attr('symbol');
+    return v is String && v.isNotEmpty ? v : null;
+  }
+
+  num get factor => num.tryParse('${_attr('factor') ?? 1}') ?? 1;
+  bool get grouping => !attrs.containsKey('grouping') || _flag('grouping');
+
+  /// PYSON `visual` of the column (`success`, `warning`, `danger`,
+  /// `muted`).
+  dynamic get visual => _attr('visual');
+
+  String? get help {
+    final v = _attr('help');
+    return v is String && v.isNotEmpty ? v : null;
+  }
+
+  /// Field states readonly/required in editable lists.
+  bool? get readonly => attrs.containsKey('readonly') ? _flag('readonly') : null;
 }

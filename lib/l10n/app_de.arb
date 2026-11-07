@@ -386,5 +386,8 @@
   "saveBeforeTranslate": "Sie müssen den Datensatz speichern, bevor Sie Übersetzungen hinzufügen.",
   "noOtherLanguage": "Keine andere Sprache verfügbar.",
   "edit": "Bearbeiten",
-  "fuzzy": "Unscharf"
+  "fuzzy": "Unscharf",
+  "columns": "Spalten",
+  "resetColumnWidths": "Spaltenbreiten zurücksetzen",
+  "copySelectedRows": "Ausgewählte Zeilen kopieren"
 }

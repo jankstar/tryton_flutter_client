@@ -913,6 +913,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fuzzy'**
   String get fuzzy;
+
+  /// No description provided for @columns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get columns;
+
+  /// No description provided for @resetColumnWidths.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset column widths'**
+  String get resetColumnWidths;
+
+  /// No description provided for @copySelectedRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy selected rows'**
+  String get copySelectedRows;
 }
 
 class _AppLocalizationsDelegate

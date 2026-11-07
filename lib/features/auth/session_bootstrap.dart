@@ -8,6 +8,7 @@ import '../actions/action_service.dart';
 import '../model/metadata_service.dart';
 import '../model/model_service.dart';
 import '../views/record_field_widgets.dart' show clearMany2OneSelectionCache;
+import '../views/list_view_screen.dart' show clearListCaches;
 import '../views/record_link.dart';
 import 'auth_provider.dart';
 import 'user_preferences_provider.dart';
@@ -103,6 +104,7 @@ class SessionBootstrap {
     clearLinkActionCache();
     FloatField.clearCaches();
     clearMany2OneSelectionCache();
+    clearListCaches();
   }
 }
 

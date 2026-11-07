@@ -8,6 +8,8 @@ import 'package:tryton_flutter_client/features/auth/user_preferences_provider.da
 import 'package:tryton_flutter_client/features/model/metadata_service.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
+import 'package:tryton_flutter_client/features/views/embedded_tree_widget.dart'
+    show clearEmbeddedViewCache;
 import 'package:tryton_flutter_client/features/views/record_field_widgets.dart'
     show clearMany2OneSelectionCache;
 import 'package:tryton_flutter_client/features/views/screen_widget.dart';
@@ -84,6 +86,7 @@ Future<void> pumpScreen(
   // digits/symbols are cached per session
   FloatField.clearCaches();
   clearMany2OneSelectionCache();
+  clearEmbeddedViewCache();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);

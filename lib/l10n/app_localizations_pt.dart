@@ -441,4 +441,13 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get fuzzy => 'Aproximada';
+
+  @override
+  String get columns => 'Colunas';
+
+  @override
+  String get resetColumnWidths => 'Redefinir larguras das colunas';
+
+  @override
+  String get copySelectedRows => 'Copiar linhas selecionadas';
 }

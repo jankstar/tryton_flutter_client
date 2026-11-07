@@ -149,7 +149,7 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
         for (final c in TreeXmlParser()
             .parse(view.definition.arch, view.definition.rawFields)
             .columns)
-          if (!c.treeInvisible) c
+          if (!c.treeInvisible && !c.isButton) c
       ];
     }
   }

@@ -10,6 +10,7 @@ import '../../core/screen/screen.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/errors/error_dialogs.dart';
+import '../auth/user_preferences_provider.dart';
 import '../model/field_definition.dart';
 import '../model/field_support.dart';
 import '../model/model_service.dart';
@@ -56,7 +57,16 @@ class EmbeddedTreeWidget extends ConsumerStatefulWidget {
   /// The `<field>` of the form (attributes `view_ids`, `add_remove`,
   /// `size`, `delete`, `create`).
   final FieldNode? node;
+
+  /// `readonly` of the x2many field (its states): New, Delete, Add, Remove
+  /// are disabled (Python `One2Many._readonly`).
   final bool readOnly;
+
+  /// The parent record/group is read-only: the records themselves cannot
+  /// be edited (Python: the child screen's `readonly` = the parent group's).
+  /// The inline form and the popup follow this, not [readOnly] – their
+  /// fields are editable by their own states.
+  final bool parentReadOnly;
 
   /// Breadcrumb of the popups.
   final List<String> breadcrumb;
@@ -67,8 +77,9 @@ class EmbeddedTreeWidget extends ConsumerStatefulWidget {
     required this.fieldDef,
     this.node,
     this.readOnly = false,
+    bool? parentReadOnly,
     this.breadcrumb = const [],
-  });
+  }) : parentReadOnly = parentReadOnly ?? readOnly;
 
   @override
   ConsumerState<EmbeddedTreeWidget> createState() => _EmbeddedTreeWidgetState();
@@ -325,7 +336,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
         mode: const ['form'],
         viewIds: formId == null ? const [] : [formId],
         viewsPreload: await _formPreload(),
-        readonly: widget.readOnly,
+        readonly: widget.parentReadOnly,
       ),
       group,
     );
@@ -439,6 +450,51 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       if (r.deleted || r.removed) group.unremove(r);
     }
     setState(() {});
+  }
+
+  /// Keys of the table (desktop, Python `One2Many.on_keypress`): Enter/F2
+  /// open, F3 new, F4 switch, Delete deletes (with `add_remove` or for
+  /// many2many: removes; Ctrl+Delete always deletes), Insert undeletes.
+  KeyEventResult _onKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final hasSelection = _selected.isNotEmpty;
+    final editable = !widget.readOnly;
+    if ((key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter ||
+            key == LogicalKeyboardKey.f2) &&
+        hasSelection &&
+        _canOpen) {
+      _openRecord(_selected.first);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.f3 &&
+        editable &&
+        _canCreate &&
+        !_sizeLimitReached) {
+      _newRecord();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.f4) {
+      _switch();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.delete &&
+        editable &&
+        hasSelection) {
+      final ctrl = HardwareKeyboard.instance.isControlPressed ||
+          HardwareKeyboard.instance.isMetaPressed;
+      final remove = _isMany2Many || (!ctrl && _addRemove != null);
+      if (remove ? _canRemove : _canDelete) {
+        _markSelected(remove: remove);
+        return KeyEventResult.handled;
+      }
+    }
+    if (key == LogicalKeyboardKey.insert && editable && hasSelection) {
+      _unmarkSelected();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   // ─── Inline form (mode with `form`) ──────────────────────────────────────
@@ -614,7 +670,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
               if (_pending.containsKey(name)) _write(name, _pending.remove(name));
             },
             onChangedImmediate: _write,
-            isReadOnly: widget.readOnly || marked,
+            // fields by their own states (Python child screen)
+            isReadOnly: widget.parentReadOnly || marked,
             breadcrumb: [...widget.breadcrumb, widget.fieldDef.label],
           ),
         ],
@@ -652,7 +709,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     final primary = Theme.of(context).colorScheme.primary;
     final errorColor = Theme.of(context).colorScheme.error;
     final records = group.toList();
-    final columns = _treeDef!.columns.where((c) => !c.treeInvisible).toList();
+    final columns = _treeDef!.columns
+        .where((c) => !c.treeInvisible && !c.isButton)
+        .toList();
     final hasSelection = _selected.isNotEmpty;
     bool isMarked(Record r) => r.deleted || r.removed;
     final selectedAreMarked = hasSelection && _selected.every(isMarked);
@@ -770,17 +829,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
         else
           Focus(
             focusNode: _tableFocus,
-            onKeyEvent: (node, event) {
-              if (event is KeyDownEvent &&
-                  (event.logicalKey == LogicalKeyboardKey.enter ||
-                      event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
-                  _selected.isNotEmpty &&
-                  _canOpen) {
-                _openRecord(_selected.first);
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
+            onKeyEvent: (node, event) => _onKey(event),
             child: Scrollbar(
             controller: _hScrollController,
             thumbVisibility: true,
@@ -891,7 +940,34 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                       }),
                     ],
                   );
-                }).toList(),
+                }).toList()
+                  // sum="1" columns: „selected / all“ (spec 9.3.4)
+                  ..addAll([
+                    if (columns.any((c) => c.sum))
+                      DataRow(
+                        key: const ValueKey('x2m-sum-row'),
+                        color: WidgetStateProperty.all(Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                            .withAlpha(120)),
+                        cells: [
+                          const DataCell(SizedBox.shrink()),
+                          for (final c in columns)
+                            DataCell(c.sum
+                                ? Text(
+                                    recordSumText(group, c.name, _selected,
+                                        locale: Localizations.localeOf(context)
+                                            .toLanguageTag(),
+                                        numberLocale:
+                                            ref.watch(numberLocaleProvider)),
+                                    key: ValueKey('x2m-sum-${c.key}'),
+                                    textAlign: TextAlign.end,
+                                    style: const TextStyle(
+                                        fontSize: 11, fontWeight: FontWeight.w600))
+                                : const SizedBox.shrink()),
+                        ],
+                      ),
+                  ]),
               ),
             ),
           ), // Scrollbar

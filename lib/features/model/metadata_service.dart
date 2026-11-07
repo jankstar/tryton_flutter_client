@@ -145,6 +145,9 @@ class MetadataService {
 
   // ── MODELNAME ────────────────────────────────────────────────────────────
 
+  /// Translated name of [model] when the names are loaded (else null).
+  String? nameOf(String model) => _names[model];
+
   /// Translated name of [model] (`ir.model.get_names`, loaded once per
   /// language); '' when unknown.
   Future<String> name(String model) async {

@@ -444,4 +444,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get fuzzy => 'Approximative';
+
+  @override
+  String get columns => 'Colonnes';
+
+  @override
+  String get resetColumnWidths => 'Réinitialiser la largeur des colonnes';
+
+  @override
+  String get copySelectedRows => 'Copier les lignes sélectionnées';
 }

@@ -1,10 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../core/domain/domain_inversion.dart';
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart' hide TextField;
+import '../../core/pyson/pyson_evaluator.dart';
+import '../../core/rpc/rpc_cache.dart';
 import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
 import '../../core/serialization/tryton_serializer.dart';
@@ -13,6 +20,7 @@ import '../../core/xml/view_definition.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/utils/number_format_utils.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
+import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/field_definition.dart';
 import '../model/model_service.dart';
@@ -20,6 +28,7 @@ import '../model/toolbar_data.dart';
 import '../actions/action_service.dart';
 import '../shell/tab_manager.dart';
 import 'record_cells.dart';
+import 'record_link.dart' show parseHexColor;
 import 'search_box.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
@@ -54,12 +63,56 @@ class ListViewScreen extends ConsumerStatefulWidget {
 /// A visible row: record and depth (tree views).
 typedef _Row = ({Record record, int depth});
 
+/// Column widths per model and field (one entry per occurrence) set in
+/// this session (Python `Screen.tree_column_width`); they win over the
+/// `width` of the view.
+final Map<String, Map<String, List<int?>>> _treeColumnWidth = {};
+
+/// Hidden optional columns per view id (Python `tree_column_optional`).
+final Map<int?, Map<String, bool>> _treeColumnOptional = {};
+
+/// Clears the column widths/optional columns of the session (logout).
+void clearListCaches() {
+  _treeColumnWidth.clear();
+  _treeColumnOptional.clear();
+}
+
+/// Default column widths per field type (Python `_set_column_width`).
+const _defaultWidths = {
+  'integer': 80.0,
+  'selection': 90.0,
+  'reference': 200.0,
+  'one2many': 50.0,
+  'many2many': 50.0,
+  'boolean': 30.0,
+  'binary': 200.0,
+};
+
 class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   static const _displayStep = 100;
 
   ScreenView? _view;
-  List<TreeColumn> _columns = const [];
+
+  /// The parsed tree view (root attributes, columns, footer buttons).
+  TreeViewDefinition? _tree;
+
+  /// All columns of the view (one per occurrence); [_columns] are the
+  /// visible ones.
+  List<TreeColumn> _allColumns = const [];
   TrytonToolbar _toolbar = const TrytonToolbar();
+
+  /// Widths changed by the user (column key → px).
+  final Map<String, double> _resized = {};
+
+  /// After „Reset column widths“ the view's widths are ignored.
+  bool _widthsReset = false;
+
+  /// Text typed in the editable row, written on focus loss.
+  final Map<String, dynamic> _pending = {};
+
+  /// RPC cache (cleared after storing the tree state / resetting widths).
+  RpcCache? _rpcCache;
+  bool _treeStateLoaded = false;
 
   bool _loading = false;
 
@@ -101,6 +154,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   @override
   void dispose() {
+    _saveTreeState();
     _scrollController.dispose();
     _hScrollController.dispose();
     _listFocus.dispose();
@@ -158,15 +212,381 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final view = screen.currentView;
     if (view != null && view.viewType == 'tree') {
       _view = view;
-      _columns = [
-        for (final c in TreeXmlParser()
-            .parse(view.definition.arch, view.definition.rawFields)
-            .columns)
-          if (!c.treeInvisible) c
-      ];
+      _tree = TreeXmlParser()
+          .parse(view.definition.arch, view.definition.rawFields);
+      _allColumns = _tree!.columns;
     }
+    _rpcCache = ref.read(rpcClientProvider).cache;
     _loadToolbar(ref.read(modelServiceProvider));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadTreeState());
   }
+
+  // ─── Columns (spec 9.3.2) ─────────────────────────────────────────────────
+
+  /// Visible columns (Python `ViewTree.display`): not `tree_invisible`
+  /// (PYSON with the screen context), optional ones as chosen, not the
+  /// `exclude_field` and not a field with a unique value by the domain
+  /// (except in hierarchical trees).
+  List<TreeColumn> get _columns {
+    final screen = _screen;
+    final env = {...screen.context};
+    env['context'] = {...env};
+    final evaluator = PYSONEvaluator(env);
+    final optional = _treeColumnOptional[_view?.viewId] ?? const {};
+    var domain = <dynamic>[];
+    try {
+      domain = simplify([
+        if (screen.domain.isNotEmpty) screen.domain,
+        if (screen.tabIndex >= 0 && screen.tabIndex < screen.tabDomain.length &&
+            screen.tabDomain[screen.tabIndex].domain.isNotEmpty)
+          screen.tabDomain[screen.tabIndex].domain,
+      ]);
+    } catch (_) {}
+    bool invisible(TreeColumn c) {
+      try {
+        return PYSONEvaluator.truthy(evaluator.eval(c.treeInvisibleExpr));
+      } catch (_) {
+        return false;
+      }
+    }
+
+    return [
+      for (final c in _allColumns)
+        if (c.isButton)
+          if (!invisible(c)) c else ...[]
+        else if (!invisible(c) &&
+            !(c.optional != null && (optional[c.name] ?? c.optional!)) &&
+            c.name != screen.attributes.excludeField &&
+            !_uniqueByDomain(c.name, domain))
+          c
+    ];
+  }
+
+  /// [name] has one value by [domain] (the column says nothing).
+  bool _uniqueByDomain(String name, List<dynamic> domain) {
+    if (domain.isEmpty || _isHierarchical) return false;
+    final field = _screen.model.fields[name];
+    if (field == null) return false;
+    try {
+      var inverted = domainInversion(domain, name);
+      if (inverted is! bool) inverted = simplify(inverted);
+      return uniqueValue(inverted, singleValue: field.singleValue).$1;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Field columns of [_columns].
+  List<TreeColumn> get _fieldColumns => [
+        for (final c in _columns)
+          if (!c.isButton) c
+      ];
+
+  /// Width of [c]: resized, else stored this session, else of the view,
+  /// else by type (+20 with symbol).
+  double _widthOf(TreeColumn c) {
+    final resized = _resized[c.key];
+    if (resized != null) return resized;
+    if (!c.isButton) {
+      final stored = _treeColumnWidth[_model]?[c.name];
+      if (stored != null && c.occurrence < stored.length) {
+        final w = stored[c.occurrence];
+        if (w != null && w > 0) return w.toDouble();
+      }
+    }
+    if (!_widthsReset && c.width > 0) return c.width.toDouble();
+    return _computedWidth(c);
+  }
+
+  double _computedWidth(TreeColumn c) {
+    if (c.isButton) return 80;
+    final type = _fields[c.name]?.type;
+    if (type == null) return 80;
+    var w = _defaultWidths[type] ?? 100;
+    if (c.symbol != null) w += 20;
+    // headers of narrow types need some room for their label
+    return w < 30 ? 30 : w;
+  }
+
+  /// `ir.ui.view_tree_width.set_width` with the changed widths (per
+  /// occurrence; unchanged, hidden and expanding columns null, the last
+  /// visible column null – Python `save_width`).
+  Future<void> _saveWidths() async {
+    final visible = _fieldColumns;
+    final fields = <String, List<int?>>{};
+    for (final c in _allColumns) {
+      if (c.isButton) continue;
+      final w = _resized[c.key];
+      fields.putIfAbsent(c.name, () => []).add(
+          w == null || !visible.contains(c) || c.expand > 0 ? null : w.round());
+    }
+    if (visible.isNotEmpty) {
+      final last = visible.last;
+      final list = fields[last.name]!;
+      if (last.occurrence < list.length) list[last.occurrence] = null;
+    }
+    if (!fields.values.any((l) => l.any((w) => w != null))) return;
+    final width = MediaQuery.sizeOf(context).width.round();
+    _treeColumnWidth.putIfAbsent(_model, () => {}).addAll(fields);
+    try {
+      await _screen.model.related('ir.ui.view_tree_width').execute(
+          'set_width', [_model, fields, width],
+          processException: false);
+    } catch (_) {}
+  }
+
+  /// „Reset column widths“ (`reset_width`).
+  Future<void> _resetWidths() async {
+    final width = MediaQuery.sizeOf(context).width.round();
+    setState(() {
+      _resized.clear();
+      _widthsReset = true;
+      _treeColumnWidth.remove(_model);
+    });
+    try {
+      await _screen.model.related('ir.ui.view_tree_width').execute(
+          'reset_width', [_model, width],
+          processException: false);
+    } catch (_) {}
+    _rpcCache?.clear('model.$_model.fields_view_get');
+  }
+
+  /// Shows/hides the optional column [name] (`set_optional` with all
+  /// optional fields of the view).
+  Future<void> _toggleOptional(String name, bool visible) async {
+    final viewId = _view?.viewId;
+    final current = {..._treeColumnOptional[viewId] ?? const <String, bool>{}};
+    for (final c in _allColumns) {
+      if (c.optional != null && !c.isButton) {
+        current.putIfAbsent(c.name, () => c.optional!);
+      }
+    }
+    current[name] = !visible;
+    setState(() => _treeColumnOptional[viewId] = current);
+    if (viewId == null) return;
+    try {
+      await _screen.model.related('ir.ui.view_tree_optional').execute(
+          'set_optional', [viewId, current],
+          processException: false);
+    } catch (_) {}
+  }
+
+  // ─── Tree state (spec 8.8) ───────────────────────────────────────────────
+
+  bool get _hasTreeState =>
+      (_tree?.treeState ?? false) && _screen.group.parent == null;
+
+  String get _treeDomainJson =>
+      jsonEncode(TrytonSerializer.encode(_screen.domain));
+
+  /// `ir.ui.view_tree_state.get` → expanded and selected id paths.
+  Future<void> _loadTreeState() async {
+    if (_treeStateLoaded || !_hasTreeState || !mounted) return;
+    _treeStateLoaded = true;
+    try {
+      final result = await _screen.model
+          .related('ir.ui.view_tree_state')
+          .execute('get', [_model, _treeDomainJson, _fieldChilds],
+              processException: false);
+      if (result is! List || result.length < 2) return;
+      final expanded = jsonDecode('${result[0]}');
+      final selected = jsonDecode('${result[1]}');
+      if (_isHierarchical && expanded is List) {
+        for (final path in expanded) {
+          if (path is List) await _expandPath(path);
+        }
+      }
+      if (selected is List && selected.isNotEmpty && selected.first is List) {
+        final record = _recordAt(selected.first as List);
+        if (record != null && mounted) setState(() => _setSelected([record]));
+      }
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  /// The record at the id [path] (root id, child id, …), loading children.
+  Record? _recordAt(List path) {
+    RecordGroup? group = _screen.group;
+    Record? record;
+    for (final id in path) {
+      if (group == null || id is! int) return null;
+      record = group.get(id);
+      if (record == null) return null;
+      group = _childrenOf(record);
+    }
+    return record;
+  }
+
+  Future<void> _expandPath(List path) async {
+    RecordGroup group = _screen.group;
+    for (final id in path) {
+      if (id is! int) return;
+      final record = group.get(id);
+      if (record == null) return;
+      await record.load(_fieldChilds!, processException: false);
+      _expanded.add(record);
+      final children = _childrenOf(record);
+      if (children == null) return;
+      group = children;
+    }
+  }
+
+  /// Id path of [record] from the screen's group.
+  List<int> _pathOf(Record record) {
+    final path = [record.id];
+    var current = record;
+    while (!identical(current.group, _screen.group)) {
+      final parent = current.group.parent;
+      if (parent == null) break;
+      current = parent;
+      path.insert(0, current.id);
+    }
+    return path;
+  }
+
+  /// `ir.ui.view_tree_state.set` (on close, switch and new search).
+  void _saveTreeState() {
+    if (!_hasTreeState) return;
+    final expanded = [
+      for (final r in _expanded)
+        if (!r.destroyed && r.id >= 0) _pathOf(r)
+    ];
+    final selected = [
+      for (final r in _screen.selectedRecords)
+        if (!r.destroyed && r.id >= 0) _pathOf(r)
+    ];
+    final cache = _rpcCache;
+    _screen.model.related('ir.ui.view_tree_state').execute('set', [
+      _model,
+      _treeDomainJson,
+      _fieldChilds,
+      jsonEncode(expanded),
+      jsonEncode(selected),
+    ], processException: false).then((_) {
+      cache?.clear('model.ir.ui.view_tree_state.get');
+    }).catchError((Object _) {});
+  }
+
+  // ─── Copy (spec 9.3.4) ───────────────────────────────────────────────────
+
+  /// „Copy selected rows“: tab-separated text of the visible field columns
+  /// (Python `on_copy`).
+  Future<void> _copyRows() async {
+    final selected = _screen.selectedRecords;
+    if (selected.isEmpty) return;
+    final columns = _fieldColumns;
+    final dateFormat = ref.read(dateFormatProvider);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final numberLocale = ref.read(numberLocaleProvider);
+    String text(Record r, TreeColumn c) {
+      final fd = _fields[c.name];
+      if (isNumericField(fd)) {
+        final field = r.model.fields[c.name];
+        return formatNumericValue(field?.get(r),
+            digits: field is FloatField ? field.digits(r, factor: c.factor) : fd!.digits,
+            locale: locale,
+            numberLocale: numberLocale,
+            isInteger: fd!.type == 'integer',
+            factor: c.factor,
+            grouping: c.grouping);
+      }
+      return recordCellText(r, c.name, fd,
+          dateFormat: dateFormat, localeTag: locale, widget: c.widget);
+    }
+
+    final lines = [
+      for (final r in selected) [for (final c in columns) text(r, c)].join('\t')
+    ];
+    final data = selected.length > 1 ? lines.map((l) => '$l\n').join() : lines.single;
+    await Clipboard.setData(ClipboardData(text: data));
+  }
+
+  // ─── Editable list (spec 9.3.4) ──────────────────────────────────────────
+
+  /// Rows are edited inline (`editable="1"`, screen not readonly).
+  bool get _editableView => _view?.editable == true && _view?.viewType == 'tree' && (_tree?.editable ?? false);
+
+  /// Writes the text typed in the editable row of [record].
+  Future<void> _flushPending(Record record) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+    final pending = Map<String, dynamic>.from(_pending);
+    _pending.clear();
+    for (final MapEntry(key: name, value: value) in pending.entries) {
+      await setRecordWidgetValue(record, name, value);
+    }
+    await record.idle;
+  }
+
+  Future<void> _writeEdited(Record record, String name, dynamic value) async {
+    await _run(() => setRecordWidgetValue(record, name, value));
+    if (mounted) setState(() {});
+  }
+
+  /// Leaving the edited row (Python `__select_changed`): the record is
+  /// validated – an invalid row keeps the cursor; in a root list a
+  /// modified record is saved.
+  Future<bool> _leaveRow(Record? next) async {
+    final previous = _screen.currentRecord;
+    if (!_editableView ||
+        previous == null ||
+        identical(previous, next) ||
+        previous.destroyed ||
+        !_screen.group.contains(previous)) {
+      return true;
+    }
+    await _flushPending(previous);
+    final fields = [for (final c in _allColumns) if (!c.isButton) c.name];
+    if (!previous.validate(fields: fields)) {
+      if (mounted) {
+        final texts = _screen.invalidTexts?.call() ?? const InvalidMessages();
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(previous.invalidMessage(texts))));
+        setState(() {});
+      }
+      return false;
+    }
+    // (Child lists – pre_validate – are the x2many widget's business.)
+    if (_screen.group.parent == null &&
+        (previous.modified || previous.id < 0)) {
+      var saved = false;
+      await _run(() async => saved = await previous.save());
+      if (!saved) return false;
+    }
+    return true;
+  }
+
+  // ─── Drag and drop (sequence) ────────────────────────────────────────────
+
+  /// Rows can be reordered: `sequence` set, flat list, sequence field
+  /// writable for all records (Python `drag_data_received`).
+  bool get _reorderable {
+    final sequence = _tree?.sequence;
+    if (sequence == null || _isHierarchical || _screen.group.readonly) {
+      return false;
+    }
+    final field = _screen.model.fields[sequence];
+    if (field == null) return false;
+    for (final r in _screen.group) {
+      field.setState(r);
+      if (PYSONEvaluator.truthy(field.stateAttrs(r)['readonly'])) return false;
+    }
+    return true;
+  }
+
+  /// Moves the row [oldIndex] before [newIndex] and renumbers the sequence
+  /// (`set_sequence` with `new_position`); saved like other changes.
+  Future<void> _reorder(int oldIndex, int newIndex) => _run(() async {
+        final group = _screen.group;
+        if (oldIndex < 0 || oldIndex >= group.length) return;
+        final record = group.elementAt(oldIndex);
+        group.move(record, newIndex);
+        _setSelected([record]);
+        await group.setSequence(
+            field: _tree!.sequence!, position: _screen.newPosition);
+        if (mounted) setState(() {});
+      });
+
 
   Future<void> _loadToolbar(ModelService svc) async {
     try {
@@ -194,6 +614,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// Searches again (search text, tab, context form) from the first rows.
   Future<void> _search() => _run(() async {
         final screen = _screen;
+        _saveTreeState();
         setState(() {
           _loading = true;
           _visible = _displayStep;
@@ -226,12 +647,14 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// selects and a double click / Enter opens (like SAO).
   bool get _touch => isTouchPlatform(context);
 
-  void _tapRow(Record record) {
-    if (_touch) {
-      _openRecord(record);
+  Future<void> _tapRow(Record record) async {
+    if (_touch && !_editableView) {
+      await _openRecord(record);
       return;
     }
-    _listFocus.requestFocus();
+    if (!await _leaveRow(record)) return;
+    if (!mounted) return;
+    if (!_editableView) _listFocus.requestFocus();
     setState(() => _setSelected([record]));
   }
 
@@ -245,7 +668,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   /// Loads the row values of [record] (and its neighbours) once.
   void _ensureLoaded(Record record) {
-    final name = _columns.isNotEmpty ? _columns.first.name : 'rec_name';
+    final first = _allColumns.where((c) => !c.isButton).firstOrNull;
+    final name = first?.name ?? 'rec_name';
     if (record.destroyed ||
         !record.model.fields.containsKey(name) ||
         record.isLoaded(name) ||
@@ -306,7 +730,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// New record: the screen switches to the form (the list is not
   /// creatable) and adds it at `new_position` (spec 8.5).
   Future<void> _newRecord() => _run(() async {
-        await _screen.newRecord();
+        if (!await _leaveRow(null)) return;
+        final record = await _screen.newRecord();
+        // editable list: the new row at new_position is edited
+        if (record != null && mounted && _editableView) {
+          setState(() => _setSelected([record]));
+        }
       });
 
   /// Row activation (SAO `default_row_activate`): with `keyword_open` the
@@ -315,7 +744,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   Future<void> _openRecord(Record record) => _whileOpening(() async {
         final screen = _screen;
         _setSelected([record]);
-        if (_view?.attributes['keyword_open'] == '1' && record.id >= 0) {
+        if ((_tree?.keywordOpen ?? false) && record.id >= 0) {
           // Keyword action of the record (one runs, several are offered).
           await ref.read(actionServiceProvider).execKeyword(
               'tree_open',
@@ -344,9 +773,19 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     }
   }
 
+  /// Saves the edited row / the group (SAO `save_current` of a tree).
+  Future<void> _saveList() => _run(() async {
+        final current = _screen.currentRecord;
+        if (current != null) await _flushPending(current);
+        await _screen.saveCurrent();
+        if (mounted) setState(() {});
+      });
+
   /// Switch: the form of the first selected record (spec 8.2).
   Future<void> _switchToForm() => _whileOpening(() => _run(() async {
         final screen = _screen;
+        if (!await _leaveRow(null)) return;
+        _saveTreeState();
         final selected = screen.selectedRecords;
         screen.currentRecord = selected.isEmpty ? null : selected.first;
         await screen.switchView();
@@ -450,6 +889,13 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             icon: const Icon(Icons.add),
             tooltip: l.createNew,
             onPressed: _screen.canCreate ? _newRecord : null,
+          ),
+          // Save: changes of editable rows and of drag and drop
+          IconButton(
+            key: const ValueKey('list-save'),
+            icon: const Icon(Icons.save),
+            tooltip: l.save,
+            onPressed: _screen.modified() ? _saveList : null,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -676,6 +1122,15 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             focusNode: _listFocus,
             onKeyEvent: (node, event) {
               final selected = _screen.selectedRecords;
+              // Ctrl/Cmd+C: copy the selected rows (tab-separated)
+              final keyboard = HardwareKeyboard.instance;
+              if (event is KeyDownEvent &&
+                  event.logicalKey == LogicalKeyboardKey.keyC &&
+                  (keyboard.isControlPressed || keyboard.isMetaPressed) &&
+                  selected.isNotEmpty) {
+                _copyRows();
+                return KeyEventResult.handled;
+              }
               if (event is KeyDownEvent &&
                   (event.logicalKey == LogicalKeyboardKey.enter ||
                       event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
@@ -685,78 +1140,25 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
               }
               return KeyEventResult.ignored;
             },
-            child: _isHierarchical ? _buildTreeBody(rows) : _buildTableBody(rows),
+            child: _buildGrid(rows),
           ),
         ),
         if (_loading || _opening) const LinearProgressIndicator(),
+        ?_buildFooterButtons(),
       ],
     );
   }
 
-  // ─── Flat table view ─────────────────────────────────────────────────────
+  // ─── Table (spec 9.3) ───────────────────────────────────────────────────
 
-  /// Whether the list can be sorted by [column] (root lists, sortable
-  /// fields).
+  /// Whether the list can be sorted by [column] (Python: no `sequence`,
+  /// no `field_childs`, sortable field; root lists).
   bool _sortable(TreeColumn column) {
     final screen = _screen;
-    if (screen.group.parent != null) return false;
+    if (column.isButton || screen.group.parent != null) return false;
+    if (_tree?.sequence != null || _isHierarchical) return false;
     final desc = screen.model.fields[column.name]?.description;
     return desc != null && desc['sortable'] != false;
-  }
-
-  Widget _buildTableBody(List<_Row> rows) {
-    final screen = _screen;
-    final allSelected = _selected.length == rows.length && rows.isNotEmpty;
-    final sortIndex =
-        _columns.indexWhere((c) => screen.sortDirection(c.name) != null);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            scrollDirection: Axis.vertical,
-            child: Scrollbar(
-              controller: _hScrollController,
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                controller: _hScrollController,
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(
-                    Theme.of(context).colorScheme.surfaceContainerHighest,
-                  ),
-                  sortColumnIndex: sortIndex < 0 ? null : sortIndex + 1,
-                  sortAscending: sortIndex < 0 ||
-                      screen.sortDirection(_columns[sortIndex].name) == 'ASC',
-                  columns: [
-                    DataColumn(
-                      label: Checkbox(
-                        tristate: true,
-                        value: allSelected
-                            ? true
-                            : (_selected.isEmpty ? false : null),
-                        onChanged: (_) => _toggleSelectAll(rows),
-                      ),
-                    ),
-                    for (final col in _columns)
-                      DataColumn(
-                        label: Text(col.label),
-                        numeric: isNumericField(_fields[col.name]),
-                        onSort: _sortable(col)
-                            ? (_, _) => _sortBy(col.name)
-                            : null,
-                      ),
-                  ],
-                  rows: [for (final row in rows) _buildRow(row.record)],
-                ),
-              ),
-            ),
-          ),
-        ),
-        ?_buildSumRow(),
-      ],
-    );
   }
 
   Future<void> _sortBy(String name) => _run(() async {
@@ -771,95 +1173,478 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         }
       });
 
-  DataRow _buildRow(Record record) {
-    _ensureLoaded(record);
-    final isSelected = _selected.contains(record);
-    final visual = recordVisual(record, _view?.attributes['visual']);
-    return DataRow(
-      selected: isSelected,
-      color: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return Theme.of(context).colorScheme.primaryContainer.withAlpha(80);
+  static const _selectionWidth = 40.0;
+  static const _handleWidth = 28.0;
+  static const _menuWidth = 36.0;
+
+  /// The table: header, rows (flat, tree or reorderable), sum row, all
+  /// columns at their width (expanding ones share the free space).
+  Widget _buildGrid(List<_Row> rows) {
+    final columns = _columns;
+    final reorderable = _reorderable;
+    return LayoutBuilder(builder: (context, constraints) {
+      final widths = {for (final c in columns) c.key: _widthOf(c)};
+      final lead = _selectionWidth + (reorderable ? _handleWidth : 0);
+      var total = lead + _menuWidth + widths.values.fold(0.0, (a, b) => a + b);
+      final free = constraints.maxWidth - total;
+      final expanding = [for (final c in columns) if (c.expand > 0) c];
+      if (free > 0 && expanding.isNotEmpty) {
+        final weights = expanding.fold(0, (a, c) => a + c.expand);
+        for (final c in expanding) {
+          widths[c.key] = widths[c.key]! + free * c.expand / weights;
         }
-        return _visualRowColor(context, visual);
-      }),
-      cells: [
-        DataCell(
-          Checkbox(
-            value: isSelected,
-            onChanged: (_) => setState(() => _toggleSelected(record)),
+        total = constraints.maxWidth;
+      }
+      final width = total < constraints.maxWidth ? constraints.maxWidth : total;
+      final body = reorderable
+          ? ReorderableListView.builder(
+              scrollController: _scrollController,
+              buildDefaultDragHandles: false,
+              itemCount: rows.length,
+              // newIndex counts without the moved row; group.move (Python)
+              // counts with it
+              onReorderItem: (oldIndex, newIndex) => _reorder(
+                  oldIndex, newIndex > oldIndex ? newIndex + 1 : newIndex),
+              itemBuilder: (context, i) => _buildRow(rows[i], i, columns, widths,
+                  key: ObjectKey(rows[i].record), reorderable: true),
+            )
+          : ListView.builder(
+              controller: _scrollController,
+              itemCount: rows.length,
+              itemBuilder: (context, i) =>
+                  _buildRow(rows[i], i, columns, widths, key: ObjectKey(rows[i].record)),
+            );
+      return Scrollbar(
+        controller: _hScrollController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _hScrollController,
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: width,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(rows, columns, widths, reorderable),
+                Expanded(child: body),
+                ?_buildSumRow(columns, widths, reorderable),
+              ],
+            ),
           ),
         ),
-        for (final col in _columns)
-          DataCell(
-            _cell(record, col.name, const TextStyle(fontSize: 13)),
-            onTap: () => _tapRow(record),
-            onDoubleTap: _touch ? null : () => _openRecord(record),
-            onLongPress: _touch ? () => _longPressRow(record) : null,
-          ),
-      ],
-    );
+      );
+    });
   }
 
-  Widget _cell(Record record, String name, TextStyle style) {
-    final fd = _fields[name];
-    if (!record.isLoaded(name) && record.id >= 0) return const Text('');
-    return isNumericField(fd)
-        ? RecordNumericCell.of(record, name, fd!, style: style)
-        : RecordTextCell(record, name, fd, style: style);
-  }
-
-  /// Sum footer for the columns with `sum` (loaded records).
-  Widget? _buildSumRow() {
+  Widget _buildHeader(List<_Row> rows, List<TreeColumn> columns,
+      Map<String, double> widths, bool reorderable) {
     final screen = _screen;
-    final sumCols = _columns.where((c) => c.sum != null && c.sum!.isNotEmpty);
-    if (sumCols.isEmpty || screen.group.isEmpty) return null;
-
     final cs = Theme.of(context).colorScheme;
-    final locale = Localizations.localeOf(context).toLanguageTag();
-
+    final allSelected = _selected.length == rows.length && rows.isNotEmpty;
     return Container(
       color: cs.surfaceContainerHighest,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      height: 40,
       child: Row(children: [
-        // Checkbox column placeholder
-        const SizedBox(width: 48),
-        for (final col in _columns)
-          if (col.sum == null || col.sum!.isEmpty)
-            const Expanded(child: SizedBox.shrink())
-          else
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(col.sum!,
-                      style: TextStyle(fontSize: 10, color: cs.outline)),
-                  Text(
-                      formatNumericValue(_sum(screen.group, col.name),
-                          digits: _fields[col.name]?.digits,
-                          locale: locale,
-                          numberLocale: ref.watch(numberLocaleProvider)),
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600)),
-                ],
-              ),
+        SizedBox(
+          width: _selectionWidth,
+          child: Checkbox(
+            tristate: true,
+            value: allSelected ? true : (_selected.isEmpty ? false : null),
+            onChanged: (_) => _toggleSelectAll(rows),
+          ),
+        ),
+        if (reorderable) const SizedBox(width: _handleWidth),
+        for (final c in columns)
+          SizedBox(
+            width: widths[c.key],
+            child: _HeaderCell(
+              key: ValueKey('header-${c.key}'),
+              label: c.label,
+              help: c.help,
+              numeric: isNumericField(_fields[c.name]),
+              required: _editableView &&
+                  _screen.model.fields[c.name]?.description['required'] == true,
+              sortDirection: c.isButton ? null : screen.sortDirection(c.name),
+              onSort: _sortable(c) ? () => _sortBy(c.name) : null,
+              onResize: (dx) => setState(() {
+                _resized[c.key] =
+                    ((_resized[c.key] ?? widths[c.key]!) + dx).clamp(30.0, 2000.0);
+              }),
+              onResizeEnd: _saveWidths,
             ),
+          ),
+        SizedBox(width: _menuWidth, child: _buildColumnMenu()),
       ]),
     );
   }
 
-  static double _sum(RecordGroup group, String name) {
-    var total = 0.0;
-    for (final r in group) {
-      if (!r.isLoaded(name)) continue;
-      final v = r.model.fields[name]?.get(r);
-      if (v is num) {
-        total += v.toDouble();
-      } else if (v is TrytonDecimal) {
-        total += v.toDouble();
+  /// Menu of the header: optional columns, reset widths, copy rows.
+  Widget _buildColumnMenu() {
+    final l = context.l10n;
+    final optional = _treeColumnOptional[_view?.viewId] ?? const {};
+    final names = <String, String>{};
+    for (final c in _allColumns) {
+      if (c.optional != null && !c.isButton) {
+        names[c.name] = names.containsKey(c.name)
+            ? '${names[c.name]} / ${c.label}'
+            : c.label;
       }
     }
-    return total;
+    return PopupMenuButton<String>(
+      key: const ValueKey('list-column-menu'),
+      icon: const Icon(Icons.view_column_outlined, size: 18),
+      tooltip: l.columns,
+      padding: EdgeInsets.zero,
+      onSelected: (v) {
+        if (v == '__reset') {
+          _resetWidths();
+        } else if (v == '__copy') {
+          _copyRows();
+        } else {
+          final hidden = optional[v] ??
+              _allColumns.firstWhere((c) => c.name == v).optional!;
+          _toggleOptional(v, hidden);
+        }
+      },
+      itemBuilder: (context) => [
+        for (final MapEntry(key: name, value: label) in names.entries)
+          CheckedPopupMenuItem<String>(
+            value: name,
+            checked: !(optional[name] ??
+                _allColumns.firstWhere((c) => c.name == name).optional!),
+            child: Text(label),
+          ),
+        if (names.isNotEmpty) const PopupMenuDivider(),
+        PopupMenuItem(value: '__reset', child: Text(l.resetColumnWidths)),
+        PopupMenuItem(
+          value: '__copy',
+          enabled: _screen.selectedRecords.isNotEmpty,
+          child: Text(l.copySelectedRows),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRow(_Row row, int index, List<TreeColumn> columns,
+      Map<String, double> widths,
+      {required Key key, bool reorderable = false}) {
+    final record = row.record;
+    _ensureLoaded(record);
+    final cs = Theme.of(context).colorScheme;
+    final isSelected = _selected.contains(record);
+    final visual = recordVisual(record, _tree?.visual);
+    final editing = _editableView &&
+        identical(_screen.currentRecord, record) &&
+        !record.readonly;
+    final firstField = columns.where((c) => !c.isButton).firstOrNull;
+    final children = _childrenOf(record);
+    final hasChildren = _isHierarchical &&
+        (children == null ? record.id >= 0 : children.isNotEmpty);
+    final expanded = _expanded.contains(record);
+    Widget cell(TreeColumn c) {
+      Widget content = _cellContent(record, c, editing);
+      if (_isHierarchical && identical(c, firstField)) {
+        content = Row(children: [
+          SizedBox(width: row.depth * 20.0),
+          SizedBox(
+            width: 24,
+            child: hasChildren
+                ? IconButton(
+                    key: ValueKey('expand-${record.id}'),
+                    icon: Icon(expanded ? Icons.arrow_drop_down : Icons.arrow_right,
+                        color: cs.primary),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    onPressed: () => _toggleExpanded(record),
+                  )
+                : null,
+          ),
+          Expanded(child: content),
+        ]);
+      }
+      return SizedBox(
+        width: widths[c.key],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: content,
+        ),
+      );
+    }
+
+    return Material(
+      key: key,
+      color: isSelected
+          ? cs.primaryContainer.withAlpha(80)
+          : (_visualRowColor(context, visual) ?? Colors.transparent),
+      child: InkWell(
+        onTap: editing ? null : () => _tapRow(record),
+        onDoubleTap: _touch || editing ? null : () => _openRecord(record),
+        onLongPress: _touch && !editing ? () => _longPressRow(record) : null,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 36),
+          decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: cs.outlineVariant.withAlpha(80)))),
+          child: Row(children: [
+            SizedBox(
+              width: _selectionWidth,
+              child: Checkbox(
+                value: isSelected,
+                onChanged: (_) => setState(() => _toggleSelected(record)),
+              ),
+            ),
+            if (reorderable)
+              SizedBox(
+                width: _handleWidth,
+                child: ReorderableDragStartListener(
+                  key: ValueKey('drag-${record.id}'),
+                  index: index,
+                  child: Icon(Icons.drag_indicator, size: 18, color: cs.outline),
+                ),
+              ),
+            for (final c in columns) cell(c),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// A cell (spec 9.3.3): button, editor of the edited row, or the value
+  /// with prefixes/suffixes and the column's `visual`.
+  Widget _cellContent(Record record, TreeColumn c, bool editing) {
+    const style = TextStyle(fontSize: 13);
+    final button = c.button;
+    if (button != null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: RecordButton(
+            node: button,
+            record: record,
+            onPressed: (node) => _rowButton(record, node)),
+      );
+    }
+    final fd = _fields[c.name];
+    final field = record.model.fields[c.name];
+    if (editing && fd != null && field != null) {
+      return _editor(record, c);
+    }
+    if (!record.isLoaded(c.name) && record.id >= 0) return const Text('');
+    final visual = recordVisual(record, c.visual is String ? c.visual as String : null);
+    final color = switch (visual) {
+      'success' => Colors.green.shade700,
+      'warning' => Colors.orange.shade800,
+      'danger' => Theme.of(context).colorScheme.error,
+      'muted' => Theme.of(context).colorScheme.outline,
+      _ => null,
+    };
+    final textStyle = color == null ? style : style.copyWith(color: color);
+    Widget value;
+    switch (c.widget ?? fd?.type) {
+      case 'boolean':
+        value = Icon(
+            field?.get(record) == true ? Icons.check_box : Icons.check_box_outline_blank,
+            size: 18,
+            color: Theme.of(context).colorScheme.outline);
+      case 'progressbar':
+        final v = field?.get(record);
+        final p = v is num ? v.toDouble() : (v is TrytonDecimal ? v.toDouble() : 0.0);
+        value = Row(children: [
+          Expanded(child: LinearProgressIndicator(value: p.clamp(0.0, 1.0))),
+          const SizedBox(width: 4),
+          Text('${(p * 100).toStringAsFixed(0)} %', style: textStyle),
+        ]);
+      default:
+        value = isNumericField(fd)
+            ? RecordNumericCell.of(record, c.name, fd!,
+                style: textStyle,
+                factor: c.factor,
+                grouping: c.grouping,
+                symbol: c.symbol)
+            : RecordTextCell(record, c.name, fd, style: textStyle, widget: c.widget);
+    }
+    final prefixes = [
+      ..._linkPrefix(record, c),
+      for (final a in c.prefixes) _affix(record, a),
+      ..._referencePrefix(record, c),
+    ];
+    final suffixes = [for (final a in c.suffixes) _affix(record, a)];
+    if (prefixes.isEmpty && suffixes.isEmpty) return value;
+    return Row(children: [
+      ...prefixes,
+      Expanded(child: value),
+      ...suffixes,
+    ]);
+  }
+
+  /// Editor of the edited row: the form widget of the field (one-cell
+  /// form on the record, on_change and states like in forms).
+  Widget _editor(Record record, TreeColumn c) => RecordForm(
+        key: ValueKey('edit-${record.id}-${c.key}'),
+        model: _model,
+        root: FormRoot(col: 1, children: [
+          FieldNode(
+            name: c.name,
+            attrs: c.attrs,
+            widget: c.widget,
+            readonly: c.readonly,
+          ),
+        ]),
+        viewDef: _view!.definition,
+        record: record,
+        onTextChanged: (name, value) => _pending[name] = value,
+        onBlur: (name) {
+          if (_pending.containsKey(name)) {
+            _writeEdited(record, name, _pending.remove(name));
+          }
+        },
+        onChangedImmediate: (name, value) => _writeEdited(record, name, value),
+        isReadOnly: false,
+      );
+
+  /// url/email/callto/sip: a link icon before the value.
+  List<Widget> _linkPrefix(Record record, TreeColumn c) {
+    final scheme = c.widget;
+    if (scheme == null || !const {'url', 'email', 'callto', 'sip'}.contains(scheme)) {
+      return const [];
+    }
+    final value = record.model.fields[c.name]?.get(record);
+    if (value is! String || value.isEmpty) return const [];
+    final uri = switch (scheme) {
+      'email' => Uri.tryParse('mailto:$value'),
+      'callto' => Uri.tryParse('callto:$value'),
+      'sip' => Uri.tryParse('sip:$value'),
+      _ => Uri.tryParse(value.contains('://') ? value : 'http://$value'),
+    };
+    return [
+      InkWell(
+        onTap: uri == null ? null : () => launchUrl(uri),
+        child: Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: Icon(scheme == 'email' ? Icons.email_outlined : Icons.open_in_new,
+              size: 14, color: Theme.of(context).colorScheme.primary),
+        ),
+      ),
+    ];
+  }
+
+  /// Reference: the model label before the rec_name (Python
+  /// `_ReferenceSelection`).
+  List<Widget> _referencePrefix(Record record, TreeColumn c) {
+    final field = record.model.fields[c.name];
+    if (field is! ReferenceField) return const [];
+    final value = field.get(record);
+    final model = value is String && value.contains(',')
+        ? value.split(',').first
+        : (value is List && value.isNotEmpty ? '${value.first}' : null);
+    if (model == null || model.isEmpty) return const [];
+    final selection = _fields[c.name]?.selection;
+    final label = selection?.where((s) => '${s[0]}' == model).firstOrNull?[1] ??
+        ref.read(modelServiceProvider).metadata?.nameOf(model) ??
+        model;
+    return [
+      Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: Text('$label:',
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
+      ),
+    ];
+  }
+
+  /// `<prefix>`/`<suffix>`: icon (name or field value) or text.
+  Widget _affix(Record record, Map<String, dynamic> attrs) {
+    final string = attrs['string'];
+    if (string is String && string.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Text(string, style: const TextStyle(fontSize: 12)),
+      );
+    }
+    var icon = attrs['icon'];
+    final field = icon is String ? record.model.fields[icon] : null;
+    if (field != null) icon = field.get(record);
+    if (icon is! String || icon.isEmpty) return const SizedBox.shrink();
+    if (attrs['icon_type'] == 'url') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: ClipOval(
+            child: Image.network(icon, width: 18, height: 18,
+                errorBuilder: (_, _, _) => const SizedBox(width: 18))),
+      );
+    }
+    if (attrs['icon_type'] == 'color') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Container(width: 12, height: 12, color: parseHexColor(icon)),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: TrytonIcon(iconName: icon, size: 16),
+    );
+  }
+
+  /// A button of a row: the row is selected, then the button runs.
+  Future<void> _rowButton(Record record, ButtonNode node) => _run(() async {
+        if (!await _leaveRow(record)) return;
+        setState(() => _setSelected([record]));
+        await _screen.button(node);
+      });
+
+  /// Sum row (Python `update_with_selection`): „selected / all“ of the
+  /// loaded records per `sum` column, `-` while not all are loaded.
+  Widget? _buildSumRow(
+      List<TreeColumn> columns, Map<String, double> widths, bool reorderable) {
+    if (!columns.any((c) => c.sum) || _screen.group.isEmpty) return null;
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      key: const ValueKey('list-sum-row'),
+      color: cs.surfaceContainerHighest,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(children: [
+        SizedBox(width: _selectionWidth + (reorderable ? _handleWidth : 0)),
+        for (final c in columns)
+          SizedBox(
+            width: widths[c.key],
+            child: c.sum
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(_sumText(c),
+                        key: ValueKey('sum-${c.key}'),
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  )
+                : null,
+          ),
+      ]),
+    );
+  }
+
+  String _sumText(TreeColumn c) => recordSumText(
+      _screen.group, c.name, _screen.selectedRecords,
+      locale: Localizations.localeOf(context).toLanguageTag(),
+      numberLocale: ref.watch(numberLocaleProvider));
+
+  /// `<button multiple="1">`: buttons for the selected records.
+  Widget? _buildFooterButtons() {
+    final buttons = _tree?.buttons ?? const [];
+    if (buttons.isEmpty) return null;
+    final selected = _screen.selectedRecords;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Wrap(spacing: 8, runSpacing: 4, children: [
+        for (final b in buttons)
+          if (selected.isEmpty ||
+              !RecordButton.statesOf(b, selected.first).invisible)
+            OutlinedButton(
+              key: ValueKey('multi-button-${b.name}'),
+              onPressed: selected.isEmpty ||
+                      selected.any((r) => RecordButton.statesOf(b, r).readonly)
+                  ? null
+                  : () => _run(() => _screen.button(b)),
+              child: Text(b.string ?? b.name),
+            ),
+      ]),
+    );
   }
 
   Color? _visualRowColor(BuildContext ctx, String visual) {
@@ -870,112 +1655,82 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         return Colors.orange.withAlpha(40);
       case 'danger':
         return Theme.of(ctx).colorScheme.errorContainer.withAlpha(60);
+      case 'muted':
+        return Theme.of(ctx).colorScheme.surfaceContainerHigh;
       default:
         return null;
     }
   }
+}
 
-  // ─── Hierarchical tree view ───────────────────────────────────────────────
+/// Header of a column: label (tooltip `help`), sort arrow, resize handle.
+class _HeaderCell extends StatelessWidget {
+  final String label;
+  final String? help;
+  final bool numeric;
+  final bool required;
+  final String? sortDirection;
+  final VoidCallback? onSort;
+  final void Function(double dx) onResize;
+  final VoidCallback onResizeEnd;
 
-  /// Header row with column labels for the hierarchical tree.
-  Widget _buildTreeHeader() {
-    final screen = _screen;
-    return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(children: [
-        // Checkbox + expander space
-        const SizedBox(width: 52),
-        for (final col in _columns)
-          Expanded(
-            child: InkWell(
-              onTap: _sortable(col) ? () => _sortBy(col.name) : null,
-              child: Row(children: [
-                Flexible(
-                  child: Text(col.label,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-                if (screen.sortDirection(col.name) case final dir?)
-                  Icon(dir == 'ASC' ? Icons.arrow_upward : Icons.arrow_downward,
-                      size: 14),
-              ]),
-            ),
+  const _HeaderCell({
+    super.key,
+    required this.label,
+    this.help,
+    this.numeric = false,
+    this.required = false,
+    this.sortDirection,
+    this.onSort,
+    required this.onResize,
+    required this.onResizeEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget text = Text(label,
+        overflow: TextOverflow.ellipsis,
+        textAlign: numeric ? TextAlign.end : TextAlign.start,
+        style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            decoration: required ? TextDecoration.underline : null));
+    if (help != null) text = Tooltip(message: help!, child: text);
+    return Stack(children: [
+      Positioned.fill(
+        child: InkWell(
+          onTap: onSort,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(children: [
+              Expanded(child: text),
+              if (sortDirection != null)
+                Icon(sortDirection == 'ASC' ? Icons.arrow_upward : Icons.arrow_downward,
+                    size: 14),
+            ]),
           ),
-      ]),
-    );
-  }
-
-  Widget _buildTreeBody(List<_Row> rows) {
-    return ListView.builder(
-      controller: _scrollController,
-      // +1 for the header as the first item → no extra Column child needed
-      itemCount: rows.length + 1,
-      itemBuilder: (ctx, i) {
-        if (i == 0) return _buildTreeHeader();
-        return _buildTreeRow(ctx, rows[i - 1]);
-      },
-    );
-  }
-
-  Widget _buildTreeRow(BuildContext ctx, _Row row) {
-    final record = row.record;
-    _ensureLoaded(record);
-    final isSelected = _selected.contains(record);
-    final primary = Theme.of(ctx).colorScheme.primary;
-    final visual = recordVisual(record, _view?.attributes['visual']);
-    final children = _childrenOf(record);
-    final hasChildren = children != null && children.isNotEmpty;
-    final expanded = _expanded.contains(record);
-
-    return InkWell(
-      onTap: () => _tapRow(record),
-      onDoubleTap: _touch ? null : () => _openRecord(record),
-      onLongPress: _touch ? () => _longPressRow(record) : null,
-      child: Container(
-        color: isSelected
-            ? Theme.of(ctx).colorScheme.primaryContainer.withAlpha(80)
-            : _visualRowColor(ctx, visual),
-        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
-        child: Row(
-          children: [
-            // ① Selection checkbox – always far left, never indented (like SAO)
-            SizedBox(
-              width: 24,
-              child: Checkbox(
-                value: isSelected,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                onChanged: (_) => setState(() => _toggleSelected(record)),
-              ),
-            ),
-            // ② Indentation per depth level
-            SizedBox(width: row.depth * 20.0),
-            // ③ Expand/collapse button (like SAO: tryton-arrow-right/down)
-            SizedBox(
-              width: 24,
-              child: hasChildren
-                  ? IconButton(
-                      icon: Icon(
-                        expanded ? Icons.arrow_drop_down : Icons.arrow_right,
-                        color: primary,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 24, minHeight: 24),
-                      onPressed: () => _toggleExpanded(record),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 4),
-            for (final col in _columns)
-              Expanded(
-                child: _cell(record, col.name, const TextStyle(fontSize: 13)),
-              ),
-          ],
         ),
       ),
-    );
+      // resize handle at the right edge
+      Positioned(
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 8,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.resizeColumn,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragUpdate: (d) => onResize(d.delta.dx),
+            onHorizontalDragEnd: (_) => onResizeEnd(),
+            child: Center(
+              child: Container(
+                  width: 1, color: Theme.of(context).colorScheme.outlineVariant),
+            ),
+          ),
+        ),
+      ),
+    ]);
   }
 }
 

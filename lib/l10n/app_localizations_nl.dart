@@ -441,4 +441,13 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get fuzzy => 'Onzeker';
+
+  @override
+  String get columns => 'Kolommen';
+
+  @override
+  String get resetColumnWidths => 'Kolombreedtes herstellen';
+
+  @override
+  String get copySelectedRows => 'Geselecteerde rijen kopiëren';
 }

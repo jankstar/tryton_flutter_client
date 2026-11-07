@@ -386,5 +386,8 @@
   "saveBeforeTranslate": "Du måste spara posten innan du lägger till översättningar.",
   "noOtherLanguage": "Inget annat språk tillgängligt.",
   "edit": "Redigera",
-  "fuzzy": "Osäker"
+  "fuzzy": "Osäker",
+  "columns": "Kolumner",
+  "resetColumnWidths": "Återställ kolumnbredder",
+  "copySelectedRows": "Kopiera markerade rader"
 }

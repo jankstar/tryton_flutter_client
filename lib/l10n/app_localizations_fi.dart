@@ -441,4 +441,13 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get fuzzy => 'Epätarkka';
+
+  @override
+  String get columns => 'Sarakkeet';
+
+  @override
+  String get resetColumnWidths => 'Palauta sarakeleveydet';
+
+  @override
+  String get copySelectedRows => 'Kopioi valitut rivit';
 }

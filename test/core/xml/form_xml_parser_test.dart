@@ -188,4 +188,84 @@ void main() {
     expect(h.children, hasLength(2));
     expect(v.col, 1);
   });
+
+  group('tree (9.3)', () {
+    const treeFields = {
+      'create_date': {'type': 'timestamp', 'string': 'Created'},
+      'amount': {'type': 'numeric', 'string': 'Amount', 'symbol': 'currency'},
+      'name': {'type': 'char', 'string': 'Name', 'help': 'The name'},
+    };
+
+    test('root attributes', () {
+      final t = TreeXmlParser().parse(
+          '<tree editable="1" creatable="0" sequence="sequence" '
+          'tree_state="1" keyword_open="1" on_write="on_write_x" '
+          'visual="{}"/>',
+          treeFields);
+      expect(t.editable, isTrue);
+      expect(t.creatable, isFalse);
+      expect(t.sequence, 'sequence');
+      expect(t.treeState, isTrue);
+      expect(t.keywordOpen, isTrue);
+      expect(t.onWrite, 'on_write_x');
+      expect(t.visual, '{}');
+      final plain = TreeXmlParser().parse('<tree/>', treeFields);
+      expect((plain.editable, plain.creatable, plain.sequence, plain.treeState),
+          (false, true, null, false));
+    });
+
+    test('a field several times: one column per occurrence', () {
+      final t = TreeXmlParser().parse(
+          '<tree><field name="create_date" widget="date" string="Date"/>'
+          '<field name="create_date" widget="time" string="Hour"/>'
+          '<field name="name"/></tree>',
+          treeFields);
+      final [d, h, n] = t.columns;
+      expect((d.label, d.widget, d.occurrence), ('Date', 'date', 0));
+      expect((h.label, h.widget, h.occurrence), ('Hour', 'time', 1));
+      expect(d.key, isNot(h.key));
+      expect((n.label, n.widget, n.help), ('Name', 'char', 'The name'));
+    });
+
+    test('optional, sum, width, expand, tree_invisible, symbol, factor, '
+        'visual, prefix/suffix', () {
+      final t = TreeXmlParser().parse(
+          '<tree><field name="amount" sum="1" optional="0" width="120" '
+          'expand="2" factor="100" '
+          'visual="{&quot;__class__&quot;: &quot;If&quot;}" '
+          'tree_invisible="{&quot;__class__&quot;: &quot;Eval&quot;, '
+          '&quot;v&quot;: &quot;hide&quot;, &quot;d&quot;: false}">'
+          '<prefix name="name" icon="tryton-x"/><suffix string="%"/>'
+          '</field><field name="name" optional="1" tree_invisible="1"/>'
+          '<field name="create_date"/></tree>',
+          treeFields);
+      final [a, n, c] = t.columns;
+      expect(a.sum, isTrue);
+      expect(a.optional, isFalse, reason: 'optional="0": shown');
+      expect((a.width, a.expand, a.factor), (120, 2, 100));
+      expect(a.symbol, 'currency', reason: 'from the field');
+      expect(a.visual, '{"__class__": "If"}');
+      expect(a.treeInvisibleExpr, {'__class__': 'Eval', 'v': 'hide', 'd': false});
+      expect(a.treeInvisible, isFalse, reason: 'PYSON is evaluated later');
+      expect(a.prefixes.single['icon'], 'tryton-x');
+      expect(a.suffixes.single, containsPair('string', '%'));
+      expect(a.suffixes.single['name'], 'amount', reason: 'name of the field');
+      expect(n.optional, isTrue);
+      expect(n.treeInvisible, isTrue);
+      expect((c.sum, c.optional, c.width, c.expand), (false, null, 0, 0));
+    });
+
+    test('buttons: column, multiple in the footer', () {
+      final t = TreeXmlParser().parse(
+          '<tree><field name="name"/><button name="confirm" string="OK"/>'
+          '<button name="mass" string="Mass" multiple="1"/></tree>',
+          treeFields);
+      expect(t.columns, hasLength(2));
+      final b = t.columns.last;
+      expect(b.isButton, isTrue);
+      expect(b.button!.name, 'confirm');
+      expect(b.label, 'OK');
+      expect(t.buttons.single.name, 'mass');
+    });
+  });
 }

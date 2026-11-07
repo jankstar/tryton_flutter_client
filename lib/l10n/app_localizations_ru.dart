@@ -441,4 +441,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get fuzzy => 'Неточный';
+
+  @override
+  String get columns => 'Столбцы';
+
+  @override
+  String get resetColumnWidths => 'Сбросить ширину столбцов';
+
+  @override
+  String get copySelectedRows => 'Копировать выбранные строки';
 }

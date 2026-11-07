@@ -386,5 +386,8 @@
   "saveBeforeTranslate": "Tietue on tallennettava ennen käännösten lisäämistä.",
   "noOtherLanguage": "Muita kieliä ei ole saatavilla.",
   "edit": "Muokkaa",
-  "fuzzy": "Epätarkka"
+  "fuzzy": "Epätarkka",
+  "columns": "Sarakkeet",
+  "resetColumnWidths": "Palauta sarakeleveydet",
+  "copySelectedRows": "Kopioi valitut rivit"
 }

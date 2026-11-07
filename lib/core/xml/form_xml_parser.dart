@@ -41,7 +41,13 @@ class FormXmlParser {
       int.tryParse(el.getAttribute('col') ?? '') ?? defaultValue;
 
   /// Converted and completed attributes of [el].
-  Map<String, dynamic> _attributes(XmlElement el) {
+  Map<String, dynamic> _attributes(XmlElement el) => attributesOf(el, _fields);
+
+  /// Attributes of [el] converted (spec 9.1) and, for a node with a field
+  /// `name`, completed from its description in [fields] (Python
+  /// `XMLViewParser._node_attributes`); used by form and tree views.
+  static Map<String, dynamic> attributesOf(
+      XmlElement el, Map<String, dynamic> fields) {
     final attrs = <String, dynamic>{
       for (final a in el.attributes) a.localName: a.value
     };
@@ -63,7 +69,7 @@ class FormXmlParser {
       }
     }
     final name = attrs['name'];
-    final field = name is String ? _fields[name] : null;
+    final field = name is String ? fields[name] : null;
     if (field is Map) {
       attrs.putIfAbsent('widget', () => field['type']);
       final tag = el.name.local;
@@ -258,39 +264,76 @@ class FormXmlParser {
   }
 }
 
-/// Parses a tree-view `arch` into a `TreeViewDefinition`.
+/// Parses a tree-view `arch` into a `TreeViewDefinition` (spec 9.3,
+/// Python `TreeXMLViewParser`): one column per `<field>`/`<button>`
+/// occurrence in the XML (the same field may appear several times with
+/// its own `string`/`widget`), attributes converted and completed from
+/// [fields] like in forms; `<button multiple="1">` go to the footer.
 class TreeXmlParser {
   TreeViewDefinition parse(String arch, Map<String, dynamic> fields) {
     final doc = XmlDocument.parse(arch);
     final root = doc.rootElement;
-    final editable = root.getAttribute('editable') == '1';
-    final visual = root.getAttribute('visual');
+    final rootAttrs = {for (final a in root.attributes) a.localName: a.value};
 
     final columns = <TreeColumn>[];
+    final footer = <ButtonNode>[];
+    final occurrences = <String, int>{};
     for (final child in root.childElements) {
-      if (child.name.local != 'field') continue;
+      final tag = child.name.local;
+      if (tag == 'button') {
+        final button = FormXmlParser()._parseNode(child) as ButtonNode;
+        if ((int.tryParse(child.getAttribute('multiple') ?? '') ?? 0) != 0) {
+          footer.add(button);
+          continue;
+        }
+        columns.add(TreeColumn(
+          index: columns.length,
+          name: '',
+          label: button.string ?? '',
+          attrs: button.attrs,
+          button: button,
+        ));
+        continue;
+      }
+      if (tag != 'field') continue;
       final name = child.getAttribute('name') ?? '';
       if (name.isEmpty) continue;
-      final fieldDef = fields[name] as Map<String, dynamic>?;
+      final attrs = FormXmlParser.attributesOf(child, fields);
+      final fieldDef = fields[name];
       final label = child.getAttribute('string') ??
-          fieldDef?['string']?.toString() ??
+          (fieldDef is Map ? fieldDef['string']?.toString() : null) ??
           name;
-      final invisible = child.getAttribute('tree_invisible');
+      final occurrence = occurrences[name] = (occurrences[name] ?? 0) + 1;
+      // <prefix>/<suffix> children (name defaults to the field)
+      List<Map<String, dynamic>> affixes(String kind) => [
+            for (final a in child.childElements)
+              if (a.name.local == kind)
+                {
+                  'name': name,
+                  'visual': attrs['visual'],
+                  for (final at in a.attributes) at.localName: at.value,
+                }
+          ];
       columns.add(TreeColumn(
+        index: columns.length,
+        occurrence: occurrence - 1,
         name: name,
         label: label,
-        widget: child.getAttribute('widget'),
-        treeInvisible: invisible == '1' || invisible == 'true',
-        sum: child.getAttribute('sum'),
-        expand: child.getAttribute('expand') == '1',
+        attrs: attrs,
+        prefixes: affixes('prefix'),
+        suffixes: affixes('suffix'),
       ));
     }
 
     return TreeViewDefinition(
       columns: columns,
       fields: {},
-      editable: editable,
-      visual: visual,
+      editable: _flag(rootAttrs['editable']),
+      visual: rootAttrs['visual'],
+      attrs: rootAttrs,
+      buttons: footer,
     );
   }
+
+  static bool _flag(String? v) => (int.tryParse(v ?? '') ?? 0) != 0;
 }

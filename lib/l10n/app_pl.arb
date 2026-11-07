@@ -386,5 +386,8 @@
   "saveBeforeTranslate": "Musisz zapisać rekord przed dodaniem tłumaczeń.",
   "noOtherLanguage": "Brak innych dostępnych języków.",
   "edit": "Edytuj",
-  "fuzzy": "Niepewne"
+  "fuzzy": "Niepewne",
+  "columns": "Kolumny",
+  "resetColumnWidths": "Resetuj szerokości kolumn",
+  "copySelectedRows": "Kopiuj zaznaczone wiersze"
 }

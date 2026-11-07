@@ -440,4 +440,13 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get fuzzy => 'Osäker';
+
+  @override
+  String get columns => 'Kolumner';
+
+  @override
+  String get resetColumnWidths => 'Återställ kolumnbredder';
+
+  @override
+  String get copySelectedRows => 'Kopiera markerade rader';
 }
