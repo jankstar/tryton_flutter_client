@@ -371,8 +371,7 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
                   : isNumericField(fields[c.name])
                       ? RecordNumericCell.of(record, c.name, fields[c.name]!,
                           style: const TextStyle(fontSize: 13))
-                      : Text(recordCellText(record, c.name, fields[c.name]),
-                          overflow: TextOverflow.ellipsis,
+                      : RecordTextCell(record, c.name, fields[c.name],
                           style: const TextStyle(fontSize: 13)),
             ),
         ]),

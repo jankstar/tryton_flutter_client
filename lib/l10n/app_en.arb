@@ -595,5 +595,19 @@
   "selectMenuEntry": "Choose a menu entry",
   "@selectMenuEntry": {
     "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
-  }
+  },
+  "selectColor": "Select a color",
+  "@selectColor": {},
+  "addValue": "Add value",
+  "@addValue": {},
+  "translate": "Translate",
+  "@translate": {},
+  "saveBeforeTranslate": "You need to save the record before adding translations.",
+  "@saveBeforeTranslate": {},
+  "noOtherLanguage": "No other language available.",
+  "@noOtherLanguage": {},
+  "edit": "Edit",
+  "@edit": {},
+  "fuzzy": "Fuzzy",
+  "@fuzzy": {}
 }

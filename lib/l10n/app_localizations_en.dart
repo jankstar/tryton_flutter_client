@@ -419,4 +419,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Choose a menu entry';
+
+  @override
+  String get selectColor => 'Select a color';
+
+  @override
+  String get addValue => 'Add value';
+
+  @override
+  String get translate => 'Translate';
+
+  @override
+  String get saveBeforeTranslate =>
+      'You need to save the record before adding translations.';
+
+  @override
+  String get noOtherLanguage => 'No other language available.';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get fuzzy => 'Fuzzy';
 }

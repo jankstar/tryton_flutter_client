@@ -379,5 +379,12 @@
   "noFavorites": "Markera menyposter för att lägga till favoriter",
   "globalSearch": "Global sökning",
   "boardNotSupported": "Instrumentpaneler stöds inte ännu.",
-  "selectMenuEntry": "Välj en menypost"
+  "selectMenuEntry": "Välj en menypost",
+  "selectColor": "Välj en färg",
+  "addValue": "Lägg till värde",
+  "translate": "Översätt",
+  "saveBeforeTranslate": "Du måste spara posten innan du lägger till översättningar.",
+  "noOtherLanguage": "Inget annat språk tillgängligt.",
+  "edit": "Redigera",
+  "fuzzy": "Osäker"
 }

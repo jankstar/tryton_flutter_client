@@ -222,7 +222,10 @@ class ScreenView {
     return ScreenView._(
       definition,
       {for (final a in root.attributes) a.localName: a.value},
-      definition.type == 'form' ? FormXmlParser().parse(definition.arch) : null,
+      definition.type == 'form'
+          ? FormXmlParser()
+              .parse(definition.arch, fields: definition.rawFields)
+          : null,
       screenReadonly,
     );
   }
@@ -599,6 +602,13 @@ class TrytonScreen extends ChangeNotifier {
     }
     final view = ScreenView.parse(definition, screenReadonly: screenReadonly);
     if (view.formRoot != null) _applyViewAttributes(view.formRoot!.children);
+    // Root attribute `on_write` (SAO/Python `set_on_write`).
+    final onWrite = view.attributes['on_write'];
+    if (onWrite != null &&
+        onWrite.isNotEmpty &&
+        !group.onWrite.contains(onWrite)) {
+      group.onWrite = [...group.onWrite, onWrite];
+    }
     views.add(view);
     onViewAdded?.call(view);
     return view;

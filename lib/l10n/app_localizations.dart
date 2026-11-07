@@ -871,6 +871,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a menu entry'**
   String get selectMenuEntry;
+
+  /// No description provided for @selectColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a color'**
+  String get selectColor;
+
+  /// No description provided for @addValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Add value'**
+  String get addValue;
+
+  /// No description provided for @translate.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate'**
+  String get translate;
+
+  /// No description provided for @saveBeforeTranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'You need to save the record before adding translations.'**
+  String get saveBeforeTranslate;
+
+  /// No description provided for @noOtherLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'No other language available.'**
+  String get noOtherLanguage;
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
+
+  /// No description provided for @fuzzy.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuzzy'**
+  String get fuzzy;
 }
 
 class _AppLocalizationsDelegate

@@ -8,6 +8,8 @@ import '../../core/xml/view_definition.dart';
 import '../../shared/widgets/field_widget.dart';
 import '../model/field_definition.dart';
 import 'embedded_tree_widget.dart';
+import 'record_field_widgets.dart';
+import 'record_link.dart';
 import 'record_many2one.dart';
 import 'record_widget_values.dart';
 
@@ -32,6 +34,10 @@ class RecordForm extends StatefulWidget {
 
   /// Breadcrumb of the popups opened from this form.
   final List<String> breadcrumb;
+
+  /// Field not shown (the parent field of an x2many sub-form, spec 9.2.1
+  /// `exclude_field`).
+  final String? excludeField;
   /// Called when the user activates a <button> in the form.
   final Future<void> Function(ButtonNode)? onButton;
 
@@ -47,6 +53,7 @@ class RecordForm extends StatefulWidget {
     required this.isReadOnly,
     this.onButton,
     this.breadcrumb = const [],
+    this.excludeField,
   });
 
   @override
@@ -86,11 +93,17 @@ class _RecordFormState extends State<RecordForm> {
   }
 
 
-  // Tryton can use col="-1" or col="0" for flexible layouts.
-  // We normalise to at least 1 (default: 4).
-  static int _safeCol(int col) => col < 1 ? 4 : col;
+  /// Columns of a container: ≤ 0 = horizontal box (spec 9.2.2).
+  static int _safeCol(int col) => col;
 
-  Widget _renderNodes(List<FormNode> nodes, int totalCol) {
+  /// Lays out [nodes] in a grid of [col] columns (spec 9.2.2, GTK
+  /// `Container.add`): cells are placed row by row at fixed column
+  /// positions; `colspan` at most [col]; a cell that does not fit starts
+  /// a new row. `col ≤ 0` puts all cells in one row (horizontal box),
+  /// `col = 1` one below the other. Cells keep their position when they
+  /// are invisible; columns without a visible cell collapse.
+  Widget _renderNodes(List<FormNode> nodes, int col) {
+    final hbox = col <= 0;
     // Labels with fieldName are skipped. Their column width is transferred to
     // the immediately following Field-Node with the same name, so that no
     // gaps appear in the grid and the field uses the full available space.
@@ -103,93 +116,167 @@ class _RecordFormState extends State<RecordForm> {
     }
 
     // Rows of cells (List<_Cell>) or full-width widgets (notebook,
-    // separator); the grid rows are built at the end with the number of
-    // columns actually used.
+    // separator).
     final rows = <Object>[];
-    final currentRow = <_Cell>[];
-    int currentColUsed = 0;
+    var currentRow = <_Cell>[];
+    var used = 0;
 
     void flushRow() {
       if (currentRow.isEmpty) return;
-      rows.add(List<_Cell>.from(currentRow));
-      currentRow.clear();
-      currentColUsed = 0;
+      rows.add(currentRow);
+      currentRow = <_Cell>[];
+      used = 0;
     }
 
     for (final node in nodes) {
       // LabelNode with field name → skip (field shows label internally)
-      if (node is LabelNode && node.fieldName != null) continue;
+      // (`string=""` shows the field value instead, spec 9.2.1.)
+      if (node is LabelNode &&
+          node.fieldName != null &&
+          node.string != '' &&
+          _hasField(nodes, node.fieldName!)) {
+        continue;
+      }
 
       if (node is NewlineNode) {
-        flushRow();
+        if (!hbox) flushRow();
         continue;
       }
-      if (node is NotebookNode) {
+      if (!hbox && (node is NotebookNode || node is SeparatorNode)) {
+        // Full width (notebooks default to colspan 4, separators to col).
+        final cell = _cellOf(node, col);
+        if (cell == null) continue;
         flushRow();
-        rows.add(_buildNotebook(node));
+        rows.add(cell.visible ? cell.child : const SizedBox.shrink());
         continue;
       }
-      if (node is SeparatorNode) {
-        flushRow();
-        rows.add(_buildSeparator(node));
+
+      final cell = _cellOf(node, hbox ? 1 : col,
+          extraColspan: node is FieldNode ? labelColspanMap[node.name] ?? 0 : 0);
+      if (cell == null) continue;
+      if (hbox) {
+        currentRow.add(cell.at(currentRow.length, 1));
         continue;
       }
-
-      final w = _buildNode(node, totalCol);
-      if (w == null) continue;
-
-      // Field colspan + absorbed label colspan
-      int colspan = _getColspan(node, totalCol);
-      if (node is FieldNode) {
-        final extra = labelColspanMap[node.name] ?? 0;
-        colspan = (colspan + extra).clamp(1, totalCol);
-        // one2many / many2many tables always need full width – force it even
-        // when the XML omits an explicit colspan (Tryton forms always intend
-        // this, but our parser defaults to 1).
-        final fd = widget.viewDef.fields[node.name];
-        if (fd != null && (fd.type == 'one2many' || fd.type == 'many2many')) {
-          colspan = totalCol;
-        }
-      }
-
-      if (currentColUsed + colspan > totalCol) flushRow();
-      currentRow.add(_Cell(child: w, colspan: colspan));
-      currentColUsed += colspan;
-
-      if (colspan >= totalCol) flushRow();
+      if (used + cell.colspan > col) flushRow();
+      currentRow.add(cell.at(used, cell.colspan));
+      used += cell.colspan;
     }
     flushRow();
 
-    // Unused columns collapse (like the GTK/SAO grid, spec 9.2.2): e.g.
-    // `<form col="10">` with groups of colspan 1 gives each group the full
-    // width instead of 1/10.
-    var usedCols = 1;
-    for (final row in rows) {
-      if (row is List<_Cell>) {
-        final used = row.fold(0, (sum, c) => sum + c.colspan);
-        if (used > usedCols) usedCols = used;
-      }
-    }
-    final cols = usedCols.clamp(1, totalCol);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final row in rows)
-          if (row is List<_Cell>)
-            _GridRow(cells: row, totalCols: cols)
-          else
-            row as Widget,
-      ],
+    return _Grid(
+      rows: rows,
+      cols: hbox ? rows.whereType<List<_Cell>>().fold(1, (m, r) => r.length > m ? r.length : m) : col,
+      hbox: hbox,
     );
   }
 
-  Widget? _buildNode(FormNode node, int totalCol) {
-    if (node is FieldNode) return _buildField(node);
+  /// [nodes] (or their groups) contain a `<field>` named [name].
+  static bool _hasField(List<FormNode> nodes, String name) => nodes.any((n) =>
+      (n is FieldNode && n.name == name) ||
+      (n is GroupNode && _hasField(n.children, name)));
+
+  /// The cell of [node] in a container of [col] columns (null: no cell).
+  _Cell? _cellOf(FormNode node, int col, {int extraColspan = 0}) {
+    final maxCol = col < 1 ? 1 : col;
+    var colspan = switch (node) {
+      FieldNode() => node.colspan,
+      LabelNode() => node.colspan,
+      GroupNode() => node.colspan,
+      ButtonNode() => node.colspan,
+      LinkNode() => node.colspan,
+      ImageNode() => node.colspan,
+      SeparatorNode() => node.colspan,
+      NotebookNode() => node.colspan,
+      _ => 1,
+    };
+    colspan = (colspan + extraColspan).clamp(1, maxCol);
+    if (node is FieldNode) {
+      // one2many / many2many tables always need full width – force it even
+      // when the XML omits an explicit colspan (Tryton forms always intend
+      // this, but our parser defaults to 1).
+      final fd = widget.viewDef.fields[node.name];
+      if (fd != null && (fd.type == 'one2many' || fd.type == 'many2many')) {
+        colspan = maxCol;
+      }
+    }
+    // Invisible cells keep their position but are not built.
+    final visible = !_isInvisible(node);
+    final child = visible ? _buildNode(node) : const SizedBox.shrink();
+    if (child == null) return null;
+    // Labels and separator texts do not expand (xexpand 0), everything
+    // else does (default xexpand = 1).
+    final defaultExpand = node is! LabelNode;
+    return _Cell(
+      child: visible ? _sized(node, child) : const SizedBox.shrink(),
+      colspan: colspan,
+      visible: visible,
+      expand: node.xexpand ?? defaultExpand,
+      xalign: node.xalign ?? (node is LabelNode ? 1.0 : null),
+    );
+  }
+
+  /// `width`/`height` of the node as size request (GTK
+  /// `set_size_request`: a minimum, never more than the cell offers).
+  Widget _sized(FormNode node, Widget child) {
+    final w = node.width, h = node.height;
+    if ((w == null || w <= 0) && (h == null || h <= 0)) return child;
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minWidth: w != null && w > 0 ? w.toDouble() : 0,
+        minHeight: h != null && h > 0 ? h.toDouble() : 0,
+      ),
+      child: child,
+    );
+  }
+
+  /// The node is hidden by its `states` / field state (spec 9.2.3).
+  bool _isInvisible(FormNode node) {
+    switch (node) {
+      case FieldNode():
+        if (node.name == widget.excludeField) return true;
+        final field = _record.model.fields[node.name];
+        if (field == null) return false;
+        return PYSONEvaluator.truthy(_stateAttrs(field)['invisible']);
+      case LabelNode():
+        if (_nodeStates(node.states).invisible) return true;
+        final name = node.fieldName;
+        final field = name == null ? null : _record.model.fields[name];
+        return field != null &&
+            PYSONEvaluator.truthy(_stateAttrs(field)['invisible']);
+      case ButtonNode():
+        return RecordButton.statesOf(node, _record).invisible;
+      case PageNode():
+        return node.invisibleStatic || _nodeStates(node.statesRaw ?? node.states).invisible;
+      case GroupNode() || SeparatorNode() || LinkNode() || ImageNode() ||
+            NotebookNode():
+        return PYSONEvaluator.truthy(node.attrs['invisible']) ||
+            _nodeStates(node.states).invisible;
+      default:
+        return false;
+    }
+  }
+
+  Widget? _buildNode(FormNode node) {
+    if (node is FieldNode) return _withHelp(node, _buildField(node));
     if (node is LabelNode) return _buildLabel(node);
     if (node is GroupNode) return _buildGroup(node);
     if (node is ButtonNode) return _buildButton(node);
+    if (node is NotebookNode) return _buildNotebook(node);
+    if (node is SeparatorNode) return _buildSeparator(node);
+    if (node is LinkNode) {
+      return RecordLink(
+          key: ValueKey('link-${node.actionId}'), node: node, record: _record);
+    }
+    if (node is ImageNode) return RecordImage(node: node, record: _record);
     return null;
+  }
+
+  /// `help` of the field as tooltip (spec 9.2.3).
+  Widget _withHelp(FieldNode node, Widget child) {
+    final help = node.help;
+    if (help == null) return child;
+    return Tooltip(message: help, waitDuration: const Duration(milliseconds: 600), child: child);
   }
 
   Widget _buildField(FieldNode node) {
@@ -212,6 +299,28 @@ class _RecordFormState extends State<RecordForm> {
       return _buildX2ManyField(fd, field, readOnly, node);
     }
 
+    // Many2One / One2One with widget="selection": dropdown (9.2.4)
+    if ((fd.type == 'many2one' || fd.type == 'one2one') &&
+        node.widget == 'selection') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: RecordSelectionMany2One(
+          key: ValueKey('m2o-sel-${node.name}'),
+          args: RecordFieldArgs(
+            record: _record,
+            node: node,
+            fd: fd,
+            readOnly: readOnly,
+            required: PYSONEvaluator.truthy(attrs['required']),
+            invalid: invalid,
+            onText: (v) => widget.onChangedImmediate(node.name, v),
+            onBlur: () {},
+            onValue: (v) => widget.onChangedImmediate(node.name, v),
+          ),
+        ),
+      );
+    }
+
     // Many2One / One2One / Reference → widget on the record (9.2.6)
     if (fd.type == 'many2one' ||
         fd.type == 'one2one' ||
@@ -231,6 +340,24 @@ class _RecordFormState extends State<RecordForm> {
       );
     }
 
+    final args = RecordFieldArgs(
+      record: _record,
+      node: node,
+      fd: fd,
+      readOnly: readOnly,
+      required: PYSONEvaluator.truthy(attrs['required']),
+      invalid: invalid,
+      autofocus: widget.root.cursor == node.name,
+      onText: (v) => widget.onTextChanged(node.name, v),
+      onBlur: () => widget.onBlur(node.name),
+      onValue: (v) => widget.onChangedImmediate(node.name, v),
+    );
+    final special = _recordWidget(fd, node, args);
+    if (special != null) {
+      return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8), child: special);
+    }
+
     // Text-input fields: kept locally on keystroke, written to the record
     // (on_change) only on blur – like SAO's focus_out event.
     // Single-action fields (selection, date, many2one, boolean): written
@@ -238,7 +365,7 @@ class _RecordFormState extends State<RecordForm> {
     final isTextInput = fd.type == 'char' || fd.type == 'text' ||
         fd.type == 'integer' || fd.type == 'float' || fd.type == 'numeric';
 
-    return Padding(
+    final input = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: FieldWidget(
         field: fd,
@@ -254,6 +381,7 @@ class _RecordFormState extends State<RecordForm> {
         symbolRelation: _resolveSymbolRelation(node.symbol ?? fd.symbol),
         // widget= override from XML arch (e.g. "url", "email", "password").
         widgetOverride: node.widget,
+        autofocus: widget.root.cursor == node.name,
         model: widget.model,
         onChanged: isTextInput
             ? (v) => widget.onTextChanged(node.name, v)
@@ -261,6 +389,67 @@ class _RecordFormState extends State<RecordForm> {
         onBlur: isTextInput ? () => widget.onBlur(node.name) : null,
       ),
     );
+    // Translation dialog of translatable char/text fields (spec 9.2.5).
+    if (node.attrs['translate'] == true &&
+        (fd.type == 'char' || fd.type == 'text') &&
+        node.widget != 'password') {
+      return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: input),
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: IconButton(
+            key: ValueKey('translate-${node.name}'),
+            icon: const Icon(Icons.translate, size: 18),
+            tooltip: context.l10n.translate,
+            onPressed: () => _translate(node, fd.type == 'text'),
+          ),
+        ),
+      ]);
+    }
+    return input;
+  }
+
+  Future<void> _translate(FieldNode node, bool multiline) async {
+    // pending text of the field first (Python `view.set_value`)
+    widget.onBlur(node.name);
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    try {
+      await showTranslateDialog(context, _record, node.name,
+          multiline: multiline);
+    } catch (_) {
+      // errors were shown by the form's error handler
+    }
+    if (mounted) setState(() {});
+  }
+
+  /// Widgets on the record (spec 9.2.4) for numbers, date/time,
+  /// timedelta, multiselection, dict and the char widgets color, pyson and
+  /// html; null for the others (FieldWidget).
+  Widget? _recordWidget(FieldDefinition fd, FieldNode node, RecordFieldArgs args) {
+    final w = node.widget;
+    if (w == 'progressbar') return null;
+    switch (w) {
+      case 'color':
+        return RecordColorInput(args: args);
+      case 'pyson':
+        return RecordPysonInput(args: args);
+      case 'html':
+        return RecordHtmlButton(args: args);
+    }
+    switch (fd.type) {
+      case 'integer' || 'float' || 'numeric':
+        return RecordNumberInput(args: args);
+      case 'date' || 'datetime' || 'timestamp' || 'time':
+        return RecordDateInput(args: args);
+      case 'timedelta':
+        return RecordTimeDeltaInput(args: args);
+      case 'multiselection':
+        return RecordMultiSelection(args: args);
+      case 'dict':
+        return RecordDictField(args: args);
+    }
+    return null;
   }
 
   /// Returns the relation model name of a symbol field (e.g. 'res.currency').
@@ -306,33 +495,39 @@ class _RecordFormState extends State<RecordForm> {
   }
 
   Widget _buildLabel(LabelNode node) {
-    // Hide label for a field if the field itself is invisible
-    if (node.fieldName != null) {
-      final field = _record.model.fields[node.fieldName!];
-      if (field != null &&
-          PYSONEvaluator.truthy(_stateAttrs(field)['invisible'])) {
-        return const SizedBox.shrink();
-      }
-    }
-
+    final name = node.fieldName;
+    final field = name == null ? null : _record.model.fields[name];
     String text;
-    if (node.string != null) {
+    if (node.string == '' && field != null) {
+      // `string=""`: the value of the field (Python `Label.state_set`).
+      final value = field.getClient(_record);
+      text = value == null || value == false ? '' : '$value';
+    } else if (node.string != null) {
       text = node.string!;
-    } else if (node.fieldName != null) {
-      text = widget.viewDef.fields[node.fieldName!]?.label ?? node.fieldName!;
+    } else if (name != null) {
+      text = '${node.attrs['string'] ?? '${widget.viewDef.fields[name]?.label ?? name}:'}';
     } else {
       return const SizedBox.shrink();
     }
+    // required/readonly style of the field (or of the label states)
+    final states = _nodeStates(node.states);
+    final fieldStates = field == null ? const {} : _stateAttrs(field);
+    final required = PYSONEvaluator.truthy(fieldStates['required']);
+    final cs = Theme.of(context).colorScheme;
+    final xalign = node.xalign ?? 1.0;
     return Padding(
       padding: const EdgeInsets.only(top: 8, right: 4),
       child: Text(
-        '$text:',
+        text,
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: states.readonly ? cs.outline : cs.onSurfaceVariant,
+              fontWeight: required ? FontWeight.w600 : null,
             ),
-        textAlign: TextAlign.right,
+        textAlign: xalign >= 0.75
+            ? TextAlign.right
+            : (xalign <= 0.25 ? TextAlign.left : TextAlign.center),
       ),
     );
   }
@@ -341,7 +536,7 @@ class _RecordFormState extends State<RecordForm> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(children: [
-        if (node.string != null) ...[
+        if (node.string != null && node.string!.isNotEmpty) ...[
           // Flexible prevents overflow when the text is wider than available
           Flexible(
             child: Text(
@@ -359,9 +554,19 @@ class _RecordFormState extends State<RecordForm> {
     );
   }
 
+  /// `<group>`: frame with title, or expander with `expandable` (open at
+  /// `1`); `states` (invisible) are evaluated by the cell.
   Widget _buildGroup(GroupNode node) {
     final inner = _renderNodes(node.children, _safeCol(node.col));
-    if (node.string != null) {
+    if (node.expandable) {
+      return _GroupExpander(
+        key: ValueKey('group-${node.id ?? identityHashCode(node)}'),
+        title: node.string ?? '',
+        initiallyExpanded: node.expanded,
+        child: inner,
+      );
+    }
+    if (node.string != null && node.string!.isNotEmpty) {
       return Card(
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: Padding(
@@ -389,7 +594,7 @@ class _RecordFormState extends State<RecordForm> {
 
   Widget _buildNotebook(NotebookNode node) {
     // Filter pages based on their states/invisible conditions
-    final visiblePages = node.pages.where(_isPageVisible).toList();
+    final visiblePages = node.pages.where((p) => !_isInvisible(p)).toList();
     if (visiblePages.isEmpty) return const SizedBox.shrink();
 
     return DefaultTabController(
@@ -401,7 +606,18 @@ class _RecordFormState extends State<RecordForm> {
           TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: visiblePages.map((p) => Tab(text: _pageLabel(p))).toList(),
+            tabs: [
+              for (final p in visiblePages)
+                Tab(
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (p.icon != null) ...[
+                      TrytonIcon(iconName: p.icon, size: 16),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(_pageLabel(p)),
+                  ]),
+                ),
+            ],
           ),
           SizedBox(
             height: _estimateNotebookHeight(visiblePages),
@@ -409,7 +625,7 @@ class _RecordFormState extends State<RecordForm> {
               children: visiblePages.map((page) {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.only(top: 8),
-                  child: _renderNodes(page.children, _safeCol(widget.root.col)),
+                  child: _renderNodes(page.children, _safeCol(page.col)),
                 );
               }).toList(),
             ),
@@ -448,19 +664,6 @@ class _RecordFormState extends State<RecordForm> {
         .join(' ');
   }
 
-  /// Returns true when the page should be shown.
-  /// Evaluates static `invisible` attribute and PYSON `states` against
-  /// the current field values – same logic as SAO's page visibility check.
-  bool _isPageVisible(PageNode page) {
-    // Static invisible="1" → always hidden
-    if (page.invisibleStatic) return false;
-
-    // PYSON states evaluation
-    if (_nodeStates(page.statesRaw).invisible) return false;
-
-    return true;
-  }
-
   // Estimates the minimum height of a notebook based on the number of fields
   double _estimateNotebookHeight(List<PageNode> pages) {
     final maxFields = pages.fold<int>(0, (max, page) {
@@ -484,14 +687,6 @@ class _RecordFormState extends State<RecordForm> {
     );
   }
 
-  int _getColspan(FormNode node, int totalCol) {
-    final maxCol = _safeCol(totalCol); // Prevents clamp(1, 0) or clamp(1, -1)
-    if (node is FieldNode) return node.colspan.clamp(1, maxCol);
-    if (node is LabelNode) return node.colspan.clamp(1, maxCol);
-    if (node is GroupNode) return node.colspan.clamp(1, maxCol);
-    if (node is ButtonNode) return node.colspan.clamp(1, maxCol);
-    return 1;
-  }
 }
 
 // ─── Sticky button footer ─────────────────────────────────────────────────────
@@ -642,94 +837,207 @@ class _ClickCounter extends StatelessWidget {
 class _Cell {
   final Widget child;
   final int colspan;
-  const _Cell({required this.child, required this.colspan});
+
+  /// First column of the cell (set when it is placed).
+  final int column;
+  final bool visible;
+
+  /// `xexpand`: the cell's columns grow (else they take the cell's width).
+  final bool expand;
+  final double? xalign;
+  const _Cell({
+    required this.child,
+    required this.colspan,
+    this.column = 0,
+    this.visible = true,
+    this.expand = true,
+    this.xalign,
+  });
+
+  _Cell at(int column, int colspan) => _Cell(
+      child: child,
+      colspan: colspan,
+      column: column,
+      visible: visible,
+      expand: expand,
+      xalign: xalign);
 }
 
-class _GridRow extends StatelessWidget {
-  final List<_Cell> cells;
-  final int totalCols;
+/// Grid of a container (spec 9.2.2): rows of cells at fixed columns or
+/// full-width widgets. Columns with a visible expanding cell share the
+/// width; columns without a visible cell collapse; other columns take
+/// their cells' width. On narrow screens (or when the columns would get
+/// too narrow) the cells are laid out in one column, the labels above the
+/// fields (GTK `client.modepda`, SAO responsive).
+class _Grid extends StatelessWidget {
+  final List<Object> rows;
+  final int cols;
+  final bool hbox;
 
-  /// Minimum pixel width per base column. When the available width divided by
-  /// totalCols falls below this value, the effective column count is reduced
-  /// so that fields wrap to the next line instead of becoming too narrow.
+  /// Screen width below which forms use one column.
+  static const double narrowWidth = 600;
+
+  /// Minimum width per column before a container wraps.
   static const double _minColWidth = 160.0;
 
-  const _GridRow({required this.cells, required this.totalCols});
+  const _Grid({required this.rows, required this.cols, this.hbox = false});
 
   @override
   Widget build(BuildContext context) {
-    if (cells.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final available = constraints.maxWidth;
-        // How many base columns fit at the minimum width?
-        final effectiveCols =
-            (available / _minColWidth).floor().clamp(1, totalCols);
-
-        if (effectiveCols >= totalCols) {
-          return _buildRow(cells, totalCols);
-        }
-        // Re-layout: scale each colspan to the reduced column count and wrap.
-        return _buildWrapped(cells, totalCols, effectiveCols);
-      },
-    );
+    final screenWidth = MediaQuery.maybeSizeOf(context)?.width ?? double.infinity;
+    return LayoutBuilder(builder: (context, constraints) {
+      final narrow = screenWidth < narrowWidth ||
+          (cols > 1 && constraints.maxWidth / _usedCols < _minColWidth);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final row in rows)
+            if (row is List<_Cell>)
+              narrow ? _column(row) : _row(row)
+            else
+              row as Widget,
+        ],
+      );
+    });
   }
 
-  Widget _buildRow(List<_Cell> rowCells, int cols) {
-    if (rowCells.isEmpty) return const SizedBox.shrink();
-    final usedCols = rowCells.fold(0, (s, c) => s + c.colspan);
+  /// Columns actually used (unused trailing columns collapse, e.g.
+  /// `<form col="10">` with groups of colspan 1 in wizards).
+  int get _usedCols {
+    var used = 1;
+    for (final row in rows) {
+      if (row is List<_Cell> && row.isNotEmpty) {
+        final end = row.last.column + row.last.colspan;
+        if (end > used) used = end;
+      }
+    }
+    return used.clamp(1, cols < 1 ? 1 : cols);
+  }
 
-    if (rowCells.length == 1 && usedCols >= cols) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: rowCells.first.child,
-      );
+  /// Per column: has a visible cell / has a visible expanding cell.
+  ({List<bool> visible, List<bool> expand}) _columns() {
+    final n = _usedCols;
+    final visible = List.filled(n, false);
+    final expand = List.filled(n, false);
+    for (final row in rows) {
+      if (row is! List<_Cell>) continue;
+      for (final cell in row) {
+        if (!cell.visible) continue;
+        for (var c = cell.column; c < cell.column + cell.colspan && c < n; c++) {
+          visible[c] = true;
+          if (cell.expand) expand[c] = true;
+        }
+      }
+    }
+    return (visible: visible, expand: expand);
+  }
+
+  Widget _row(List<_Cell> cells) {
+    if (cells.every((c) => !c.visible)) return const SizedBox.shrink();
+    final columns = _columns();
+    final n = columns.visible.length;
+    int weight(int from, int to) {
+      var w = 0;
+      for (var c = from; c < to && c < n; c++) {
+        if (columns.expand[c]) w++;
+      }
+      return w;
     }
 
     final children = <Widget>[];
-    for (final cell in rowCells) {
-      children.add(Expanded(
-        flex: cell.colspan,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: cell.child,
-        ),
-      ));
+    var next = 0;
+    void gap(int to) {
+      final w = weight(next, to);
+      if (w > 0) children.add(Spacer(flex: w));
     }
-    final remaining = cols - usedCols;
-    if (remaining > 0) children.add(Spacer(flex: remaining));
+
+    for (final cell in cells) {
+      gap(cell.column);
+      final end = cell.column + cell.colspan;
+      final w = weight(cell.column, end);
+      final content = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: cell.child,
+      );
+      if (w > 0) {
+        // A non-expanding cell in expanding columns keeps its alignment.
+        children.add(Expanded(
+          flex: w,
+          child: cell.expand || cell.xalign == null
+              ? content
+              : Align(alignment: Alignment(cell.xalign! * 2 - 1, -1), child: content),
+        ));
+      } else if (cell.visible) {
+        // Own width, but never wider than the row (text inputs).
+        children.add(Flexible(child: content));
+      }
+      next = end;
+    }
+    gap(n);
+    if (hbox && children.isNotEmpty && !children.any((c) => c is Expanded || c is Spacer)) {
+      children.add(const Spacer());
+    }
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: children);
   }
 
-  Widget _buildWrapped(
-      List<_Cell> allCells, int origCols, int effectiveCols) {
-    final rows = <Widget>[];
-    final curRow = <_Cell>[];
-    int curUsed = 0;
+  /// One cell per line (narrow screens); labels left aligned above.
+  Widget _column(List<_Cell> cells) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final cell in cells)
+            if (cell.visible)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: cell.expand
+                    ? cell.child
+                    : Align(alignment: AlignmentDirectional.centerStart, child: cell.child),
+              ),
+        ],
+      );
+}
 
-    // A wrapped row fills the width (no gap on the right: the columns are
-    // no longer aligned anyway).
-    void flush() {
-      if (curRow.isEmpty) return;
-      rows.add(_buildRow(List.from(curRow), curUsed));
-      curRow.clear();
-      curUsed = 0;
-    }
+/// `<group expandable="0|1">` as expander (SAO/GTK `Expander`).
+class _GroupExpander extends StatefulWidget {
+  final String title;
+  final bool initiallyExpanded;
+  final Widget child;
+  const _GroupExpander(
+      {super.key,
+      required this.title,
+      required this.initiallyExpanded,
+      required this.child});
 
-    for (final cell in allCells) {
-      // Scale colspan proportionally; always at least 1, at most effectiveCols.
-      final scaled =
-          ((cell.colspan * effectiveCols) / origCols).ceil().clamp(1, effectiveCols);
-      if (curUsed + scaled > effectiveCols) flush();
-      curRow.add(_Cell(child: cell.child, colspan: scaled));
-      curUsed += scaled;
-      if (curUsed >= effectiveCols) flush();
-    }
-    flush();
+  @override
+  State<_GroupExpander> createState() => _GroupExpanderState();
+}
 
+class _GroupExpanderState extends State<_GroupExpander> {
+  late bool _expanded = widget.initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rows,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(children: [
+              Icon(_expanded ? Icons.expand_more : Icons.chevron_right,
+                  size: 20, color: cs.primary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(widget.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall),
+              ),
+            ]),
+          ),
+        ),
+        if (_expanded) widget.child,
+      ],
     );
   }
 }

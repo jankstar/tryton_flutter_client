@@ -2,10 +2,13 @@ import 'package:flutter/widgets.dart' show TextDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/locale_provider.dart';
+import '../../core/model/model.dart' show FloatField;
 import '../../core/session/session.dart';
 import '../actions/action_service.dart';
 import '../model/metadata_service.dart';
 import '../model/model_service.dart';
+import '../views/record_field_widgets.dart' show clearMany2OneSelectionCache;
+import '../views/record_link.dart';
 import 'auth_provider.dart';
 import 'user_preferences_provider.dart';
 
@@ -87,6 +90,8 @@ class SessionBootstrap {
     await applyLanguage(preferences['language'] as String?,
         preferences['language_direction'] as String?);
     metadata.clearNames();
+    clearLinkActionCache();
+    clearMany2OneSelectionCache();
     publish(preferences);
     return preferences;
   }
@@ -95,6 +100,9 @@ class SessionBootstrap {
   void clear() {
     publish(null);
     metadata.clear();
+    clearLinkActionCache();
+    FloatField.clearCaches();
+    clearMany2OneSelectionCache();
   }
 }
 

@@ -7,22 +7,16 @@ import 'field_definition.dart';
 /// read-only placeholder and never sent to write/create.
 const unsupportedFieldTypes = {
   'binary',
-  'dict',
-  'multiselection',
-  'timedelta',
-  'time',
 };
 
 /// `widget=` attributes without an own widget yet (E13), e.g.
-/// `<field name="photo" widget="image"/>` or a char with `widget="color"`.
+/// `<field name="photo" widget="image"/>` or a text with
+/// `widget="richtext"`.
 const unsupportedWidgets = {
   ...unsupportedFieldTypes,
   'image',
   'document',
   'richtext',
-  'html',
-  'color',
-  'pyson',
 };
 
 /// True when [type] / [widget] has no own representation in this client.

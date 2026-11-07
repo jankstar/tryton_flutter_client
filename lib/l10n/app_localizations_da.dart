@@ -419,4 +419,26 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Vælg et menupunkt';
+
+  @override
+  String get selectColor => 'Vælg en farve';
+
+  @override
+  String get addValue => 'Tilføj værdi';
+
+  @override
+  String get translate => 'Oversæt';
+
+  @override
+  String get saveBeforeTranslate =>
+      'Du skal gemme posten, før du tilføjer oversættelser.';
+
+  @override
+  String get noOtherLanguage => 'Intet andet sprog tilgængeligt.';
+
+  @override
+  String get edit => 'Rediger';
+
+  @override
+  String get fuzzy => 'Usikker';
 }

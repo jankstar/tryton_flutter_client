@@ -379,5 +379,12 @@
   "noFavorites": "Marque entradas del menú para añadir favoritos",
   "globalSearch": "Búsqueda global",
   "boardNotSupported": "Los paneles aún no son compatibles.",
-  "selectMenuEntry": "Elija una entrada del menú"
+  "selectMenuEntry": "Elija una entrada del menú",
+  "selectColor": "Seleccionar un color",
+  "addValue": "Añadir valor",
+  "translate": "Traducir",
+  "saveBeforeTranslate": "Debe guardar el registro antes de añadir traducciones.",
+  "noOtherLanguage": "No hay otro idioma disponible.",
+  "edit": "Editar",
+  "fuzzy": "Aproximada"
 }

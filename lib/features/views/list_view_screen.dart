@@ -13,6 +13,7 @@ import '../../core/xml/view_definition.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/utils/number_format_utils.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
+import '../auth/user_preferences_provider.dart';
 import '../model/field_definition.dart';
 import '../model/model_service.dart';
 import '../model/toolbar_data.dart';
@@ -61,6 +62,10 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   TrytonToolbar _toolbar = const TrytonToolbar();
 
   bool _loading = false;
+
+  /// A record is being opened (form view and record are loaded): shown
+  /// as progress bar, further opens are ignored.
+  bool _opening = false;
   final TextEditingController _searchCtrl = TextEditingController();
   final _scrollController = ScrollController();
   final _hScrollController = ScrollController();
@@ -307,7 +312,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// Row activation (SAO `default_row_activate`): with `keyword_open` the
   /// `tree_open` action of the record, otherwise the form of the record
   /// (same group and record).
-  Future<void> _openRecord(Record record) => _run(() async {
+  Future<void> _openRecord(Record record) => _whileOpening(() async {
         final screen = _screen;
         _setSelected([record]);
         if (_view?.attributes['keyword_open'] == '1' && record.id >= 0) {
@@ -328,13 +333,24 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         await screen.switchView(viewType: 'form');
       });
 
+  /// Runs [action] (opening a record) once at a time with progress bar.
+  Future<void> _whileOpening(Future<void> Function() action) async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    try {
+      await _run(action);
+    } finally {
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
   /// Switch: the form of the first selected record (spec 8.2).
-  Future<void> _switchToForm() => _run(() async {
+  Future<void> _switchToForm() => _whileOpening(() => _run(() async {
         final screen = _screen;
         final selected = screen.selectedRecords;
         screen.currentRecord = selected.isEmpty ? null : selected.first;
         await screen.switchView();
-      });
+      }));
 
   Future<void> _deleteSelected() async {
     final screen = _screen;
@@ -672,7 +688,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             child: _isHierarchical ? _buildTreeBody(rows) : _buildTableBody(rows),
           ),
         ),
-        if (_loading) const LinearProgressIndicator(),
+        if (_loading || _opening) const LinearProgressIndicator(),
       ],
     );
   }
@@ -790,8 +806,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     if (!record.isLoaded(name) && record.id >= 0) return const Text('');
     return isNumericField(fd)
         ? RecordNumericCell.of(record, name, fd!, style: style)
-        : Text(recordCellText(record, name, fd),
-            overflow: TextOverflow.ellipsis, style: style);
+        : RecordTextCell(record, name, fd, style: style);
   }
 
   /// Sum footer for the columns with `sum` (loaded records).
@@ -821,7 +836,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
                       style: TextStyle(fontSize: 10, color: cs.outline)),
                   Text(
                       formatNumericValue(_sum(screen.group, col.name),
-                          digits: _fields[col.name]?.digits, locale: locale),
+                          digits: _fields[col.name]?.digits,
+                          locale: locale,
+                          numberLocale: ref.watch(numberLocaleProvider)),
                       style: const TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w600)),
                 ],

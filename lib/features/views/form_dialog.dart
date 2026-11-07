@@ -179,6 +179,9 @@ class _FormDialogState extends ConsumerState<FormDialog> {
   }
 
   Future<void> _flushPending() async {
+    // Focused inputs (also of an inline x2many form) write on focus loss.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
     final record = _record;
     if (record == null) return;
     final pending = Map<String, dynamic>.from(_pending);

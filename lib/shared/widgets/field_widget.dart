@@ -46,6 +46,9 @@ class FieldWidget extends ConsumerWidget {
   /// Field is invalid (required/domain, spec 9.2.3 `has-error`): red border.
   final bool invalid;
 
+  /// Initial focus (`cursor` of the form, spec 9.2.2).
+  final bool autofocus;
+
   const FieldWidget({
     super.key,
     required this.field,
@@ -61,6 +64,7 @@ class FieldWidget extends ConsumerWidget {
     this.widgetOverride,
     this.model,
     this.invalid = false,
+    this.autofocus = false,
   });
 
   @override
@@ -110,24 +114,28 @@ class FieldWidget extends ConsumerWidget {
 
     switch (field.type) {
       case 'boolean':
-        return CheckboxListTile(
-          title: isRequired
-              ? RichText(
-                  text: TextSpan(
-                    text: field.label,
-                    style: DefaultTextStyle.of(context).style,
-                    children: const [
-                      TextSpan(
-                        text: ' *',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ],
-                  ),
-                )
-              : Text(field.label),
-          value: value as bool? ?? false,
-          onChanged: effective ? null : (v) => onChanged?.call(v),
-          contentPadding: EdgeInsets.zero,
+        // Checkbox and label (no ListTile: it asserts in narrow cells).
+        final label = isRequired
+            ? RichText(
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  text: field.label,
+                  style: DefaultTextStyle.of(context).style,
+                  children: const [
+                    TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              )
+            : Text(field.label, overflow: TextOverflow.ellipsis);
+        return InkWell(
+          onTap: effective ? null : () => onChanged?.call(!(value == true)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Checkbox(
+              value: value as bool? ?? false,
+              onChanged: effective ? null : (v) => onChanged?.call(v),
+            ),
+            Flexible(child: label),
+          ]),
         );
 
       case 'selection':
@@ -187,6 +195,7 @@ class FieldWidget extends ConsumerWidget {
           initialValue: _safeText(value),
           decoration: _decoration(context),
           readOnly: effective,
+          autofocus: autofocus,
           maxLines: 4,
           onChanged: onChanged,
           onBlur: onBlur,
@@ -213,6 +222,7 @@ class FieldWidget extends ConsumerWidget {
           initialValue: _safeText(value),
           decoration: _decoration(context),
           readOnly: effective,
+          autofocus: autofocus,
           onChanged: onChanged,
           onBlur: onBlur,
         );
@@ -263,7 +273,6 @@ class FieldWidget extends ConsumerWidget {
     return InputDecoration(
       label: labelWidget,
       labelText: labelWidget == null ? field.label : null,
-      helperText: field.help,
       border: const OutlineInputBorder(),
       suffixIcon: clearBtn,
       // has-error: red border without text (the message comes on save)
@@ -289,6 +298,7 @@ class _TextInputField extends StatefulWidget {
   final List<TextInputFormatter>? inputFormatters;
   final int? maxLines;
   final bool obscureText;
+  final bool autofocus;
   final void Function(dynamic)? onChanged;
   final VoidCallback? onBlur;
 
@@ -296,6 +306,7 @@ class _TextInputField extends StatefulWidget {
     required this.initialValue,
     required this.decoration,
     required this.readOnly,
+    this.autofocus = false,
     this.keyboardType,
     this.maxLines = 1,
     this.obscureText = false,
@@ -346,6 +357,7 @@ class _TextInputFieldState extends State<_TextInputField> {
     return TextFormField(
       controller: _ctrl,
       focusNode: _focus,
+      autofocus: widget.autofocus,
       decoration: widget.decoration,
       readOnly: widget.readOnly,
       keyboardType: widget.keyboardType,
@@ -665,60 +677,103 @@ class _LinkField extends StatelessWidget {
     this.onBlur,
   });
 
-  Uri? _buildUri(String text) {
-    if (text.isEmpty) return null;
+  /// The link of [text] (Python `URL`/`Email`/`CallTo`/`SIP` widgets).
+  static Uri? buildUri(String scheme, String text) {
+    final t = text.trim();
+    if (t.isEmpty) return null;
     switch (scheme) {
       case 'email':
-        return Uri.tryParse('mailto:$text');
+        return Uri.tryParse('mailto:$t');
       case 'callto':
-        return Uri.tryParse('tel:$text');
+        return Uri.tryParse('callto:$t');
       case 'sip':
-        return Uri.tryParse('sip:$text');
+        return Uri.tryParse('sip:$t');
       default:
         // 'url' — ensure scheme present
-        if (!text.startsWith('http://') && !text.startsWith('https://')) {
-          return Uri.tryParse('https://$text');
-        }
-        return Uri.tryParse(text);
+        if (!t.contains('://')) return Uri.tryParse('http://$t');
+        return Uri.tryParse(t);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final uri = readOnly ? _buildUri(value) : null;
-
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
-        suffixIcon: uri != null
-            ? IconButton(
-                icon: Icon(Icons.open_in_new, size: 16, color: cs.primary),
-                tooltip: value,
-                onPressed: () async {
+    // Button to open the link next to the input (also while editing).
+    return _LinkInput(
+      field: field,
+      initialValue: value,
+      readOnly: readOnly,
+      isRequired: isRequired,
+      onChanged: onChanged,
+      onBlur: onBlur,
+      button: (text) {
+        final uri = buildUri(scheme, text);
+        return IconButton(
+          key: ValueKey('open-${field.name}'),
+          icon: Icon(
+              switch (scheme) {
+                'email' => Icons.email_outlined,
+                'callto' || 'sip' => Icons.phone_outlined,
+                _ => Icons.open_in_new,
+              },
+              size: 18,
+              color: uri != null ? cs.primary : cs.outline),
+          tooltip: text,
+          onPressed: uri == null
+              ? null
+              : () async {
                   if (await canLaunchUrl(uri)) launchUrl(uri);
                 },
-              )
-            : null,
-      ),
-      child: readOnly
-          ? GestureDetector(
-              onTap: uri != null
-                  ? () async {
-                      if (await canLaunchUrl(uri)) launchUrl(uri);
-                    }
-                  : null,
-              child: Text(
-                value,
-                style: uri != null ? TextStyle(color: cs.primary, decoration: TextDecoration.underline) : null,
-              ),
-            )
-          : TextFormField(
-              initialValue: value,
-              decoration: const InputDecoration.collapsed(hintText: ''),
-              onChanged: onChanged,
-            ),
+        );
+      },
+    );
+  }
+}
+
+/// Text input of a link field whose button follows the typed text.
+class _LinkInput extends StatefulWidget {
+  final FieldDefinition field;
+  final String initialValue;
+  final bool readOnly;
+  final bool isRequired;
+  final void Function(dynamic)? onChanged;
+  final VoidCallback? onBlur;
+  final Widget Function(String text) button;
+  const _LinkInput({
+    required this.field,
+    required this.initialValue,
+    required this.readOnly,
+    required this.isRequired,
+    required this.button,
+    this.onChanged,
+    this.onBlur,
+  });
+
+  @override
+  State<_LinkInput> createState() => _LinkInputState();
+}
+
+class _LinkInputState extends State<_LinkInput> {
+  late String _text = widget.initialValue;
+
+  @override
+  void didUpdateWidget(_LinkInput old) {
+    super.didUpdateWidget(old);
+    if (old.initialValue != widget.initialValue) _text = widget.initialValue;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final f = FieldWidget(field: widget.field, value: null, isRequired: widget.isRequired);
+    return _TextInputField(
+      initialValue: widget.initialValue,
+      decoration: f._decoration(context).copyWith(suffixIcon: widget.button(_text)),
+      readOnly: widget.readOnly,
+      onChanged: (v) {
+        setState(() => _text = '$v');
+        widget.onChanged?.call(v);
+      },
+      onBlur: widget.onBlur,
     );
   }
 }

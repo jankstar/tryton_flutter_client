@@ -287,14 +287,14 @@ Duration? parseTimedelta(String? text, [Map<String, num>? converter]) {
       final pieces = part.split(':');
       for (var i = 0; i < pieces.length && i < 3; i++) {
         final v = atof(pieces[i]);
-        if (v != null) seconds += v.abs() * conv[units[i]]!;
+        if (v != null) seconds += v.abs() * (conv[units[i]] ?? 0);
       }
     } else {
       var matched = false;
       for (final sep in _separators) {
         if (part.endsWith(sep)) {
           final v = atof(part.substring(0, part.length - sep.length));
-          if (v != null) seconds += v.abs() * conv[sep]!;
+          if (v != null) seconds += v.abs() * (conv[sep] ?? 0);
           matched = true;
           break;
         }

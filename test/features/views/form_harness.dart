@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/model/model.dart' show FloatField;
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/features/auth/auth_provider.dart';
+import 'package:tryton_flutter_client/features/auth/user_preferences_provider.dart';
 import 'package:tryton_flutter_client/features/model/metadata_service.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
+import 'package:tryton_flutter_client/features/views/record_field_widgets.dart'
+    show clearMany2OneSelectionCache;
 import 'package:tryton_flutter_client/features/views/screen_widget.dart';
 import 'package:tryton_flutter_client/l10n/app_localizations.dart';
 
@@ -54,20 +58,33 @@ Future<void> pumpForm(WidgetTester tester, FakeFormRpc rpc,
         {required String model,
         required int recordId,
         bool settle = true,
-        bool metadata = false}) =>
+        bool metadata = false,
+        Map<String, dynamic>? preferences,
+        Map<String, dynamic> context = const {},
+        Size size = const Size(1400, 1000)}) =>
     pumpScreen(
         tester,
         rpc,
         ScreenAttributes(model,
-            mode: const ['form'], resId: recordId < 0 ? null : recordId),
+            mode: const ['form'],
+            resId: recordId < 0 ? null : recordId,
+            context: context),
         settle: settle,
-        metadata: metadata);
+        metadata: metadata,
+        preferences: preferences,
+        size: size);
 
 /// Pumps a [ScreenWidget] with [attributes] on [rpc] (English texts).
 Future<void> pumpScreen(
     WidgetTester tester, FakeFormRpc rpc, ScreenAttributes attributes,
-    {bool settle = true, bool metadata = false}) async {
-  tester.view.physicalSize = const Size(1400, 1000);
+    {bool settle = true,
+    bool metadata = false,
+    Map<String, dynamic>? preferences,
+    Size size = const Size(1400, 1000)}) async {
+  // digits/symbols are cached per session
+  FloatField.clearCaches();
+  clearMany2OneSelectionCache();
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   final svc = ModelService(
@@ -83,6 +100,8 @@ Future<void> pumpScreen(
     overrides: [
       rpcClientProvider.overrideWithValue(rpc),
       modelServiceProvider.overrideWithValue(svc),
+      if (preferences != null)
+        preferencesProvider.overrideWith((ref) => preferences),
     ],
     child: MaterialApp(
       locale: const Locale('en'),

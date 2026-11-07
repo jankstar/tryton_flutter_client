@@ -419,4 +419,26 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Escolha uma entrada do menu';
+
+  @override
+  String get selectColor => 'Selecionar uma cor';
+
+  @override
+  String get addValue => 'Adicionar valor';
+
+  @override
+  String get translate => 'Traduzir';
+
+  @override
+  String get saveBeforeTranslate =>
+      'Você precisa salvar o registro antes de adicionar traduções.';
+
+  @override
+  String get noOtherLanguage => 'Nenhum outro idioma disponível.';
+
+  @override
+  String get edit => 'Editar';
+
+  @override
+  String get fuzzy => 'Aproximada';
 }

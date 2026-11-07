@@ -419,4 +419,26 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Kies een menu-item';
+
+  @override
+  String get selectColor => 'Kies een kleur';
+
+  @override
+  String get addValue => 'Waarde toevoegen';
+
+  @override
+  String get translate => 'Vertalen';
+
+  @override
+  String get saveBeforeTranslate =>
+      'U moet het record opslaan voordat u vertalingen toevoegt.';
+
+  @override
+  String get noOtherLanguage => 'Geen andere taal beschikbaar.';
+
+  @override
+  String get edit => 'Bewerken';
+
+  @override
+  String get fuzzy => 'Onzeker';
 }

@@ -21,16 +21,9 @@ FieldDefinition fd(String type) =>
 void main() {
   for (final (type, widget) in [
     ('binary', null),
-    ('dict', null),
-    ('multiselection', null),
-    ('timedelta', null),
-    ('time', null),
     ('binary', 'image'),
     ('binary', 'document'),
     ('text', 'richtext'),
-    ('text', 'html'),
-    ('char', 'color'),
-    ('char', 'pyson'),
   ]) {
     testWidgets('$type/${widget ?? '-'} → read-only placeholder',
         (tester) async {

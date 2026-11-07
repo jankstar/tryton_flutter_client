@@ -379,5 +379,12 @@
   "noFavorites": "Zaznacz pozycje menu, aby dodać ulubione",
   "globalSearch": "Wyszukiwanie globalne",
   "boardNotSupported": "Pulpity nie są jeszcze obsługiwane.",
-  "selectMenuEntry": "Wybierz pozycję menu"
+  "selectMenuEntry": "Wybierz pozycję menu",
+  "selectColor": "Wybierz kolor",
+  "addValue": "Dodaj wartość",
+  "translate": "Przetłumacz",
+  "saveBeforeTranslate": "Musisz zapisać rekord przed dodaniem tłumaczeń.",
+  "noOtherLanguage": "Brak innych dostępnych języków.",
+  "edit": "Edytuj",
+  "fuzzy": "Niepewne"
 }

@@ -483,15 +483,132 @@ class FloatField extends Field {
     return double.tryParse(value.toString().trim());
   }
 
-  /// `[int, dec]` or null (SAO `digits`). A field name needs
-  /// `model.<relation>.get_digits` – STUB(D1 part 2): null.
-  List<int?>? digits(Record record, {num factor = 1}) {
+  /// `get_digits` results per `relation,id` – shared by all fields and
+  /// records of the session (Python caches per field; a list with 50 rows
+  /// and 3 amount columns would ask 150 times for the same currency).
+  static final Map<String, List<dynamic>> _digits = {};
+
+  /// `get_symbol` results per `relation,id` (shared like [_digits]).
+  static final Map<String, (String, double)> _symbols = {};
+
+  /// Running `get_digits` / `get_symbol` calls: further cells wait for
+  /// them instead of asking again.
+  static final Map<String, Future<void>> _pendingDigits = {};
+  static final Map<String, Future<void>> _pendingSymbols = {};
+
+  /// Forgets the digits and symbols (logout).
+  static void clearCaches() {
+    _digits.clear();
+    _symbols.clear();
+    _pendingDigits.clear();
+    _pendingSymbols.clear();
+  }
+
+  /// Relation and id of the digits field when `digits` names a field
+  /// (spec 5.6), with the cache key `relation,id`.
+  (String relation, int id, String key)? _digitsReference(Record record) {
     final digits = record.exprEval(description['digits']);
+    if (digits is! String) return null;
+    final field = record.model.fields[digits];
+    final id = field?.get(record);
+    final relation = field?.description['relation'];
+    if (relation is! String) return null;
+    if (id is! int || id < 0) return null;
+    return (relation, id, '$relation,$id');
+  }
+
+  /// `[int, dec]` or null (Python `FloatField.digits`): a list, PYSON, or
+  /// the name of a field whose record gives them (`get_digits`, loaded by
+  /// [loadDigits]); shifted by the [factor].
+  List<int?>? digits(Record record, {num factor = 1}) {
+    var digits = record.exprEval(description['digits']);
+    if (digits is String) {
+      final reference = _digitsReference(record);
+      digits = reference == null ? null : _digits[reference.$3];
+    }
     if (digits is! List || digits.length < 2) return null;
     final shift = (math.log(factor.abs()) / math.ln10).round();
     final intSize = digits[0] is num ? (digits[0] as num).toInt() + shift : null;
     final decSize = digits[1] is num ? (digits[1] as num).toInt() - shift : null;
     return [intSize, decSize];
+  }
+
+  /// Whether [digits] waits for a `get_digits` call of [loadDigits].
+  bool digitsPending(Record record) {
+    final reference = _digitsReference(record);
+    return reference != null && !_digits.containsKey(reference.$3);
+  }
+
+  /// Loads the digits of the referenced record
+  /// (`model.<relation>.get_digits(id)`), once per `relation,id`: a
+  /// running call is shared.
+  Future<void> loadDigits(Record record) {
+    final reference = _digitsReference(record);
+    if (reference == null || _digits.containsKey(reference.$3)) {
+      return Future.value();
+    }
+    final (relation, id, key) = reference;
+    return _pendingDigits[key] ??= () async {
+      try {
+        final result = await record.model
+            .related(relation)
+            .execute('get_digits', [id], processException: false);
+        _digits[key] = result is List ? result : const [null, null];
+      } catch (_) {
+        _digits[key] = const [null, null];
+      } finally {
+        _pendingDigits.remove(key);
+      }
+    }();
+  }
+
+  /// Relation, id and cache key of the [symbol] field's value.
+  static (String, int, String)? _symbolReference(Record record, String symbol) {
+    final field = record.model.fields[symbol];
+    final relation = field?.description['relation'];
+    final id = field?.get(record);
+    if (relation is! String || id is! int || id < 0) return null;
+    return (relation, id, '$relation,$id');
+  }
+
+  /// Symbol and position (< 0.5 prefix) of the [symbol] field's record
+  /// when loaded by [loadSymbol] (Python `get_symbol`), else null.
+  (String, double)? symbol(Record record, String symbol) {
+    final reference = _symbolReference(record, symbol);
+    return reference == null ? null : _symbols[reference.$3];
+  }
+
+  /// Loads `model.<relation>.get_symbol(id, sign)` of the [symbol] field
+  /// once per `relation,id` (like Python, the sign of the first value is
+  /// used); a running call is shared.
+  Future<void> loadSymbol(Record record, String symbol) {
+    final reference = _symbolReference(record, symbol);
+    if (reference == null || _symbols.containsKey(reference.$3)) {
+      return Future.value();
+    }
+    final (relation, id, key) = reference;
+    final value = get(record);
+    final number = value is TrytonDecimal ? value.toDouble() : value as num?;
+    final sign = number == null || number == 0 ? 0 : (number < 0 ? -1 : 1);
+    return _pendingSymbols[key] ??= () async {
+      try {
+        final result = await record.model.related(relation).execute(
+            'get_symbol', [id, sign],
+            context: record.getContext(), processException: false);
+        _symbols[key] = result is List && result.isNotEmpty
+            ? (
+                result[0] is String ? result[0] as String : '',
+                result.length > 1 && result[1] is num
+                    ? (result[1] as num).toDouble()
+                    : 1.0
+              )
+            : ('', 1.0);
+      } catch (_) {
+        _symbols[key] = ('', 1.0);
+      } finally {
+        _pendingSymbols.remove(key);
+      }
+    }();
   }
 
   /// Value ÷ [factor], rounded to the digits.

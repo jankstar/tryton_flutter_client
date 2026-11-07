@@ -418,4 +418,26 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Välj en menypost';
+
+  @override
+  String get selectColor => 'Välj en färg';
+
+  @override
+  String get addValue => 'Lägg till värde';
+
+  @override
+  String get translate => 'Översätt';
+
+  @override
+  String get saveBeforeTranslate =>
+      'Du måste spara posten innan du lägger till översättningar.';
+
+  @override
+  String get noOtherLanguage => 'Inget annat språk tillgängligt.';
+
+  @override
+  String get edit => 'Redigera';
+
+  @override
+  String get fuzzy => 'Osäker';
 }

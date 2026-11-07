@@ -379,5 +379,12 @@
   "noFavorites": "Cochez des entrées du menu pour ajouter des favoris",
   "globalSearch": "Recherche globale",
   "boardNotSupported": "Les tableaux de bord ne sont pas encore pris en charge.",
-  "selectMenuEntry": "Choisissez une entrée de menu"
+  "selectMenuEntry": "Choisissez une entrée de menu",
+  "selectColor": "Choisir une couleur",
+  "addValue": "Ajouter une valeur",
+  "translate": "Traduire",
+  "saveBeforeTranslate": "Vous devez enregistrer l'enregistrement avant d'ajouter des traductions.",
+  "noOtherLanguage": "Aucune autre langue disponible.",
+  "edit": "Modifier",
+  "fuzzy": "Approximative"
 }

@@ -211,8 +211,9 @@ void main() {
     });
     await pumpForm(tester, rpc, model: 'test.form', recordId: 1, settle: false);
     final list = find.byType(EmbeddedTreeWidget);
-    // row loaded through the child record
-    expect(find.text('7.00'), findsOneWidget);
+    // row loaded through the child record (float without digits: the
+    // value's own precision, Python `get_client`)
+    expect(find.text('7'), findsOneWidget);
 
     await tester.tap(find.descendant(of: list, matching: find.byType(Checkbox)).last);
     await pumpFrames(tester, 2);

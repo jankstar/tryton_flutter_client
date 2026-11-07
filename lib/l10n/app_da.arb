@@ -379,5 +379,12 @@
   "noFavorites": "Markér menupunkter for at tilføje favoritter",
   "globalSearch": "Global søgning",
   "boardNotSupported": "Dashboards understøttes endnu ikke.",
-  "selectMenuEntry": "Vælg et menupunkt"
+  "selectMenuEntry": "Vælg et menupunkt",
+  "selectColor": "Vælg en farve",
+  "addValue": "Tilføj værdi",
+  "translate": "Oversæt",
+  "saveBeforeTranslate": "Du skal gemme posten, før du tilføjer oversættelser.",
+  "noOtherLanguage": "Intet andet sprog tilgængeligt.",
+  "edit": "Rediger",
+  "fuzzy": "Usikker"
 }

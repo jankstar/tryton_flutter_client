@@ -8,20 +8,16 @@ FieldDefinition fd(String name, String type) =>
 
 void main() {
   group('isUnsupportedField', () {
-    for (final type in [
-      'binary', 'dict', 'multiselection', 'timedelta', 'time',
-    ]) {
-      test('type $type', () => expect(isUnsupportedField(type), isTrue));
-    }
-    for (final widget in [
-      'image', 'document', 'richtext', 'html', 'color', 'pyson',
-    ]) {
+    // Since E13 only binary and the image/document/richtext widgets.
+    test('type binary', () => expect(isUnsupportedField('binary'), isTrue));
+    for (final widget in ['image', 'document', 'richtext']) {
       test('widget $widget',
           () => expect(isUnsupportedField('char', widget), isTrue));
     }
     for (final type in [
       'char', 'text', 'integer', 'float', 'numeric', 'boolean', 'date',
       'datetime', 'selection', 'many2one', 'one2many', 'many2many',
+      'dict', 'multiselection', 'timedelta', 'time',
     ]) {
       test('supported type $type',
           () => expect(isUnsupportedField(type), isFalse));
@@ -30,6 +26,9 @@ void main() {
       expect(isUnsupportedField('char', 'url'), isFalse);
       expect(isUnsupportedField('char', 'password'), isFalse);
       expect(isUnsupportedField('float', 'progressbar'), isFalse);
+      for (final w in ['html', 'color', 'pyson']) {
+        expect(isUnsupportedField('char', w), isFalse);
+      }
     });
   });
 
@@ -45,8 +44,8 @@ void main() {
     };
 
     test('without a view: only unsupported types', () {
-      expect(unsupportedFieldNames(fields), {'photo', 'attrs', 'duration'},
-          reason: 'reference has its own widget');
+      expect(unsupportedFieldNames(fields), {'photo'},
+          reason: 'reference, dict, timedelta have own widgets');
     });
 
     test('unsupported widgets anywhere in the form tree', () {
@@ -59,13 +58,13 @@ void main() {
           ]),
         ]),
       ]);
-      expect(unsupportedFieldNames(fields, root),
-          {'photo', 'attrs', 'duration', 'colour', 'notes'});
+      expect(unsupportedFieldNames(fields, root), {'photo', 'notes'},
+          reason: 'color has a widget, richtext not');
     });
 
     test('a supported second occurrence keeps the field writable', () {
       const root = FormRoot(children: [
-        FieldNode(name: 'notes', widget: 'html'),
+        FieldNode(name: 'notes', widget: 'richtext'),
         FieldNode(name: 'notes'),
       ]);
       expect(unsupportedFieldNames(fields, root), isNot(contains('notes')));

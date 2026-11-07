@@ -349,6 +349,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   /// Writes all pending text input to the record.
   Future<void> _flushPending() async {
+    // Focused inputs (also of an inline x2many form) write on focus loss.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
     final record = _record;
     if (record == null) return;
     final pending = Map<String, dynamic>.from(_pending);
@@ -745,7 +748,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               ),
           ],
         ),
+        // Narrow screens: the actions scroll instead of overflowing.
         actions: [
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * 0.7),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
           // ── Navigation ────────────────────────────────────────────────
           IconButton(
             icon: const Icon(Icons.arrow_back_ios, size: 16),
@@ -899,6 +909,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             // Tab: asks via the tab's close guard; route: via PopScope.
             onPressed: () => widget.onClose?.call(),
           ),
+              ]),
+            ),
+          ),
         ],
       ),
       body: _buildBody(),
@@ -984,6 +997,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         : FormRoot(
             col: _formRoot!.col,
             children: rootChildren.where((n) => n is! ButtonNode).toList(),
+            attrs: _formRoot!.attrs,
           );
 
     final scrollBody = LayoutBuilder(

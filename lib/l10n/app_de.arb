@@ -379,5 +379,12 @@
   "noFavorites": "Menüeinträge mit dem Stern als Favoriten markieren",
   "globalSearch": "Globale Suche",
   "boardNotSupported": "Dashboards werden noch nicht unterstützt.",
-  "selectMenuEntry": "Wähle einen Menüeintrag"
+  "selectMenuEntry": "Wähle einen Menüeintrag",
+  "selectColor": "Farbe wählen",
+  "addValue": "Wert hinzufügen",
+  "translate": "Übersetzen",
+  "saveBeforeTranslate": "Sie müssen den Datensatz speichern, bevor Sie Übersetzungen hinzufügen.",
+  "noOtherLanguage": "Keine andere Sprache verfügbar.",
+  "edit": "Bearbeiten",
+  "fuzzy": "Unscharf"
 }

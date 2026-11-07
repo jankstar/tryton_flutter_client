@@ -3,15 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/model/model.dart';
 import '../../core/pyson/pyson_evaluator.dart';
+import '../../core/domain/date_text.dart';
+import '../../core/serialization/tryton_serializer.dart';
 import '../../shared/utils/date_format_utils.dart';
 import '../../shared/utils/number_format_utils.dart';
-import '../../shared/utils/symbol_cache.dart' as sym_cache;
+import '../auth/user_preferences_provider.dart';
 import '../model/field_definition.dart';
-import '../model/model_service.dart';
 
 /// Cell text of [name] in a list row (many2one/reference: rec_name,
-/// selection: label, boolean: ✓, x2many: count).
-String recordCellText(Record record, String name, FieldDefinition? fd) {
+/// selection/multiselection: labels, boolean: ✓, x2many: count, date and
+/// time in [dateFormat] / the field's time format, timedelta with the
+/// context converter).
+String recordCellText(Record record, String name, FieldDefinition? fd,
+    {String dateFormat = '%x', String? localeTag}) {
   final field = record.model.fields[name];
   if (field == null) return '';
   if (field is Many2OneField) return '${field.getClient(record)}';
@@ -23,6 +27,10 @@ String recordCellText(Record record, String name, FieldDefinition? fd) {
   final val = field.get(record);
   if (val == null || val == false) return '';
   if (field is BooleanField) return PYSONEvaluator.truthy(val) ? '✓' : '';
+  if (fd?.type == 'multiselection' && val is List) {
+    final labels = {for (final s in fd!.selection ?? const []) '${s[0]}': '${s[1]}'};
+    return [for (final v in val) labels['$v'] ?? '$v'].join(', ');
+  }
   if (fd?.type == 'selection' && fd!.selection != null) {
     final label = record.values['$name:string'];
     if (label is String && label.isNotEmpty) return label;
@@ -31,12 +39,51 @@ String recordCellText(Record record, String name, FieldDefinition? fd) {
         .firstOrNull;
     return match?[1]?.toString() ?? val.toString();
   }
-  // datetime: local time without milliseconds (DateTime.toString() would
-  // show "2026-10-26 14:30:00.000").
-  if (val is DateTime) return formatDateTimeValue(val);
+  String timeFormat() {
+    final f = record.exprEval(field.description['format']);
+    return f is String && f.isNotEmpty ? f : defaultTimeFormat;
+  }
+
+  if (val is TrytonDate) {
+    return formatDate(val.toDateTime(), dateFormat, localeTag);
+  }
+  // datetime: local time without milliseconds.
+  if (val is DateTime) {
+    return formatDate(val.toLocal(), '$dateFormat ${timeFormat()}', localeTag);
+  }
+  if (val is TrytonTime) {
+    return formatDate(
+        DateTime(2000, 1, 1, val.hour, val.minute, val.second), timeFormat());
+  }
+  if (val is Duration) {
+    final converter = field is TimeDeltaField ? field.converter(record.group) : null;
+    return formatTimedelta(val, converter is Map
+        ? {
+            for (final e in converter.entries)
+              if (e.value is num) '${e.key}': e.value as num
+          }
+        : null);
+  }
   // Prevent raw List/Map from leaking as toString()
   if (val is List || val is Map) return '';
   return val.toString();
+}
+
+/// [recordCellText] with the date format of the preferences.
+class RecordTextCell extends ConsumerWidget {
+  final Record record;
+  final String name;
+  final FieldDefinition? fd;
+  final TextStyle? style;
+  const RecordTextCell(this.record, this.name, this.fd, {super.key, this.style});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Text(
+      recordCellText(record, name, fd,
+          dateFormat: ref.watch(dateFormatProvider),
+          localeTag: Localizations.localeOf(context).toLanguageTag()),
+      overflow: TextOverflow.ellipsis,
+      style: style);
 }
 
 /// Touch devices (Android, iOS): tapping a row opens it, a long press
@@ -63,88 +110,87 @@ String recordVisual(Record record, String? visual) {
   }
 }
 
-/// Number cell of [name] with locale formatting and the currency/unit of
-/// the field's `symbol` field.
+/// Number cell of [name] with the number format of the preferences, the
+/// digits of the field (also `get_digits` of a referenced record) and the
+/// currency/unit of the field's `symbol` field (`get_symbol`).
 class RecordNumericCell extends ConsumerStatefulWidget {
-  final dynamic value;
+  final Record record;
+  final String name;
   final FieldDefinition field;
-
-  /// Id of the currency/unit (value of the `symbol` field).
-  final int? currencyId;
   final TextStyle? style;
 
   const RecordNumericCell(
       {super.key,
-      required this.value,
+      required this.record,
+      required this.name,
       required this.field,
-      this.currencyId,
       this.style});
 
   /// Cell of [name] of [record].
   factory RecordNumericCell.of(Record record, String name, FieldDefinition fd,
-      {TextStyle? style}) {
-    final symbol = fd.symbol;
-    final symbolValue =
-        symbol == null ? null : record.model.fields[symbol]?.get(record);
-    return RecordNumericCell(
-      value: record.model.fields[name]?.get(record),
-      field: fd,
-      currencyId: symbolValue is int ? symbolValue : null,
-      style: style,
-    );
-  }
+          {TextStyle? style}) =>
+      RecordNumericCell(record: record, name: name, field: fd, style: style);
 
   @override
   ConsumerState<RecordNumericCell> createState() => _RecordNumericCellState();
 }
 
 class _RecordNumericCellState extends ConsumerState<RecordNumericCell> {
-  String _symbol = '';
-  double _position = 1.0;
+  FloatField? get _field {
+    final f = widget.record.model.fields[widget.name];
+    return f is FloatField ? f : null;
+  }
+
+  String? get _symbol => widget.field.symbol;
 
   @override
   void initState() {
     super.initState();
-    _loadSymbol();
+    _load();
   }
 
   @override
   void didUpdateWidget(RecordNumericCell old) {
     super.didUpdateWidget(old);
-    if (old.currencyId != widget.currencyId) _loadSymbol();
+    _load();
   }
 
-  Future<void> _loadSymbol() async {
-    if (widget.field.symbol == null) return;
-    final id = widget.currencyId;
-    if (id == null || id <= 0) return;
-    const relation = 'res.currency';
-    final svc = ref.read(modelServiceProvider);
-    final (sym, pos) = await sym_cache.resolveSymbol(svc, relation, id);
-    if (sym.isNotEmpty && mounted) {
-      setState(() {
-        _symbol = sym;
-        _position = pos;
-      });
-    }
+  void _load() {
+    final field = _field;
+    if (field == null) return;
+    final record = widget.record;
+    final symbol = _symbol;
+    final futures = [
+      if (field.digitsPending(record)) field.loadDigits(record),
+      if (symbol != null && field.symbol(record, symbol) == null)
+        field.loadSymbol(record, symbol),
+    ];
+    if (futures.isEmpty) return;
+    Future.wait(futures).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final locale = Localizations.localeOf(context).toLanguageTag();
+    final field = _field;
+    final record = widget.record;
     final formatted = formatNumericValue(
-      widget.value,
-      digits: widget.field.digits,
-      locale: locale,
+      field?.get(record),
+      digits: field?.digits(record) ?? widget.field.digits,
+      locale: Localizations.localeOf(context).toLanguageTag(),
+      numberLocale: ref.watch(numberLocaleProvider),
       isInteger: widget.field.type == 'integer',
     );
-    final hasPrefix = _symbol.isNotEmpty && _position < 0.5;
-    final hasSuffix = _symbol.isNotEmpty && _position >= 0.5;
-    final text = hasPrefix
-        ? '$_symbol $formatted'
-        : hasSuffix
-            ? '$formatted $_symbol'
-            : formatted;
+    final symbolName = _symbol;
+    final symbol = symbolName == null || field == null
+        ? null
+        : field.symbol(record, symbolName);
+    final text = symbol == null || symbol.$1.isEmpty
+        ? formatted
+        : symbol.$2 < 0.5
+            ? '${symbol.$1} $formatted'
+            : '$formatted ${symbol.$1}';
     return Text(text,
         style: widget.style,
         overflow: TextOverflow.ellipsis,

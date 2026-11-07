@@ -176,6 +176,9 @@ class _WizardWidgetState extends ConsumerState<WizardWidget> {
   }
 
   Future<void> _flushPending() async {
+    // Focused inputs (also of an inline x2many form) write on focus loss.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
     final record = _wizard.screen?.currentRecord;
     if (record == null) return;
     final pending = Map<String, dynamic>.from(_pending);

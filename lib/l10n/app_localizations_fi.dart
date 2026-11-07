@@ -419,4 +419,26 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Valitse valikon kohta';
+
+  @override
+  String get selectColor => 'Valitse väri';
+
+  @override
+  String get addValue => 'Lisää arvo';
+
+  @override
+  String get translate => 'Käännä';
+
+  @override
+  String get saveBeforeTranslate =>
+      'Tietue on tallennettava ennen käännösten lisäämistä.';
+
+  @override
+  String get noOtherLanguage => 'Muita kieliä ei ole saatavilla.';
+
+  @override
+  String get edit => 'Muokkaa';
+
+  @override
+  String get fuzzy => 'Epätarkka';
 }

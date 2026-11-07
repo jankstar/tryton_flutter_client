@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../shared/utils/number_format_utils.dart';
 import 'auth_provider.dart';
 
 // ─── Data model ───────────────────────────────────────────────────────────────
@@ -66,4 +67,17 @@ final userPreferencesProvider = Provider<UserPreferences?>((ref) {
   if (preferences == null) return null;
   return UserPreferences.fromPreferences(
       preferences, ref.read(rpcClientProvider).baseUrl);
+});
+
+/// Number format of `preferences.locale` (spec 15.1/15.4); null without
+/// preferences – the widgets then use the app locale.
+final numberLocaleProvider = Provider<NumberLocale?>((ref) =>
+    NumberLocale.fromPreferences(ref.watch(preferencesProvider)?['locale']));
+
+/// Date format (strftime) of `preferences.locale.date` (spec 15.2),
+/// default `%x`.
+final dateFormatProvider = Provider<String>((ref) {
+  final locale = ref.watch(preferencesProvider)?['locale'];
+  final date = locale is Map ? locale['date'] : null;
+  return date is String && date.isNotEmpty ? date : '%x';
 });

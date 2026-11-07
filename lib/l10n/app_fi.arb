@@ -379,5 +379,12 @@
   "noFavorites": "Merkitse valikon kohtia suosikeiksi",
   "globalSearch": "Yleinen haku",
   "boardNotSupported": "Koontinäyttöjä ei vielä tueta.",
-  "selectMenuEntry": "Valitse valikon kohta"
+  "selectMenuEntry": "Valitse valikon kohta",
+  "selectColor": "Valitse väri",
+  "addValue": "Lisää arvo",
+  "translate": "Käännä",
+  "saveBeforeTranslate": "Tietue on tallennettava ennen käännösten lisäämistä.",
+  "noOtherLanguage": "Muita kieliä ei ole saatavilla.",
+  "edit": "Muokkaa",
+  "fuzzy": "Epätarkka"
 }

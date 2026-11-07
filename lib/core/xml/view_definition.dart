@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../features/model/field_definition.dart';
 
 // ─── ViewDefinition ───────────────────────────────────────────────────────────
@@ -36,19 +38,98 @@ class ViewDefinition {
 
 // ─── FormNode hierarchy ───────────────────────────────────────────────────────
 
+/// A node of a form view (spec 9.2.1).
 sealed class FormNode {
-  const FormNode();
+  /// The XML attributes of the node, converted (spec 9.1: `readonly`,
+  /// `homogeneous` → bool; `colspan`, `position`, `height`, `width`,
+  /// `xexpand`, `yexpand`, `xfill`, `yfill`, `expand` → int; `xalign`,
+  /// `yalign` → double) and, for nodes with a field `name`, completed with
+  /// the field description (Python `XMLViewParser._node_attributes`).
+  final Map<String, dynamic> attrs;
+  const FormNode([this.attrs = const {}]);
+
+  bool? _flag(String name) {
+    final v = attrs[name];
+    if (v == null) return null;
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    final i = int.tryParse('$v');
+    return i == null ? '$v'.toLowerCase() == 'true' : i != 0;
+  }
+
+  double? _double(String name) {
+    final v = attrs[name];
+    return v is num ? v.toDouble() : double.tryParse('${v ?? ''}');
+  }
+
+  int? _int(String name) {
+    final v = attrs[name];
+    return v is num ? v.toInt() : int.tryParse('${v ?? ''}');
+  }
+
+  String? _string(String name) {
+    final v = attrs[name];
+    return v == null ? null : '$v';
+  }
+
+  // Layout (spec 9.2.2); null = default of the element.
+  bool? get xexpand => _flag('xexpand');
+  bool? get xfill => _flag('xfill');
+  bool? get yexpand => _flag('yexpand');
+  bool? get yfill => _flag('yfill');
+  double? get xalign => _double('xalign');
+  double? get yalign => _double('yalign');
+  int? get height => _int('height');
+  int? get width => _int('width');
+
+  /// `id` of a group/page/link (link: the action id).
+  String? get id => _string('id');
+
+  /// Tooltip (`help`, of the field when not set).
+  String? get help {
+    final v = _string('help');
+    return v == null || v.isEmpty || v == 'false' ? null : v;
+  }
+
+  /// Decoded PYSON `states` (`invisible`, `readonly`, …) or null.
+  Map<String, dynamic>? get states {
+    final v = attrs['states'];
+    if (v is Map) return v.cast<String, dynamic>();
+    if (v is String && v.isNotEmpty) {
+      try {
+        final d = jsonDecode(v);
+        if (d is Map) return d.cast<String, dynamic>();
+      } catch (_) {}
+    }
+    return null;
+  }
 }
 
 class FormRoot extends FormNode {
+  /// Columns; ≤ 0 = horizontal box (spec 9.2.2).
   final int col;
   final List<FormNode> children;
-  const FormRoot({this.col = 4, required this.children});
+  const FormRoot({this.col = 4, required this.children, Map<String, dynamic> attrs = const {}})
+      : super(attrs);
+
+  /// Field with the initial focus.
+  String? get cursor => _string('cursor');
+
+  /// Method name of `group.on_write`.
+  String? get onWrite => _string('on_write');
+
+  /// Records can be created in this view (default true).
+  bool get creatable => _flag('creatable') ?? true;
+
+  /// `scan_code` (`one`, `submit`, `loop`) or null.
+  String? get scanCode => _string('scan_code');
 }
 
 class FieldNode extends FormNode {
   final String name;
   final int colspan;
+
+  /// `widget` of the XML, else the field type (spec 9.1).
   final String? widget;
   final bool? readonly;
   final bool? required;
@@ -60,13 +141,9 @@ class FieldNode extends FormNode {
   /// the record has a `currency` Many2One whose rec_name provides the symbol.
   final String? symbol;
 
-  /// All XML attributes of the `<field>` (e.g. `view_ids`, `completion`,
-  /// `create`, `delete`, `add_remove`, `size`, `mode`).
-  final Map<String, String> attributes;
-
   const FieldNode({
     required this.name,
-    this.attributes = const {},
+    Map<String, dynamic> attrs = const {},
     this.colspan = 1,
     this.widget,
     this.readonly,
@@ -74,20 +151,73 @@ class FieldNode extends FormNode {
     this.invisible,
     this.string,
     this.symbol,
-  });
+  }) : super(attrs);
+
+  /// All attributes (alias of [attrs]; e.g. `view_ids`, `completion`,
+  /// `create`, `delete`, `add_remove`, `size`, `mode`).
+  Map<String, dynamic> get attributes => attrs;
+
+  /// Views of an x2many field (`mode`, default `tree,form`).
+  List<String> get mode => [
+        for (final m in (_string('mode') ?? 'tree,form').split(','))
+          if (m.trim().isNotEmpty) m.trim()
+      ];
+
+  /// `view_ids` (ids; unknown entries as null).
+  List<int?> get viewIds => [
+        for (final part in (_string('view_ids') ?? '').split(','))
+          if (part.trim().isNotEmpty) int.tryParse(part.trim())
+      ];
+
+  /// Autocomplete of a many2one (`completion`, default on).
+  bool get completion => _flag('completion') ?? true;
+
+  /// `create` / `delete` of relation fields (null = not set).
+  bool? get create => _flag('create');
+  bool? get delete => _flag('delete');
+
+  /// `product="f1,f2"` of x2many fields.
+  List<String> get product => [
+        for (final p in (_string('product') ?? '').split(','))
+          if (p.trim().isNotEmpty) p.trim()
+      ];
+
+  bool get preValidate => _flag('pre_validate') ?? false;
+
+  /// Field holding the file name of a binary field.
+  String? get filename => _string('filename');
+  bool get filenameVisible => _flag('filename_visible') ?? false;
+
+  /// Spell checking language (PYSON) of text fields.
+  dynamic get spell => attrs['spell'];
+
+  /// Display factor of numbers (value × factor).
+  num get factor => num.tryParse('${attrs['factor'] ?? 1}') ?? 1;
+
+  /// Thousands grouping of numbers (default on).
+  bool get grouping => _flag('grouping') ?? true;
+
+  /// Time `format` (PYSON-encoded string) of date/time fields.
+  dynamic get format => attrs['format'];
+
+  /// Sub-view fields of an x2many read with the parent (`visible`).
+  bool get visible => _flag('visible') ?? false;
 }
 
 class LabelNode extends FormNode {
   final String? fieldName;
   final String? string;
   final int colspan;
-  const LabelNode({this.fieldName, this.string, this.colspan = 1});
+  const LabelNode({this.fieldName, this.string, this.colspan = 1, Map<String, dynamic> attrs = const {}})
+      : super(attrs);
 }
 
 class SeparatorNode extends FormNode {
   final String? string;
+  final String? name;
   final int colspan;
-  const SeparatorNode({this.string, this.colspan = 4});
+  const SeparatorNode({this.string, this.name, this.colspan = 4, Map<String, dynamic> attrs = const {}})
+      : super(attrs);
 }
 
 class NewlineNode extends FormNode {
@@ -95,24 +225,37 @@ class NewlineNode extends FormNode {
 }
 
 class GroupNode extends FormNode {
+  /// Columns; ≤ 0 = horizontal box (spec 9.2.2).
   final int col;
   final String? string;
   final int colspan;
+
+  /// `expandable` set: shown as expander ([expanded] = `1`).
   final bool expandable;
   final List<FormNode> children;
-  const GroupNode({this.col = 4, this.string, this.colspan = 1, this.expandable = false, required this.children});
+  const GroupNode({this.col = 4, this.string, this.colspan = 1, this.expandable = false, required this.children, Map<String, dynamic> attrs = const {}})
+      : super(attrs);
+
+  /// Expander initially open (`expandable="1"`).
+  bool get expanded => _string('expandable') == '1';
+
+  bool get homogeneous => _flag('homogeneous') ?? false;
 }
 
 class NotebookNode extends FormNode {
   final int colspan;
   final List<PageNode> pages;
-  const NotebookNode({this.colspan = 4, required this.pages});
+  const NotebookNode({this.colspan = 4, required this.pages, Map<String, dynamic> attrs = const {}})
+      : super(attrs);
 }
 
 class PageNode extends FormNode {
   final String string;
   final String? name;
   final List<FormNode> children;
+
+  /// Columns of the page (default 4).
+  final int col;
 
   /// Static invisible flag from `invisible="1"` XML attribute.
   final bool invisibleStatic;
@@ -125,9 +268,43 @@ class PageNode extends FormNode {
     required this.string,
     this.name,
     required this.children,
+    this.col = 4,
     this.invisibleStatic = false,
     this.statesRaw,
-  });
+    Map<String, dynamic> attrs = const {},
+  }) : super(attrs);
+
+  String? get icon => _string('icon');
+}
+
+/// `<link id="<action id>" icon="…" empty="hide"/>` (spec 9.2.1): a
+/// button with the action name and counters.
+class LinkNode extends FormNode {
+  final int colspan;
+  const LinkNode({this.colspan = 1, Map<String, dynamic> attrs = const {}}) : super(attrs);
+
+  int? get actionId => _int('id');
+  String? get icon => _string('icon');
+
+  /// `empty="hide"`: hidden while all counters are 0.
+  bool get hideEmpty => _string('empty') == 'hide';
+}
+
+/// `<image name="…" type="icon|url|color" size="48" border="…"/>`.
+class ImageNode extends FormNode {
+  final int colspan;
+  const ImageNode({this.colspan = 1, Map<String, dynamic> attrs = const {}}) : super(attrs);
+
+  /// Icon name, URL, colour – or the name of a field holding it.
+  String get name => _string('name') ?? '';
+
+  /// `icon` (default), `url` or `color`.
+  String get type => _string('type') ?? 'icon';
+  int get size => _int('size') ?? 48;
+
+  /// `rounded` or `circle`.
+  String? get border => _string('border');
+  String? get urlSize => _string('url_size');
 }
 
 class ButtonNode extends FormNode {
@@ -135,7 +312,6 @@ class ButtonNode extends FormNode {
   final String? string;
   final int colspan;
   final String? icon;
-  final String? states;
 
   /// Decoded PYSON states map – ready for PYSONEvaluator.
   final Map<String, dynamic>? statesRaw;
@@ -163,14 +339,14 @@ class ButtonNode extends FormNode {
     this.string,
     this.colspan = 1,
     this.icon,
-    this.states,
     this.statesRaw,
     this.confirm,
     this.keyword,
     this.type,
     this.change,
     this.rule = false,
-  });
+    Map<String, dynamic> attrs = const {},
+  }) : super(attrs);
 
   bool get isInstance => type == 'instance';
 }

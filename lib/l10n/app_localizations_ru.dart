@@ -419,4 +419,26 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Выберите пункт меню';
+
+  @override
+  String get selectColor => 'Выберите цвет';
+
+  @override
+  String get addValue => 'Добавить значение';
+
+  @override
+  String get translate => 'Перевести';
+
+  @override
+  String get saveBeforeTranslate =>
+      'Перед добавлением переводов необходимо сохранить запись.';
+
+  @override
+  String get noOtherLanguage => 'Другие языки недоступны.';
+
+  @override
+  String get edit => 'Изменить';
+
+  @override
+  String get fuzzy => 'Неточный';
 }

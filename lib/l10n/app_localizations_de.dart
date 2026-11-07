@@ -421,4 +421,26 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get selectMenuEntry => 'Wähle einen Menüeintrag';
+
+  @override
+  String get selectColor => 'Farbe wählen';
+
+  @override
+  String get addValue => 'Wert hinzufügen';
+
+  @override
+  String get translate => 'Übersetzen';
+
+  @override
+  String get saveBeforeTranslate =>
+      'Sie müssen den Datensatz speichern, bevor Sie Übersetzungen hinzufügen.';
+
+  @override
+  String get noOtherLanguage => 'Keine andere Sprache verfügbar.';
+
+  @override
+  String get edit => 'Bearbeiten';
+
+  @override
+  String get fuzzy => 'Unscharf';
 }

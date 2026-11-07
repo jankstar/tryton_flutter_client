@@ -14,6 +14,8 @@ import '../model/field_definition.dart';
 import '../model/field_support.dart';
 import '../model/model_service.dart';
 import 'form_dialog.dart';
+import 'record_form.dart';
+import 'record_widget_values.dart';
 import 'search_dialog.dart';
 import 'record_cells.dart';
 
@@ -22,18 +24,23 @@ import 'record_cells.dart';
 /// bound to the zone that created it).
 final _viewCache = <String, ViewDefinition>{};
 
-Future<ViewDefinition> _view(ModelService svc, String model, String type) async {
-  final key = '$model|$type';
+Future<ViewDefinition> _view(ModelService svc, String model, String type,
+    [int? viewId]) async {
+  final key = '$model|$type|${viewId ?? ''}';
   final cached = _viewCache[key];
   if (cached != null) return cached;
-  return _viewCache[key] = await svc.fieldsViewGet(model, viewType: type);
+  return _viewCache[key] =
+      await svc.fieldsViewGet(model, viewType: type, viewId: viewId);
 }
 
 /// Clears the cached x2many views (e.g. after logout).
 void clearEmbeddedViewCache() => _viewCache.clear();
 
-/// One2Many/Many2Many field of a form (spec 9.2.7): a table of the child
-/// group of [parent] plus an inline sub-form.
+/// One2Many/Many2Many field of a form (spec 9.2.7): the child group of
+/// [parent] as a table or, with `form` in `mode` (Python `Screen(mode=…)`,
+/// default `tree,form`), as an inline form of one record with Previous/
+/// Next; the first entry of `mode` is shown first, „Switch“ changes the
+/// view. `view_ids` belong to the views of `mode` by position.
 ///
 /// * New: `default_get` in a new child record, added to the group (the
 ///   parent field points to the parent), opened in the sub-form.
@@ -81,6 +88,19 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
   final _hScrollController = ScrollController();
 
+  /// Inline form view (`form` in `mode`).
+  ViewDefinition? _formView;
+  FormRoot? _formRoot;
+
+  /// The inline form is shown (else the table).
+  bool _formMode = false;
+
+  /// Record of the inline form.
+  Record? _current;
+
+  /// Text typed in the inline form, written on focus loss.
+  final Map<String, dynamic> _pending = {};
+
   /// Keyboard focus of the table (Enter opens the selected record).
   final _tableFocus = FocusNode();
   bool _loadingView = false;
@@ -97,8 +117,22 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   @override
   void initState() {
     super.initState();
+    _formMode = _mode.isNotEmpty && _mode.first == 'form';
     _loadView();
     _loadAccess();
+  }
+
+  /// Views of the widget (`mode`, default `tree,form`).
+  List<String> get _mode => widget.node?.mode ?? const ['tree', 'form'];
+
+  bool get _hasTree => _mode.contains('tree');
+  bool get _hasForm => _mode.contains('form');
+
+  /// View id of [type]: the `view_ids` entry at its position in `mode`.
+  int? _viewIdFor(String type) {
+    final i = _mode.indexOf(type);
+    final ids = _viewIds;
+    return i >= 0 && i < ids.length ? ids[i] : null;
   }
 
   /// Access rights of the relation if not known yet.
@@ -127,7 +161,10 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       _error = null;
     });
     try {
-      final view = await _view(ref.read(modelServiceProvider), _relModel, 'tree');
+      final svc = ref.read(modelServiceProvider);
+      if (_formMode || !_hasTree) await _loadFormView();
+      if (!_hasTree) return;
+      final view = await _view(svc, _relModel, 'tree', _viewIdFor('tree'));
       final treeDef = TreeXmlParser().parse(
         view.arch,
         view.fields.map(
@@ -149,6 +186,24 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     } finally {
       if (mounted) setState(() => _loadingView = false);
     }
+  }
+
+  /// Loads the inline form view (of `view_ids`, else the default form).
+  Future<void> _loadFormView() async {
+    if (_formView != null) return;
+    final svc = ref.read(modelServiceProvider);
+    final id = _viewIdFor('form');
+    final preload = _field.description['views'];
+    final view = id == null && preload is Map && preload['form'] is Map
+        ? ViewDefinition.fromJson(
+            Map<String, dynamic>.from(preload['form'] as Map))
+        : await _view(svc, _relModel, 'form', id);
+    final root = FormXmlParser().parse(view.arch, fields: view.rawFields);
+    if (!mounted) return;
+    setState(() {
+      _formView = view;
+      _formRoot = root;
+    });
   }
 
   /// The fields of [view] in the child model (the group's model is new
@@ -247,8 +302,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (views is Map && views['form'] is Map) {
       return {'form': Map<String, dynamic>.from(views['form'] as Map)};
     }
-    final ids = _viewIds;
-    if (ids.length > 1) return const {};
+    final formId = _viewIdFor('form');
+    if (formId != null) return const {};
     final view = await _view(ref.read(modelServiceProvider), _relModel, 'form');
     return {
       'form': {
@@ -263,12 +318,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
   /// A form screen on the child group (popups stay in the group).
   Future<TrytonScreen> _childScreen(RecordGroup group) async {
-    final ids = _viewIds;
+    final formId = _viewIdFor('form');
     final screen = TrytonScreen.forGroup(
       ScreenAttributes(
         _relModel,
         mode: const ['form'],
-        viewIds: ids.length > 1 ? ids.sublist(1) : const [],
+        viewIds: formId == null ? const [] : [formId],
         viewsPreload: await _formPreload(),
         readonly: widget.readOnly,
       ),
@@ -354,7 +409,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
           domain: domain,
           searchContext: _field.getSearchContext(parent),
           order: _asList(_field.description['order']),
-          viewIds: _viewIds,
+          viewIds: [?_viewIdFor('tree')],
           multi: true,
           allowNew: _canCreate,
           title: widget.fieldDef.label,
@@ -386,6 +441,187 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     setState(() {});
   }
 
+  // ─── Inline form (mode with `form`) ──────────────────────────────────────
+
+  /// Switch (spec 9.2.7, Python `screen.switch_view`): table ↔ inline
+  /// form of the selected record. Without `form` in `mode` the selected
+  /// record opens in the form popup.
+  Future<void> _switch() async {
+    final group = _group;
+    if (group == null) return;
+    if (_formMode) {
+      await _flushInline();
+      if (!_hasTree) return;
+      final current = _current;
+      setState(() {
+        _formMode = false;
+        _selected.clear();
+        if (current != null && group.contains(current)) _selected.add(current);
+      });
+      return;
+    }
+    if (!_hasForm) {
+      if (_selected.isNotEmpty) await _openRecord(_selected.first);
+      return;
+    }
+    await _run(_loadFormView);
+    if (!mounted || _formRoot == null) return;
+    setState(() {
+      _formMode = true;
+      _current = _selected.isNotEmpty
+          ? _selected.first
+          : (group.isEmpty ? null : group.first);
+    });
+  }
+
+  /// Writes the text typed in the inline form (before navigation).
+  Future<void> _flushInline() async {
+    final record = _current;
+    final pending = Map<String, dynamic>.from(_pending);
+    _pending.clear();
+    if (record == null) return;
+    for (final MapEntry(key: name, value: value) in pending.entries) {
+      await _run(() => setRecordWidgetValue(record, name, value));
+    }
+  }
+
+  void _write(String name, dynamic value) {
+    final record = _current;
+    if (record == null) return;
+    _run(() => setRecordWidgetValue(record, name, value));
+  }
+
+  Future<void> _move(int delta) async {
+    final group = _group;
+    final current = _current;
+    if (group == null || current == null) return;
+    await _flushInline();
+    final records = group.toList();
+    final i = records.indexOf(current) + delta;
+    if (i < 0 || i >= records.length) return;
+    setState(() => _current = records[i]);
+  }
+
+  /// New in the inline form: a record with defaults added to the group
+  /// (Python `screen.new()` in a form view).
+  Future<void> _newInline() => _run(() async {
+        final group = _group;
+        if (group == null || _sizeLimitReached) return;
+        await _flushInline();
+        final record = await group.newRecordWithDefaults();
+        group.add(record);
+        _current = record;
+      });
+
+  /// Values of the inline record (all fields of the form view).
+  final Set<Record> _formLoaded = {};
+  void _ensureFormLoaded(Record record) {
+    if (record.id < 0 || _formLoaded.contains(record)) return;
+    _formLoaded.add(record);
+    record.load('*', processException: false).catchError((Object _) {}).whenComplete(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  Widget _buildForm(RecordGroup group) {
+    final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final records = group.toList();
+    var current = _current;
+    if (current == null || !group.contains(current)) {
+      current = _current = records.isEmpty ? null : records.first;
+    }
+    final index = current == null ? -1 : records.indexOf(current);
+    if (current != null) _ensureFormLoaded(current);
+    final marked = current != null && (current.deleted || current.removed);
+    final limitReached = _sizeLimitReached;
+    Widget btn(IconData icon, String tip, VoidCallback? onPressed,
+            {Key? key, Color? color}) =>
+        _TBtn(key: key, icon: icon, tip: tip, onPressed: onPressed, color: color);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              if (_hasTree)
+                btn(Icons.compare_arrows, l.switchView, _switch,
+                    key: const ValueKey('x2m-switch')),
+              btn(Icons.chevron_left, l.previousRecord,
+                  index > 0 ? () => _move(-1) : null,
+                  key: const ValueKey('x2m-previous')),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                    records.isEmpty ? '0 / 0' : '${index + 1} / ${records.length}',
+                    key: const ValueKey('x2m-position'),
+                    style: TextStyle(fontSize: 12, color: cs.outline)),
+              ),
+              btn(Icons.chevron_right, l.nextRecord,
+                  index >= 0 && index < records.length - 1 ? () => _move(1) : null,
+                  key: const ValueKey('x2m-next')),
+              if (!widget.readOnly) ...[
+                if (_canCreate)
+                  btn(Icons.add, l.createNew, limitReached ? null : _newInline,
+                      key: const ValueKey('x2m-new')),
+                if (_canAdd)
+                  btn(Icons.playlist_add, l.add, limitReached ? null : _addRecords,
+                      key: const ValueKey('x2m-add')),
+                if (current != null && marked)
+                  btn(Icons.undo, l.undelete, () {
+                    group.unremove(current!);
+                    setState(() {});
+                  }, color: Colors.green),
+                if (current != null && !marked && _canRemove)
+                  btn(Icons.link_off, l.remove, () {
+                    group.remove(current!, remove: true);
+                    setState(() {});
+                  }, key: const ValueKey('x2m-remove'), color: cs.error),
+                if (current != null && !marked && _canDelete)
+                  btn(Icons.delete_outline, l.delete, () {
+                    group.remove(current!, remove: false);
+                    setState(() {});
+                  }, key: const ValueKey('x2m-delete'), color: cs.error),
+              ],
+            ]),
+          ),
+        ),
+        const SizedBox(height: 4),
+        if (current == null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(l.noEntries,
+                style: TextStyle(color: cs.outline, fontSize: 13)),
+          )
+        else ...[
+          if (marked)
+            Text(l.delete, style: TextStyle(color: cs.error, fontSize: 12)),
+          RecordForm(
+            key: ObjectKey(current),
+            model: _relModel,
+            root: _formRoot!,
+            viewDef: _formView!,
+            record: current,
+            excludeField: widget.fieldDef.relationField,
+            onTextChanged: (name, value) => _pending[name] = value,
+            onBlur: (name) {
+              if (_pending.containsKey(name)) _write(name, _pending.remove(name));
+            },
+            onChangedImmediate: _write,
+            isReadOnly: widget.readOnly || marked,
+            breadcrumb: [...widget.breadcrumb, widget.fieldDef.label],
+          ),
+        ],
+      ],
+    );
+  }
+
   // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -397,7 +633,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       return Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12));
     }
     final group = _group;
-    if (_treeDef == null || group == null) return const SizedBox.shrink();
+    if (group == null) return const SizedBox.shrink();
+    if (_formMode && _formRoot != null) {
+      _ensureFields(group, _formView);
+      return _buildForm(group);
+    }
+    if (_treeDef == null) return const SizedBox.shrink();
     _ensureFields(group, _treeView);
 
     // The parent was reloaded: its group (and records) are new.
@@ -457,8 +698,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                         tooltip: l.openInForm,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        onPressed: hasSelection && _canOpen
-                            ? () => _openRecord(_selected.first)
+                        onPressed: (_hasForm ? records.isNotEmpty : hasSelection) && _canOpen
+                            ? _switch
                             : null,
                       ),
                       if (!widget.readOnly) ...[
@@ -627,7 +868,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                         return DataCell(
                           isNumericField(fd)
                               ? RecordNumericCell.of(record, col.name, fd!, style: cellStyle)
-                              : Text(recordCellText(record, col.name, fd), style: cellStyle, overflow: TextOverflow.ellipsis),
+                              : RecordTextCell(record, col.name, fd, style: cellStyle),
                           // SAO: a click selects, a double click opens;
                           // touch: tapping opens, a long press selects.
                           onTap: touch
