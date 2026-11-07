@@ -450,4 +450,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Copiar filas seleccionadas';
+
+  @override
+  String get notifications => 'Notificaciones';
+
+  @override
+  String get noNotifications => 'No hay notificaciones en este momento';
+
+  @override
+  String get allNotifications => 'Todas las notificaciones…';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'La siguiente acción requiere cerrar todas las pestañas.\n¿Desea continuar?';
+
+  @override
+  String get editUserPreferences => 'Editar preferencias del usuario';
 }

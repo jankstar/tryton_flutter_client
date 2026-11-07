@@ -219,6 +219,10 @@ Tested with Tryton **8.x**. The protocol implementation follows the [SAO web cli
 
 GPL-3.0 — same as Tryton. See [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
 
+## Third-Party Icons
+
+Icons in assets/icons/tryton/ are taken from the Tryton project and licensed under the Apache License 2.0 (see assets/icons/tryton/LICENSE).
+
 ## Third-Party Fonts
 
 ### Lato

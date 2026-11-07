@@ -5,7 +5,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/icons/tryton_icon.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 import 'package:tryton_flutter_client/core/serialization/tryton_serializer.dart';
@@ -355,6 +357,91 @@ void main() {
         listSum);
     expect(tester.takeException(), isNull);
     expect((tester.widget<Text>(listSum)).data, '$expected\n$expected');
+  });
+
+  testWidgets('button icons: billing unit 1 – module icons from ir.ui.icon, '
+      'own icons from the assets', (tester) async {
+    if (password == null) {
+      markTestSkipped('TRYTON_PASSWORD not set');
+      return;
+    }
+    HttpOverrides.global = null;
+    late RpcClient rpc;
+    late ModelService svc;
+    late Map<String, dynamic> preferences;
+    await tester.runAsync(() async {
+      rpc = RpcClient(baseUrl: _server);
+      final result = await rpc.call(_database, 'common.db.login', [
+        'admin',
+        {'password': password},
+        'de'
+      ], reAuth: false) as List;
+      rpc.auth = SessionAuth('admin', result[0] as int, result[1] as String);
+      var context = <String, dynamic>{};
+      svc = ModelService(
+          rpc: rpc, getContext: () => context, getDatabase: () => _database);
+      final prefs = await svc.execute<Map<String, dynamic>>(
+          'res.user', 'get_preferences', [true]);
+      context = {
+        for (final e in prefs.entries)
+          if (e.key != 'locale' && !e.key.endsWith('.rec_name')) e.key: e.value
+      };
+      preferences = await svc.execute<Map<String, dynamic>>(
+          'res.user', 'get_preferences', [false]);
+      await (svc.metadata = MetadataService(svc))
+          .load(locale: preferences['locale'] as Map<String, dynamic>?);
+      IconFactory.clear();
+      IconFactory.setService(svc);
+      await IconFactory.loadIcons();
+    });
+    addTearDown(() => tester.runAsync(() async {
+          IconFactory.clear();
+          IconFactory.setService(null);
+          try {
+            await rpc.call(_database, 'common.db.logout', [], reAuth: false);
+          } catch (_) {}
+        }));
+    tester.view.physicalSize = const Size(1600, 1100);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        rpcClientProvider.overrideWithValue(rpc),
+        modelServiceProvider.overrideWithValue(svc),
+        preferencesProvider.overrideWith((ref) => preferences),
+      ],
+      child: MaterialApp(
+        locale: const Locale('de'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ScreenWidget(
+            attributes: const ScreenAttributes('real_estate.billing_unit',
+                mode: ['form'], resId: 1),
+            title: 'Abrechnungseinheit'),
+      ),
+    ));
+    final buttons = find.byType(RecordButton);
+    for (var i = 0; i < 100; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+      final icons = find.descendant(of: buttons, matching: find.byType(SvgPicture));
+      if (buttons.evaluate().isNotEmpty &&
+          icons.evaluate().length >= buttons.evaluate().length) {
+        break;
+      }
+    }
+    expect(tester.takeException(), isNull);
+    expect(buttons, findsWidgets, reason: 'the visible buttons of state');
+    final withIcon = [
+      for (final e in buttons.evaluate())
+        if ((e.widget as RecordButton).node.icon != null) e.widget as RecordButton
+    ];
+    expect(withIcon, isNotEmpty);
+    for (final b in withIcon) {
+      final svg = find.descendant(
+          of: find.byWidget(b), matching: find.byType(SvgPicture));
+      expect(svg, findsOneWidget, reason: '${b.node.name}: ${b.node.icon}');
+    }
   });
 }
 

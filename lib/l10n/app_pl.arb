@@ -389,5 +389,10 @@
   "fuzzy": "Niepewne",
   "columns": "Kolumny",
   "resetColumnWidths": "Resetuj szerokości kolumn",
-  "copySelectedRows": "Kopiuj zaznaczone wiersze"
+  "copySelectedRows": "Kopiuj zaznaczone wiersze",
+  "notifications": "Powiadomienia",
+  "noNotifications": "Brak powiadomień",
+  "allNotifications": "Wszystkie powiadomienia…",
+  "closeAllTabsQuestion": "Ta akcja wymaga zamknięcia wszystkich kart.\nCzy chcesz kontynuować?",
+  "editUserPreferences": "Edytuj preferencje użytkownika"
 }

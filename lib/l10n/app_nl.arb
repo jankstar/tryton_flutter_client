@@ -389,5 +389,10 @@
   "fuzzy": "Onzeker",
   "columns": "Kolommen",
   "resetColumnWidths": "Kolombreedtes herstellen",
-  "copySelectedRows": "Geselecteerde rijen kopiëren"
+  "copySelectedRows": "Geselecteerde rijen kopiëren",
+  "notifications": "Meldingen",
+  "noNotifications": "Momenteel geen meldingen",
+  "allNotifications": "Alle meldingen…",
+  "closeAllTabsQuestion": "Voor deze actie moeten alle tabbladen worden gesloten.\nWilt u doorgaan?",
+  "editUserPreferences": "Gebruikersvoorkeuren bewerken"
 }

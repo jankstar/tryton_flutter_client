@@ -615,5 +615,15 @@
   "resetColumnWidths": "Reset column widths",
   "@resetColumnWidths": {},
   "copySelectedRows": "Copy selected rows",
-  "@copySelectedRows": {}
+  "@copySelectedRows": {},
+  "notifications": "Notifications",
+  "@notifications": {},
+  "noNotifications": "No notifications at this time",
+  "@noNotifications": {},
+  "allNotifications": "All Notifications...",
+  "@allNotifications": {},
+  "closeAllTabsQuestion": "The following action requires to close all tabs.\nDo you want to continue?",
+  "@closeAllTabsQuestion": {},
+  "editUserPreferences": "Edit User Preferences",
+  "@editUserPreferences": {}
 }

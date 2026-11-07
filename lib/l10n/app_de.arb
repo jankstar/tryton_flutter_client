@@ -389,5 +389,10 @@
   "fuzzy": "Unscharf",
   "columns": "Spalten",
   "resetColumnWidths": "Spaltenbreiten zurücksetzen",
-  "copySelectedRows": "Ausgewählte Zeilen kopieren"
+  "copySelectedRows": "Ausgewählte Zeilen kopieren",
+  "notifications": "Benachrichtigungen",
+  "noNotifications": "Derzeit keine Benachrichtigungen",
+  "allNotifications": "Alle Benachrichtigungen …",
+  "closeAllTabsQuestion": "Für diese Aktion müssen alle Tabs geschlossen werden.\nMöchten Sie fortfahren?",
+  "editUserPreferences": "Benutzereinstellungen bearbeiten"
 }

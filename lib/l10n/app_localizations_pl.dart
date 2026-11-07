@@ -451,4 +451,20 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Kopiuj zaznaczone wiersze';
+
+  @override
+  String get notifications => 'Powiadomienia';
+
+  @override
+  String get noNotifications => 'Brak powiadomień';
+
+  @override
+  String get allNotifications => 'Wszystkie powiadomienia…';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Ta akcja wymaga zamknięcia wszystkich kart.\nCzy chcesz kontynuować?';
+
+  @override
+  String get editUserPreferences => 'Edytuj preferencje użytkownika';
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/icons/tryton_icon.dart';
 import 'package:tryton_flutter_client/core/serialization/tryton_serializer.dart';
 import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 import 'package:tryton_flutter_client/features/views/record_form.dart';
@@ -847,7 +848,9 @@ void main() {
     await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 10));
     await tester.pumpAndSettle();
     final switchButton = find.ancestor(
-        of: find.byIcon(Icons.compare_arrows), matching: find.byType(IconButton));
+        of: find.byWidgetPredicate(
+            (w) => w is TrytonIcon && w.iconName == 'tryton-switch'),
+        matching: find.byType(IconButton));
     await tester.tap(switchButton.last);
     await tester.pumpAndSettle();
     expect(find.text('1 / 2'), findsOneWidget, reason: 'inline form');

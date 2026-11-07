@@ -931,6 +931,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy selected rows'**
   String get copySelectedRows;
+
+  /// No description provided for @notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifications;
+
+  /// No description provided for @noNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications at this time'**
+  String get noNotifications;
+
+  /// No description provided for @allNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'All Notifications...'**
+  String get allNotifications;
+
+  /// No description provided for @closeAllTabsQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'The following action requires to close all tabs.\nDo you want to continue?'**
+  String get closeAllTabsQuestion;
+
+  /// No description provided for @editUserPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit User Preferences'**
+  String get editUserPreferences;
 }
 
 class _AppLocalizationsDelegate

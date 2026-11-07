@@ -1,12 +1,14 @@
 import 'package:flutter/widgets.dart' show TextDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/icons/tryton_icon.dart' show IconFactory;
 import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart' show FloatField;
 import '../../core/session/session.dart';
 import '../actions/action_service.dart';
 import '../model/metadata_service.dart';
 import '../model/model_service.dart';
+import '../notifications/notifications.dart' show notificationCenterProvider;
 import '../views/record_field_widgets.dart' show clearMany2OneSelectionCache;
 import '../views/list_view_screen.dart' show clearListCaches;
 import '../views/record_link.dart';
@@ -24,7 +26,8 @@ final textDirectionProvider =
 /// 4. start actions of `preferences.actions` one after another;
 /// 5. language, locale and writing direction; MODELNAME cleared;
 /// 6. menu (`pyson_menu`) and user chip (`status_bar`, avatar) from the
-///    preferences.
+///    preferences;
+/// 8. bus: `notification:<user_id>`, notification counter, polling.
 class SessionBootstrap {
   final TrytonSession session;
   final ModelService svc;
@@ -40,6 +43,13 @@ class SessionBootstrap {
   /// Publishes the preferences (menu and user chip are built from them).
   final void Function(Map<String, dynamic>? preferences) publish;
 
+  /// Step 8 (bus, notifications) after the start; stopped by [clear].
+  final Future<void> Function() startServices;
+  final void Function() stopServices;
+
+  static Future<void> _none() async {}
+  static void _noop() {}
+
   SessionBootstrap({
     required this.session,
     required this.svc,
@@ -47,6 +57,8 @@ class SessionBootstrap {
     required this.runAction,
     required this.applyLanguage,
     required this.publish,
+    this.startServices = _none,
+    this.stopServices = _noop,
   });
 
   Future<Map<String, dynamic>> _preferences() async {
@@ -65,7 +77,13 @@ class SessionBootstrap {
   Future<Map<String, dynamic>> run() async {
     await session.reloadContext();
     final preferences = await _preferences();
-    await metadata.load(locale: _locale(preferences) ?? const {});
+    // metadata and the icon names of the server in parallel (Python
+    // `get_preferences`: IconFactory.load_icons, MODELACCESS, …)
+    IconFactory.setService(svc);
+    await Future.wait([
+      metadata.load(locale: _locale(preferences) ?? const {}),
+      IconFactory.loadIcons(),
+    ]);
     for (final id in (preferences['actions'] as List? ?? const [])) {
       if (id is! int) continue;
       try {
@@ -78,6 +96,11 @@ class SessionBootstrap {
         preferences['language_direction'] as String?);
     metadata.clearNames();
     publish(preferences);
+    try {
+      await startServices();
+    } catch (_) {
+      // the bus is optional (spec 2.10 SOLL)
+    }
     return preferences;
   }
 
@@ -99,6 +122,9 @@ class SessionBootstrap {
 
   /// Logout: preferences (menu, user chip) and metadata are cleared.
   void clear() {
+    stopServices();
+    IconFactory.clear();
+    IconFactory.setService(null);
     publish(null);
     metadata.clear();
     clearLinkActionCache();
@@ -123,5 +149,7 @@ final Provider<SessionBootstrap> sessionBootstrapProvider =
     },
     publish: (preferences) =>
         ref.read(preferencesProvider.notifier).state = preferences,
+    startServices: () => ref.read(notificationCenterProvider).start(),
+    stopServices: () => ref.read(notificationCenterProvider).stop(),
   );
 });

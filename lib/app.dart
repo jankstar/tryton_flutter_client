@@ -11,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/auth/session_bootstrap.dart';
+import 'features/notifications/notifications.dart' show rootMessengerKey;
 import 'features/model/metadata_service.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
@@ -84,6 +85,8 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
 
     return MaterialApp.router(
       title: 'Tryton Flutter Client',
+      // in-app messages of the bus (notifications, spec 14.1)
+      scaffoldMessengerKey: rootMessengerKey,
       locale: locale,
       supportedLocales: supportedLocales,
       localizationsDelegates: const [

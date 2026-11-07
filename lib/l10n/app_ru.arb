@@ -389,5 +389,10 @@
   "fuzzy": "Неточный",
   "columns": "Столбцы",
   "resetColumnWidths": "Сбросить ширину столбцов",
-  "copySelectedRows": "Копировать выбранные строки"
+  "copySelectedRows": "Копировать выбранные строки",
+  "notifications": "Уведомления",
+  "noNotifications": "Сейчас нет уведомлений",
+  "allNotifications": "Все уведомления…",
+  "closeAllTabsQuestion": "Для этого действия нужно закрыть все вкладки.\nПродолжить?",
+  "editUserPreferences": "Изменить настройки пользователя"
 }

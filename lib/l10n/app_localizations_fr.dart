@@ -453,4 +453,20 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Copier les lignes sélectionnées';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get noNotifications => 'Aucune notification pour le moment';
+
+  @override
+  String get allNotifications => 'Toutes les notifications…';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Cette action nécessite de fermer tous les onglets.\nVoulez-vous continuer ?';
+
+  @override
+  String get editUserPreferences => 'Modifier les préférences utilisateur';
 }

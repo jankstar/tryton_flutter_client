@@ -452,4 +452,20 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Ausgewählte Zeilen kopieren';
+
+  @override
+  String get notifications => 'Benachrichtigungen';
+
+  @override
+  String get noNotifications => 'Derzeit keine Benachrichtigungen';
+
+  @override
+  String get allNotifications => 'Alle Benachrichtigungen …';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Für diese Aktion müssen alle Tabs geschlossen werden.\nMöchten Sie fortfahren?';
+
+  @override
+  String get editUserPreferences => 'Benutzereinstellungen bearbeiten';
 }

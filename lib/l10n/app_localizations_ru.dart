@@ -450,4 +450,20 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Копировать выбранные строки';
+
+  @override
+  String get notifications => 'Уведомления';
+
+  @override
+  String get noNotifications => 'Сейчас нет уведомлений';
+
+  @override
+  String get allNotifications => 'Все уведомления…';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Для этого действия нужно закрыть все вкладки.\nПродолжить?';
+
+  @override
+  String get editUserPreferences => 'Изменить настройки пользователя';
 }

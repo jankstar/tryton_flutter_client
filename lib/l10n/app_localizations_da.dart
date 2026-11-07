@@ -450,4 +450,20 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Kopiér valgte rækker';
+
+  @override
+  String get notifications => 'Notifikationer';
+
+  @override
+  String get noNotifications => 'Ingen notifikationer i øjeblikket';
+
+  @override
+  String get allNotifications => 'Alle notifikationer …';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Denne handling kræver, at alle faner lukkes.\nVil du fortsætte?';
+
+  @override
+  String get editUserPreferences => 'Rediger brugerindstillinger';
 }

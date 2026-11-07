@@ -450,4 +450,20 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Kopioi valitut rivit';
+
+  @override
+  String get notifications => 'Ilmoitukset';
+
+  @override
+  String get noNotifications => 'Ei ilmoituksia tällä hetkellä';
+
+  @override
+  String get allNotifications => 'Kaikki ilmoitukset…';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Toiminto vaatii kaikkien välilehtien sulkemisen.\nHaluatko jatkaa?';
+
+  @override
+  String get editUserPreferences => 'Muokkaa käyttäjän asetuksia';
 }

@@ -7,7 +7,9 @@ import '../../core/l10n/locale_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
 import '../auth/auth_provider.dart';
+import '../auth/preferences_dialog.dart';
 import '../auth/user_preferences_provider.dart';
+import '../notifications/notifications.dart';
 import '../shell/tab_manager.dart';
 
 // ─── User chip (top-right like SAO) ──────────────────────────────────────────
@@ -21,7 +23,11 @@ class UserChip extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // The user chip of get_preferences(false) (spec 3.2 step 6).
     final prefs = ref.watch(userPreferencesProvider);
-    return _buildMenu(context, ref, prefs, context.l10n);
+    // notification bell next to the user menu (spec 14.1)
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      const NotificationButton(),
+      _buildMenu(context, ref, prefs, context.l10n),
+    ]);
   }
 
   Widget _buildMenu(BuildContext context, WidgetRef ref,
@@ -34,12 +40,9 @@ class UserChip extends ConsumerWidget {
       onSelected: (item) async {
         switch (item) {
           case _UserMenuItem.preferences:
-            if (userId != null && userId > 0) {
-              ref.read(tabsProvider.notifier).openTab(
-                title: context.l10n.preferences,
-                model: 'res.user',
-                initialDomain: [['id', '=', userId]],
-              );
+            // dialog of get_preferences_fields_view (spec 3.3)
+            if (userId != null && userId > 0 && context.mounted) {
+              await showPreferencesDialog(context, ref);
             }
           case _UserMenuItem.help:
             final uri = Uri.parse('https://docs.tryton.org/');
@@ -56,6 +59,8 @@ class UserChip extends ConsumerWidget {
             if (!await ref.read(tabsProvider.notifier).requestCloseAll()) {
               return;
             }
+            // the bus ends before the session (spec 2.5.6)
+            ref.read(notificationCenterProvider).stop();
             await ref.read(authProvider.notifier).logout();
             ref.read(tabsProvider.notifier).clearAll();
             if (context.mounted) context.go('/login');

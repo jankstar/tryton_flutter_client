@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../features/model/model_service.dart';
@@ -15,11 +18,185 @@ void cacheIconSvg(String name, String? svg) {
 /// Checks whether an icon is already in the cache.
 bool isIconCached(String name) => _svgCache.containsKey(name);
 
+/// Tryton's own icons shipped with the client (`assets/icons/tryton/`,
+/// from the Python client 8.0 / SAO, Apache 2.0; SAO `LOCAL_ICONS`). They
+/// are not in `ir.ui.icon` on the server.
+const localIcons = {
+  'tryton-add',
+  'tryton-archive',
+  'tryton-arrow-down',
+  'tryton-arrow-left',
+  'tryton-arrow-right',
+  'tryton-arrow-up',
+  'tryton-attach',
+  'tryton-back',
+  'tryton-barcode-scanner',
+  'tryton-bookmark',
+  'tryton-bookmark-border',
+  'tryton-bookmarks',
+  'tryton-cancel',
+  'tryton-chat',
+  'tryton-clear',
+  'tryton-close',
+  'tryton-copy',
+  'tryton-create',
+  'tryton-date',
+  'tryton-delete',
+  'tryton-download',
+  'tryton-drag',
+  'tryton-email',
+  'tryton-error',
+  'tryton-exit',
+  'tryton-export',
+  'tryton-filter',
+  'tryton-format-align-center',
+  'tryton-format-align-justify',
+  'tryton-format-align-left',
+  'tryton-format-align-right',
+  'tryton-format-bold',
+  'tryton-format-color-text',
+  'tryton-format-italic',
+  'tryton-format-underline',
+  'tryton-forward',
+  'tryton-history',
+  'tryton-import',
+  'tryton-info',
+  'tryton-launch',
+  'tryton-link',
+  'tryton-log',
+  'tryton-menu',
+  'tryton-note',
+  'tryton-notification',
+  'tryton-notification-off',
+  'tryton-notification-on',
+  'tryton-ok',
+  'tryton-open',
+  'tryton-print',
+  'tryton-public',
+  'tryton-question',
+  'tryton-refresh',
+  'tryton-remove',
+  'tryton-save',
+  'tryton-search',
+  'tryton-send',
+  'tryton-sound-off',
+  'tryton-sound-on',
+  'tryton-star',
+  'tryton-star-border',
+  'tryton-switch',
+  'tryton-translate',
+  'tryton-unarchive',
+  'tryton-undo',
+  'tryton-unfold-less',
+  'tryton-unfold-more',
+  'tryton-warning',
+};
+
+/// Icons of the client and the server (spec 4, SAO `IconFactory`): own
+/// icons from the assets, module icons from `ir.ui.icon` – names by
+/// `list_icons()`, SVGs by `read([ids], ['name', 'icon'])` in batches of
+/// [batch] around the wanted one; a running load is shared.
+class IconFactory {
+  static ModelService? _svc;
+  static Map<String, int>? _name2id;
+  static final Map<String, Future<void>> _pending = {};
+
+  /// Icons read per `read` (SAO `batchnum`).
+  static const batch = 10;
+
+  /// The service of the session (start sequence); null at logout.
+  static void setService(ModelService? svc) {
+    _svc = svc;
+    _name2id = null;
+  }
+
+  /// `ir.ui.icon.list_icons()` → name → id.
+  static Future<void> loadIcons() async {
+    final svc = _svc;
+    if (svc == null) return;
+    try {
+      final result = await svc.execute<dynamic>(
+          'ir.ui.icon', 'list_icons', const [],
+          processException: false);
+      _name2id = {
+        for (final i in (result as List? ?? const []))
+          if (i is List && i.length > 1) '${i[1]}': i[0] as int
+      };
+    } catch (_) {
+      _name2id = const {};
+    }
+  }
+
+  /// Loads [name] into the cache (null when unknown).
+  static Future<void> ensure(String name) {
+    if (_svgCache.containsKey(name)) return Future.value();
+    // (the callback must not return the removed future: whenComplete would
+    // wait for itself)
+    return _pending[name] ??= _load(name).whenComplete(() {
+      _pending.remove(name);
+    });
+  }
+
+  static Future<void> _load(String name) async {
+    if (localIcons.contains(name)) {
+      try {
+        cacheIconSvg(
+            name, await rootBundle.loadString('assets/icons/tryton/$name.svg'));
+      } catch (_) {
+        cacheIconSvg(name, null);
+      }
+      return;
+    }
+    final svc = _svc;
+    if (svc == null) {
+      cacheIconSvg(name, null);
+      return;
+    }
+    var map = _name2id;
+    if (map == null || !map.containsKey(name)) {
+      await loadIcons();
+      map = _name2id;
+    }
+    final id = map?[name];
+    if (map == null || id == null) {
+      cacheIconSvg(name, null);
+      return;
+    }
+    // the wanted icon and its not yet loaded neighbours (SAO)
+    final ids = [
+      for (final e in map.entries)
+        if (!_svgCache.containsKey(e.key) || e.key == name) e.value
+    ];
+    final idx = ids.indexOf(id);
+    final from = (idx - batch ~/ 2).clamp(0, ids.length);
+    final to = (idx + batch ~/ 2).clamp(from, ids.length);
+    try {
+      final rows = await svc.execute<dynamic>('ir.ui.icon', 'read', [
+        ids.sublist(from, to == from ? from + 1 : to),
+        ['name', 'icon']
+      ], processException: false);
+      for (final r in (rows as List? ?? const [])) {
+        if (r is! Map) continue;
+        final icon = r['icon'];
+        cacheIconSvg('${r['name']}', icon is String && icon.isNotEmpty ? icon : null);
+      }
+    } catch (_) {}
+    _svgCache.putIfAbsent(name, () => null);
+  }
+
+  /// Logout: icons of the session are forgotten.
+  static void clear() {
+    _svgCache.clear();
+    _name2id = null;
+    _pending.clear();
+  }
+}
+
 // ─── TrytonIcon widget ────────────────────────────────────────────────────────
 
-/// Displays a Tryton icon.
-/// SVG data is taken from the global cache (preloaded when the menu is loaded).
-/// Fallback: Material icon if no SVG is available.
+/// Displays a Tryton icon: the SVG of the cache, loaded on first use by
+/// [IconFactory] (own icons from the assets, module icons from the
+/// server); a Material icon while loading or when unknown.
 class TrytonIcon extends StatelessWidget {
   final String? iconName;
   final double size;
@@ -222,7 +399,15 @@ class _AsyncIconLoaderState extends State<_AsyncIconLoader> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(_AsyncIconLoader old) {
+    super.didUpdateWidget(old);
+    if (old.iconName != widget.iconName) _load();
+  }
+
+  /// Own icon from the assets or module icon from the server.
   Future<void> _load() async {
+    await IconFactory.ensure(widget.iconName);
     if (mounted) setState(() {});
   }
 
@@ -237,6 +422,7 @@ class _AsyncIconLoaderState extends State<_AsyncIconLoader> {
         colorFilter: ColorFilter.mode(widget.color, BlendMode.srcIn),
       );
     }
+    // while loading / unknown: the Material equivalent
     final mat = TrytonIcon._materialIcon(widget.iconName);
     return Icon(mat ?? widget.fallback, size: widget.size, color: widget.color);
   }

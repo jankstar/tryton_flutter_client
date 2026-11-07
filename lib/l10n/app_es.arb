@@ -389,5 +389,10 @@
   "fuzzy": "Aproximada",
   "columns": "Columnas",
   "resetColumnWidths": "Restablecer anchos de columna",
-  "copySelectedRows": "Copiar filas seleccionadas"
+  "copySelectedRows": "Copiar filas seleccionadas",
+  "notifications": "Notificaciones",
+  "noNotifications": "No hay notificaciones en este momento",
+  "allNotifications": "Todas las notificaciones…",
+  "closeAllTabsQuestion": "La siguiente acción requiere cerrar todas las pestañas.\n¿Desea continuar?",
+  "editUserPreferences": "Editar preferencias del usuario"
 }

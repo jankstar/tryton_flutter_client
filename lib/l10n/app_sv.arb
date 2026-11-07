@@ -389,5 +389,10 @@
   "fuzzy": "Osäker",
   "columns": "Kolumner",
   "resetColumnWidths": "Återställ kolumnbredder",
-  "copySelectedRows": "Kopiera markerade rader"
+  "copySelectedRows": "Kopiera markerade rader",
+  "notifications": "Aviseringar",
+  "noNotifications": "Inga aviseringar just nu",
+  "allNotifications": "Alla aviseringar …",
+  "closeAllTabsQuestion": "Åtgärden kräver att alla flikar stängs.\nVill du fortsätta?",
+  "editUserPreferences": "Redigera användarinställningar"
 }

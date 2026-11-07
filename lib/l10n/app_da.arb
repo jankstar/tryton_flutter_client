@@ -389,5 +389,10 @@
   "fuzzy": "Usikker",
   "columns": "Kolonner",
   "resetColumnWidths": "Nulstil kolonnebredder",
-  "copySelectedRows": "Kopiér valgte rækker"
+  "copySelectedRows": "Kopiér valgte rækker",
+  "notifications": "Notifikationer",
+  "noNotifications": "Ingen notifikationer i øjeblikket",
+  "allNotifications": "Alle notifikationer …",
+  "closeAllTabsQuestion": "Denne handling kræver, at alle faner lukkes.\nVil du fortsætte?",
+  "editUserPreferences": "Rediger brugerindstillinger"
 }

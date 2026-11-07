@@ -84,6 +84,9 @@ flutter:
   assets:
     - assets/app_icon.png
     - assets/fonts/
+    # Tryton's own icons (Python client 8.0 / SAO, Apache 2.0, see LICENSE
+    # there); module icons come from ir.ui.icon.
+    - assets/icons/tryton/
 
   fonts:
     - family: Lato

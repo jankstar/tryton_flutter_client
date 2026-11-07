@@ -389,5 +389,10 @@
   "fuzzy": "Epätarkka",
   "columns": "Sarakkeet",
   "resetColumnWidths": "Palauta sarakeleveydet",
-  "copySelectedRows": "Kopioi valitut rivit"
+  "copySelectedRows": "Kopioi valitut rivit",
+  "notifications": "Ilmoitukset",
+  "noNotifications": "Ei ilmoituksia tällä hetkellä",
+  "allNotifications": "Kaikki ilmoitukset…",
+  "closeAllTabsQuestion": "Toiminto vaatii kaikkien välilehtien sulkemisen.\nHaluatko jatkaa?",
+  "editUserPreferences": "Muokkaa käyttäjän asetuksia"
 }

@@ -450,4 +450,20 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Geselecteerde rijen kopiëren';
+
+  @override
+  String get notifications => 'Meldingen';
+
+  @override
+  String get noNotifications => 'Momenteel geen meldingen';
+
+  @override
+  String get allNotifications => 'Alle meldingen…';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Voor deze actie moeten alle tabbladen worden gesloten.\nWilt u doorgaan?';
+
+  @override
+  String get editUserPreferences => 'Gebruikersvoorkeuren bewerken';
 }

@@ -389,5 +389,10 @@
   "fuzzy": "Approximative",
   "columns": "Colonnes",
   "resetColumnWidths": "Réinitialiser la largeur des colonnes",
-  "copySelectedRows": "Copier les lignes sélectionnées"
+  "copySelectedRows": "Copier les lignes sélectionnées",
+  "notifications": "Notifications",
+  "noNotifications": "Aucune notification pour le moment",
+  "allNotifications": "Toutes les notifications…",
+  "closeAllTabsQuestion": "Cette action nécessite de fermer tous les onglets.\nVoulez-vous continuer ?",
+  "editUserPreferences": "Modifier les préférences utilisateur"
 }

@@ -449,4 +449,20 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get copySelectedRows => 'Kopiera markerade rader';
+
+  @override
+  String get notifications => 'Aviseringar';
+
+  @override
+  String get noNotifications => 'Inga aviseringar just nu';
+
+  @override
+  String get allNotifications => 'Alla aviseringar …';
+
+  @override
+  String get closeAllTabsQuestion =>
+      'Åtgärden kräver att alla flikar stängs.\nVill du fortsätta?';
+
+  @override
+  String get editUserPreferences => 'Redigera användarinställningar';
 }
