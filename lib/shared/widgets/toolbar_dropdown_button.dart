@@ -31,6 +31,11 @@ class ToolbarDropdownButton extends ConsumerWidget {
   final TrytonScreen? screen;
   final Future<void> Function(ButtonNode)? onButton;
 
+  /// Predefined CSV exports at the end of the print menu (spec 10.3,
+  /// 11.9), run with [onExport] – also without a selection.
+  final List<Map<String, dynamic>> exports;
+  final Future<void> Function(Map<String, dynamic> export)? onExport;
+
   const ToolbarDropdownButton({
     super.key,
     required this.icon,
@@ -43,6 +48,8 @@ class ToolbarDropdownButton extends ConsumerWidget {
     this.buttons = const [],
     this.onButton,
     this.screen,
+    this.exports = const [],
+    this.onExport,
   });
 
   Future<void> _execute(
@@ -74,8 +81,11 @@ class ToolbarDropdownButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shownButtons = onButton == null ? const <ButtonNode>[] : buttons;
+    final shownExports =
+        onExport == null ? const <Map<String, dynamic>>[] : exports;
     // Greyed out when disabled (no selection) or nothing configured
-    if (!enabled || (items.isEmpty && shownButtons.isEmpty)) {
+    if ((!enabled || (items.isEmpty && shownButtons.isEmpty)) &&
+        shownExports.isEmpty) {
       return IconButton(
         icon: Icon(icon, color: Theme.of(context).disabledColor),
         tooltip: tooltip,
@@ -84,7 +94,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
     }
 
     // Single item → execute directly
-    if (items.length == 1 && shownButtons.isEmpty) {
+    if (items.length == 1 && shownButtons.isEmpty && shownExports.isEmpty) {
       return IconButton(
         icon: Icon(icon),
         tooltip: '$tooltip: ${items.first.name}',
@@ -100,6 +110,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
       onSelected: (entry) => switch (entry) {
         TrytonActionItem() => _execute(context, ref, entry),
         ButtonNode() => onButton?.call(entry),
+        Map<String, dynamic>() => onExport?.call(entry),
         _ => null,
       },
       itemBuilder: (ctx) => [
@@ -118,6 +129,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
         const PopupMenuDivider(height: 1),
         ...items.map((a) => PopupMenuItem<Object>(
               value: a,
+              enabled: enabled,
               child: Row(children: [
                 Icon(icon, size: 16,
                     color: Theme.of(ctx).colorScheme.onSurface),
@@ -130,8 +142,17 @@ class ToolbarDropdownButton extends ConsumerWidget {
           const PopupMenuDivider(height: 1),
         ...shownButtons.map((b) => PopupMenuItem<Object>(
               value: b,
+              enabled: enabled,
               child: Text(b.string ?? b.name,
                   overflow: TextOverflow.ellipsis),
+            )),
+        if ((items.isNotEmpty || shownButtons.isNotEmpty) &&
+            shownExports.isNotEmpty)
+          const PopupMenuDivider(height: 1),
+        ...shownExports.map((e) => PopupMenuItem<Object>(
+              key: ValueKey('export-${e['id']}'),
+              value: e,
+              child: Text('${e['name']}', overflow: TextOverflow.ellipsis),
             )),
       ],
     );

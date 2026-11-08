@@ -19,34 +19,6 @@ FieldDefinition fd(String type) =>
     FieldDefinition.fromJson('f', {'type': type, 'string': 'Feld'});
 
 void main() {
-  for (final (type, widget) in [
-    ('binary', null),
-    ('binary', 'image'),
-    ('binary', 'document'),
-    ('text', 'richtext'),
-  ]) {
-    testWidgets('$type/${widget ?? '-'} → read-only placeholder',
-        (tester) async {
-      String? changed;
-      await pumpField(
-        tester,
-        FieldWidget(
-          field: fd(type),
-          value: {'some': 'value'},
-          widgetOverride: widget,
-          onChanged: (v) => changed = '$v',
-        ),
-      );
-      expect(find.byType(TextField), findsNothing);
-      expect(find.byType(EditableText), findsNothing);
-      expect(find.text('Feld'), findsOneWidget);
-      expect(find.textContaining('Wird noch nicht unterstützt'), findsOneWidget);
-      expect(find.textContaining('f: ${widget ?? type}'), findsOneWidget);
-      await tester.tap(find.textContaining('Wird noch nicht'));
-      expect(changed, isNull);
-    });
-  }
-
   testWidgets('char without widget is still a text input', (tester) async {
     await pumpField(tester, FieldWidget(field: fd('char'), value: 'x'));
     expect(find.byType(TextField), findsOneWidget);

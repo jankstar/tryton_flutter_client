@@ -5,11 +5,16 @@ class TrytonToolbar {
   final List<TrytonActionItem> print;
   final List<TrytonActionItem> emails;
 
+  /// Predefined CSV exports (`ir.export` with `export_fields.`, spec
+  /// 11.9), shown in the print menu.
+  final List<Map<String, dynamic>> exports;
+
   const TrytonToolbar({
     this.actions = const [],
     this.relate = const [],
     this.print = const [],
     this.emails = const [],
+    this.exports = const [],
   });
 
   bool get isEmpty =>
@@ -21,6 +26,11 @@ class TrytonToolbar {
       relate: _parseList(json['relate']),
       print: _parseList(json['print']),
       emails: _parseList(json['emails']),
+      exports: [
+        if (json['exports'] case final List exports)
+          for (final e in exports)
+            if (e is Map) Map<String, dynamic>.from(e)
+      ],
     );
   }
 

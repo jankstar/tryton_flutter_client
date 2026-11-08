@@ -11,10 +11,11 @@ import '../auth/preferences_dialog.dart';
 import '../auth/user_preferences_provider.dart';
 import '../notifications/notifications.dart';
 import '../shell/tab_manager.dart';
+import '../views/record_menu.dart';
 
 // ─── User chip (top-right like SAO) ──────────────────────────────────────────
 
-enum _UserMenuItem { preferences, help, themes, logout }
+enum _UserMenuItem { preferences, help, shortcuts, themes, logout }
 
 class UserChip extends ConsumerWidget {
   const UserChip({super.key});
@@ -47,6 +48,8 @@ class UserChip extends ConsumerWidget {
           case _UserMenuItem.help:
             final uri = Uri.parse('https://docs.tryton.org/');
             if (await canLaunchUrl(uri)) launchUrl(uri);
+          case _UserMenuItem.shortcuts:
+            if (context.mounted) await showShortcutsHelp(context);
           case _UserMenuItem.themes:
             if (context.mounted) {
               await showDialog<void>(
@@ -90,6 +93,15 @@ class UserChip extends ConsumerWidget {
             const Icon(Icons.help_outline, size: 16),
             const SizedBox(width: 8),
             Text(ctx.l10n.help),
+          ]),
+        ),
+        PopupMenuItem(
+          key: const ValueKey('user-menu-shortcuts'),
+          value: _UserMenuItem.shortcuts,
+          child: Row(children: [
+            const Icon(Icons.keyboard_outlined, size: 16),
+            const SizedBox(width: 8),
+            Text(ctx.l10n.keyboardShortcuts),
           ]),
         ),
         // ── Theme ──────────────────────────────────────────────────────

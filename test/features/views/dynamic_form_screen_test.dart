@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tryton_flutter_client/features/views/embedded_tree_widget.dart';
+import 'package:tryton_flutter_client/features/views/tree_view.dart';
 
 import 'form_harness.dart';
 
@@ -155,7 +156,7 @@ void main() {
     // "Add" closes the form popup: the new line is shown in the table
     await tester.tap(find.widgetWithText(FilledButton, 'Add'));
     await tester.pumpAndSettle();
-    expect(find.descendant(of: list, matching: find.byType(DataTable)), findsOneWidget);
+    expect(find.descendant(of: list, matching: find.byType(TreeView)), findsOneWidget);
     // The child is not saved on its own.
     expect(rpc.calls.where((c) => c.method.startsWith('model.test.line.') &&
         !c.method.endsWith('fields_view_get') && !c.method.endsWith('default_get')), isEmpty);

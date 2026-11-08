@@ -3,21 +3,13 @@ import '../../core/screen/screen.dart' show ScreenView;
 import '../../core/xml/view_definition.dart';
 import 'field_definition.dart';
 
-/// Field types without an own widget yet (E13). They are shown as a
-/// read-only placeholder and never sent to write/create.
-const unsupportedFieldTypes = {
-  'binary',
-};
+/// Field types without an own widget (E13); since all widgets of spec
+/// 9.2.4 exist, none. Fields of such types would be shown as a read-only
+/// placeholder and never sent to write/create.
+const unsupportedFieldTypes = <String>{};
 
-/// `widget=` attributes without an own widget yet (E13), e.g.
-/// `<field name="photo" widget="image"/>` or a text with
-/// `widget="richtext"`.
-const unsupportedWidgets = {
-  ...unsupportedFieldTypes,
-  'image',
-  'document',
-  'richtext',
-};
+/// `widget=` attributes without an own widget (none since E13).
+const unsupportedWidgets = <String>{...unsupportedFieldTypes};
 
 /// True when [type] / [widget] has no own representation in this client.
 bool isUnsupportedField(String type, [String? widget]) =>

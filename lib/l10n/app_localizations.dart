@@ -961,6 +961,690 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Edit User Preferences'**
   String get editUserPreferences;
+
+  /// No description provided for @saveAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Save As...'**
+  String get saveAs;
+
+  /// No description provided for @selectFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Select...'**
+  String get selectFile;
+
+  /// No description provided for @clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// No description provided for @openFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Open...'**
+  String get openFile;
+
+  /// No description provided for @attachmentsOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments ({name})'**
+  String attachmentsOf(Object name);
+
+  /// No description provided for @notesOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes ({name})'**
+  String notesOf(Object name);
+
+  /// No description provided for @logsOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs ({name})'**
+  String logsOf(Object name);
+
+  /// No description provided for @attachmentCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment ({count})'**
+  String attachmentCount(Object count);
+
+  /// No description provided for @addFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Add...'**
+  String get addFiles;
+
+  /// No description provided for @manage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage...'**
+  String get manage;
+
+  /// No description provided for @logModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get logModel;
+
+  /// No description provided for @logModule.
+  ///
+  /// In en, this message translates to:
+  /// **'Module'**
+  String get logModule;
+
+  /// No description provided for @logXmlId.
+  ///
+  /// In en, this message translates to:
+  /// **'XML ID'**
+  String get logXmlId;
+
+  /// No description provided for @logCreatedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by'**
+  String get logCreatedBy;
+
+  /// No description provided for @logCreatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Created at'**
+  String get logCreatedAt;
+
+  /// No description provided for @logModifiedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Last modified by'**
+  String get logModifiedBy;
+
+  /// No description provided for @logModifiedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Last modified at'**
+  String get logModifiedAt;
+
+  /// No description provided for @exportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Data...'**
+  String get exportData;
+
+  /// No description provided for @importData.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Data...'**
+  String get importData;
+
+  /// No description provided for @csvExportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV Export: {name}'**
+  String csvExportTitle(Object name);
+
+  /// No description provided for @csvImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV Import: {name}'**
+  String csvImportTitle(Object name);
+
+  /// No description provided for @csvAllFields.
+  ///
+  /// In en, this message translates to:
+  /// **'All Fields'**
+  String get csvAllFields;
+
+  /// No description provided for @csvFieldsSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Fields Selected'**
+  String get csvFieldsSelected;
+
+  /// No description provided for @csvRemoveAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get csvRemoveAll;
+
+  /// No description provided for @csvParameters.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV Parameters'**
+  String get csvParameters;
+
+  /// No description provided for @csvDelimiter.
+  ///
+  /// In en, this message translates to:
+  /// **'Delimiter'**
+  String get csvDelimiter;
+
+  /// No description provided for @csvQuoteChar.
+  ///
+  /// In en, this message translates to:
+  /// **'Quote char'**
+  String get csvQuoteChar;
+
+  /// No description provided for @csvEncoding.
+  ///
+  /// In en, this message translates to:
+  /// **'Encoding'**
+  String get csvEncoding;
+
+  /// No description provided for @csvLocaleFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use locale format'**
+  String get csvLocaleFormat;
+
+  /// No description provided for @csvAddFieldNames.
+  ///
+  /// In en, this message translates to:
+  /// **'Add field names'**
+  String get csvAddFieldNames;
+
+  /// No description provided for @csvListedRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Listed Records'**
+  String get csvListedRecords;
+
+  /// No description provided for @csvSelectedRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected Records'**
+  String get csvSelectedRecords;
+
+  /// No description provided for @csvIgnoreSearchLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore search limit'**
+  String get csvIgnoreSearchLimit;
+
+  /// No description provided for @csvPredefinedExports.
+  ///
+  /// In en, this message translates to:
+  /// **'Predefined exports'**
+  String get csvPredefinedExports;
+
+  /// No description provided for @csvSaveExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Export'**
+  String get csvSaveExport;
+
+  /// No description provided for @csvDeleteExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Export'**
+  String get csvDeleteExport;
+
+  /// No description provided for @csvExportName.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the name of this export?'**
+  String get csvExportName;
+
+  /// No description provided for @csvOverrideExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Override \'{name}\' definition?'**
+  String csvOverrideExport(Object name);
+
+  /// No description provided for @csvRecordsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Records saved: {count}'**
+  String csvRecordsSaved(Object count);
+
+  /// No description provided for @csvExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed'**
+  String get csvExportFailed;
+
+  /// No description provided for @csvFileToImport.
+  ///
+  /// In en, this message translates to:
+  /// **'File to Import'**
+  String get csvFileToImport;
+
+  /// No description provided for @csvLinesToSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines to Skip'**
+  String get csvLinesToSkip;
+
+  /// No description provided for @csvAutoDetect.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-Detect'**
+  String get csvAutoDetect;
+
+  /// No description provided for @csvImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get csvImport;
+
+  /// No description provided for @csvSelectImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'You must select an import file first.'**
+  String get csvSelectImportFile;
+
+  /// No description provided for @csvUnknownHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown column header \"{name}\"'**
+  String csvUnknownHeader(Object name);
+
+  /// No description provided for @csvDetectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Detection failed'**
+  String get csvDetectionFailed;
+
+  /// No description provided for @csvRecordsImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Records imported: {count}'**
+  String csvRecordsImported(Object count);
+
+  /// No description provided for @csvImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed'**
+  String get csvImportFailed;
+
+  /// No description provided for @csvFieldString.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (string)'**
+  String csvFieldString(Object name);
+
+  /// No description provided for @csvFieldModelName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (model name)'**
+  String csvFieldModelName(Object name);
+
+  /// No description provided for @csvFieldRecordName.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}/Record Name'**
+  String csvFieldRecordName(Object name);
+
+  /// No description provided for @open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get open;
+
+  /// No description provided for @recordMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Record menu'**
+  String get recordMenu;
+
+  /// No description provided for @menuSwitchView.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch View'**
+  String get menuSwitchView;
+
+  /// No description provided for @menuPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get menuPrevious;
+
+  /// No description provided for @menuNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get menuNext;
+
+  /// No description provided for @menuSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get menuSearch;
+
+  /// No description provided for @menuNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get menuNew;
+
+  /// No description provided for @menuSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get menuSave;
+
+  /// No description provided for @menuReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload/Undo'**
+  String get menuReload;
+
+  /// No description provided for @menuDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get menuDuplicate;
+
+  /// No description provided for @menuDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete...'**
+  String get menuDelete;
+
+  /// No description provided for @menuLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'View Logs...'**
+  String get menuLogs;
+
+  /// No description provided for @menuRevisions.
+  ///
+  /// In en, this message translates to:
+  /// **'Show revisions...'**
+  String get menuRevisions;
+
+  /// No description provided for @menuAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments...'**
+  String get menuAttachments;
+
+  /// No description provided for @menuNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes...'**
+  String get menuNotes;
+
+  /// No description provided for @menuActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions...'**
+  String get menuActions;
+
+  /// No description provided for @menuRelate.
+  ///
+  /// In en, this message translates to:
+  /// **'Relate...'**
+  String get menuRelate;
+
+  /// No description provided for @menuReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report...'**
+  String get menuReport;
+
+  /// No description provided for @menuEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email...'**
+  String get menuEmail;
+
+  /// No description provided for @menuCloseTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Tab'**
+  String get menuCloseTab;
+
+  /// No description provided for @keyboardShortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard Shortcuts'**
+  String get keyboardShortcuts;
+
+  /// No description provided for @shortcutsGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Global'**
+  String get shortcutsGlobal;
+
+  /// No description provided for @shortcutsForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Form'**
+  String get shortcutsForm;
+
+  /// No description provided for @shortcutsRelation.
+  ///
+  /// In en, this message translates to:
+  /// **'Relation Entries'**
+  String get shortcutsRelation;
+
+  /// No description provided for @shortcutsList.
+  ///
+  /// In en, this message translates to:
+  /// **'List Entries'**
+  String get shortcutsList;
+
+  /// No description provided for @shortcutsDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date Entries'**
+  String get shortcutsDate;
+
+  /// No description provided for @shortcutSearchMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Search menu'**
+  String get shortcutSearchMenu;
+
+  /// No description provided for @shortcutToggleMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle menu'**
+  String get shortcutToggleMenu;
+
+  /// No description provided for @shortcutPreviousTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous tab'**
+  String get shortcutPreviousTab;
+
+  /// No description provided for @shortcutNextTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Next tab'**
+  String get shortcutNextTab;
+
+  /// No description provided for @shortcutQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit'**
+  String get shortcutQuit;
+
+  /// No description provided for @shortcutRelationNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new relation'**
+  String get shortcutRelationNew;
+
+  /// No description provided for @shortcutRelationOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open/Search relation'**
+  String get shortcutRelationOpen;
+
+  /// No description provided for @shortcutListSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch view'**
+  String get shortcutListSwitch;
+
+  /// No description provided for @shortcutListNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Create/Select new line'**
+  String get shortcutListNew;
+
+  /// No description provided for @shortcutListOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open relation'**
+  String get shortcutListOpen;
+
+  /// No description provided for @shortcutListDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark line for deletion/removal'**
+  String get shortcutListDelete;
+
+  /// No description provided for @shortcutListRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark line for removal'**
+  String get shortcutListRemove;
+
+  /// No description provided for @shortcutListUndelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmark line for deletion'**
+  String get shortcutListUndelete;
+
+  /// No description provided for @shortcutDateToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get shortcutDateToday;
+
+  /// No description provided for @shortcutDateAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add second/minute/hour/day/week/month/year'**
+  String get shortcutDateAdd;
+
+  /// No description provided for @shortcutDateSubtract.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtract second/minute/hour/day/week/month/year'**
+  String get shortcutDateSubtract;
+
+  /// No description provided for @keyDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get keyDelete;
+
+  /// No description provided for @keyInsert.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert'**
+  String get keyInsert;
+
+  /// No description provided for @ctxCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get ctxCopy;
+
+  /// No description provided for @ctxCopyRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Row'**
+  String get ctxCopyRow;
+
+  /// No description provided for @ctxCopyRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Rows'**
+  String get ctxCopyRows;
+
+  /// No description provided for @ctxCopyColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Column'**
+  String get ctxCopyColumn;
+
+  /// No description provided for @ctxPasteRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste Rows'**
+  String get ctxPasteRows;
+
+  /// No description provided for @ctxEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit...'**
+  String get ctxEdit;
+
+  /// No description provided for @ctxPrint.
+  ///
+  /// In en, this message translates to:
+  /// **'Print...'**
+  String get ctxPrint;
+
+  /// No description provided for @x2mCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new record'**
+  String get x2mCreate;
+
+  /// No description provided for @x2mEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit selected record'**
+  String get x2mEdit;
+
+  /// No description provided for @x2mDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete selected record'**
+  String get x2mDelete;
+
+  /// No description provided for @x2mAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add existing record'**
+  String get x2mAdd;
+
+  /// No description provided for @x2mRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove selected record'**
+  String get x2mRemove;
+
+  /// No description provided for @x2mUndelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Undelete selected record'**
+  String get x2mUndelete;
+
+  /// No description provided for @x2mRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore selected record'**
+  String get x2mRestore;
+
+  /// No description provided for @x2mSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get x2mSwitch;
+
+  /// No description provided for @x2mPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get x2mPrevious;
+
+  /// No description provided for @x2mNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get x2mNext;
+
+  /// No description provided for @x2mMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get x2mMore;
 }
 
 class _AppLocalizationsDelegate

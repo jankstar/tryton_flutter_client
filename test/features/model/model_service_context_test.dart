@@ -94,7 +94,10 @@ void main() {
       rpc.result = <dynamic>[];
       await svc.searchName('party.party', 'Ja');
       await svc.getSelectionOptions('party.party', 'get_x');
-      await svc.executeReport('party.label', [1], 'party.party');
+      await svc.executeMethod<dynamic>('report.party.label.execute', [
+        [1],
+        {'ids': [1], 'model': 'party.party'}
+      ]);
 
       for (final (_, method, params) in rpc.calls) {
         final ctx = params.last;

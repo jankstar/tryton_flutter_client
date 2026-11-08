@@ -21,11 +21,15 @@ class SearchBox extends ConsumerStatefulWidget {
   final TextEditingController controller;
   final VoidCallback onSearch;
 
+  /// Focus of the entry (record menu „Search“, Ctrl+Shift+F).
+  final FocusNode? focusNode;
+
   const SearchBox({
     super.key,
     required this.screen,
     required this.controller,
     required this.onSearch,
+    this.focusNode,
   });
 
   @override
@@ -33,7 +37,7 @@ class SearchBox extends ConsumerStatefulWidget {
 }
 
 class _SearchBoxState extends ConsumerState<SearchBox> {
-  final _focus = FocusNode();
+  late final _focus = widget.focusNode ?? FocusNode();
   List<String> _completions = const [];
 
   TrytonScreen get _screen => widget.screen;
@@ -57,7 +61,7 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
   @override
   void dispose() {
     widget.controller.removeListener(_onText);
-    _focus.dispose();
+    if (widget.focusNode == null) _focus.dispose();
     super.dispose();
   }
 

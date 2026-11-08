@@ -13,6 +13,7 @@ import '../../core/xml/view_definition.dart';
 import '../model/field_support.dart';
 import 'form_dialog.dart';
 import 'record_cells.dart';
+import 'record_menu.dart';
 
 /// A record chosen in the search dialog: id and rec_name.
 typedef SearchResult = ({int id, String name});
@@ -256,6 +257,9 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): _cancel,
+        // the record shortcut on the dialog's button (SAO `new_`)
+        if (widget.allowNew && !_busy)
+          recordShortcut(RecordAction.newRecord)!: _new,
       },
       child: Dialog(
         insetPadding: const EdgeInsets.all(24),

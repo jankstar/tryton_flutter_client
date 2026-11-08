@@ -19,6 +19,7 @@ import 'package:tryton_flutter_client/features/views/record_form.dart';
 import 'package:tryton_flutter_client/features/views/screen_widget.dart';
 import 'package:tryton_flutter_client/l10n/app_localizations.dart';
 import 'package:tryton_flutter_client/shared/utils/number_format_utils.dart';
+import 'package:tryton_flutter_client/features/views/tree_view.dart';
 
 /// Form widgets against the Tryton test server, read only (E10–E13, H4):
 /// the party form with its addresses (`mode="form,tree"`) and numbers in
@@ -113,7 +114,7 @@ void main() {
       }
     }
 
-    await settle(find.byKey(const ValueKey('x2m-position')));
+    await settle(_addressPosition);
     expect(tester.takeException(), isNull);
     expect(find.byType(RecordForm), findsWidgets);
     // Language (many2one with widget="selection"): a dropdown of ir.lang
@@ -132,18 +133,18 @@ void main() {
     expect(items.length, greaterThan(1), reason: 'languages of ir.lang');
     // close the menu without a choice
     await tester.tapAt(Offset.zero);
-    await settle(find.byKey(const ValueKey('x2m-position')));
+    await settle(_addressPosition);
 
     // Addresses (mode="form,tree"): the form of the first address
-    expect(find.byKey(const ValueKey('x2m-position')), findsOneWidget);
-    expect(find.text('1 / ${_count(tester)}'), findsOneWidget);
+    expect(_addressPosition, findsOneWidget);
+    expect(find.text('1/${_count(tester)}'), findsOneWidget);
 
-    await tester.ensureVisible(find.byKey(const ValueKey('x2m-switch')));
+    await tester.ensureVisible(find.descendant(of: find.byKey(const ValueKey('x2m_addresses')), matching: find.byKey(const ValueKey('x2m-switch'))));
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('x2m-switch')));
-    await settle(find.byType(DataTable));
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey('x2m_addresses')), matching: find.byKey(const ValueKey('x2m-switch'))));
+    await settle(find.byType(TreeView));
     expect(tester.takeException(), isNull);
-    expect(find.byType(DataTable), findsWidgets,
+    expect(find.byType(TreeView), findsWidgets,
         reason: 'switched to the table view 166');
   });
 
@@ -445,9 +446,14 @@ void main() {
   });
 }
 
-/// Number of addresses from the position text „1 / n“.
+/// Position of the addresses widget (each x2many has one).
+final _addressPosition = find.descendant(
+    of: find.byKey(const ValueKey('x2m_addresses')),
+    matching: find.byKey(const ValueKey('x2m-position')));
+
+/// Number of addresses from the position text „1/n“.
 String _count(WidgetTester tester) {
   final text =
-      tester.widget<Text>(find.byKey(const ValueKey('x2m-position'))).data!;
-  return text.split(' / ').last;
+      tester.widget<Text>(_addressPosition).data!;
+  return text.split('/').last;
 }

@@ -466,4 +466,374 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get editUserPreferences => 'Gebruikersvoorkeuren bewerken';
+
+  @override
+  String get saveAs => 'Opslaan als…';
+
+  @override
+  String get selectFile => 'Selecteren…';
+
+  @override
+  String get clear => 'Wissen';
+
+  @override
+  String get openFile => 'Openen…';
+
+  @override
+  String attachmentsOf(Object name) {
+    return 'Bijlagen ($name)';
+  }
+
+  @override
+  String notesOf(Object name) {
+    return 'Notities ($name)';
+  }
+
+  @override
+  String logsOf(Object name) {
+    return 'Logboeken ($name)';
+  }
+
+  @override
+  String attachmentCount(Object count) {
+    return 'Bijlage ($count)';
+  }
+
+  @override
+  String get addFiles => 'Toevoegen…';
+
+  @override
+  String get manage => 'Beheren…';
+
+  @override
+  String get logModel => 'Model';
+
+  @override
+  String get logModule => 'Module';
+
+  @override
+  String get logXmlId => 'XML-ID';
+
+  @override
+  String get logCreatedBy => 'Aangemaakt door';
+
+  @override
+  String get logCreatedAt => 'Aangemaakt op';
+
+  @override
+  String get logModifiedBy => 'Laatst gewijzigd door';
+
+  @override
+  String get logModifiedAt => 'Laatst gewijzigd op';
+
+  @override
+  String get exportData => 'Gegevens exporteren…';
+
+  @override
+  String get importData => 'Gegevens importeren…';
+
+  @override
+  String csvExportTitle(Object name) {
+    return 'CSV-export: $name';
+  }
+
+  @override
+  String csvImportTitle(Object name) {
+    return 'CSV-import: $name';
+  }
+
+  @override
+  String get csvAllFields => 'Alle velden';
+
+  @override
+  String get csvFieldsSelected => 'Geselecteerde velden';
+
+  @override
+  String get csvRemoveAll => 'Wissen';
+
+  @override
+  String get csvParameters => 'CSV-parameters';
+
+  @override
+  String get csvDelimiter => 'Scheidingsteken';
+
+  @override
+  String get csvQuoteChar => 'Aanhalingsteken';
+
+  @override
+  String get csvEncoding => 'Codering';
+
+  @override
+  String get csvLocaleFormat => 'Lokaal formaat gebruiken';
+
+  @override
+  String get csvAddFieldNames => 'Veldnamen toevoegen';
+
+  @override
+  String get csvListedRecords => 'Getoonde records';
+
+  @override
+  String get csvSelectedRecords => 'Geselecteerde records';
+
+  @override
+  String get csvIgnoreSearchLimit => 'Zoeklimiet negeren';
+
+  @override
+  String get csvPredefinedExports => 'Voorgedefinieerde exports';
+
+  @override
+  String get csvSaveExport => 'Export opslaan';
+
+  @override
+  String get csvDeleteExport => 'Export verwijderen';
+
+  @override
+  String get csvExportName => 'Wat is de naam van deze export?';
+
+  @override
+  String csvOverrideExport(Object name) {
+    return 'Definitie van \'$name\' overschrijven?';
+  }
+
+  @override
+  String csvRecordsSaved(Object count) {
+    return 'Opgeslagen records: $count';
+  }
+
+  @override
+  String get csvExportFailed => 'Export mislukt';
+
+  @override
+  String get csvFileToImport => 'Te importeren bestand';
+
+  @override
+  String get csvLinesToSkip => 'Over te slaan regels';
+
+  @override
+  String get csvAutoDetect => 'Automatisch herkennen';
+
+  @override
+  String get csvImport => 'Importeren';
+
+  @override
+  String get csvSelectImportFile => 'Selecteer eerst een importbestand.';
+
+  @override
+  String csvUnknownHeader(Object name) {
+    return 'Onbekende kolomkop \"$name\"';
+  }
+
+  @override
+  String get csvDetectionFailed => 'Herkenning mislukt';
+
+  @override
+  String csvRecordsImported(Object count) {
+    return 'Geïmporteerde records: $count';
+  }
+
+  @override
+  String get csvImportFailed => 'Import mislukt';
+
+  @override
+  String csvFieldString(Object name) {
+    return '$name (tekst)';
+  }
+
+  @override
+  String csvFieldModelName(Object name) {
+    return '$name (modelnaam)';
+  }
+
+  @override
+  String csvFieldRecordName(Object name) {
+    return '$name/Recordnaam';
+  }
+
+  @override
+  String get open => 'Openen';
+
+  @override
+  String get recordMenu => 'Recordmenu';
+
+  @override
+  String get menuSwitchView => 'Andere weergave';
+
+  @override
+  String get menuPrevious => 'Vorige';
+
+  @override
+  String get menuNext => 'Volgende';
+
+  @override
+  String get menuSearch => 'Zoeken';
+
+  @override
+  String get menuNew => 'Nieuw';
+
+  @override
+  String get menuSave => 'Opslaan';
+
+  @override
+  String get menuReload => 'Herladen/Ongedaan maken';
+
+  @override
+  String get menuDuplicate => 'Dupliceren';
+
+  @override
+  String get menuDelete => 'Verwijderen…';
+
+  @override
+  String get menuLogs => 'Logboek bekijken…';
+
+  @override
+  String get menuRevisions => 'Revisies tonen…';
+
+  @override
+  String get menuAttachments => 'Bijlagen…';
+
+  @override
+  String get menuNotes => 'Notities…';
+
+  @override
+  String get menuActions => 'Acties…';
+
+  @override
+  String get menuRelate => 'Gerelateerd…';
+
+  @override
+  String get menuReport => 'Rapport…';
+
+  @override
+  String get menuEmail => 'E-mail…';
+
+  @override
+  String get menuCloseTab => 'Tabblad sluiten';
+
+  @override
+  String get keyboardShortcuts => 'Sneltoetsen';
+
+  @override
+  String get shortcutsGlobal => 'Algemeen';
+
+  @override
+  String get shortcutsForm => 'Formulier';
+
+  @override
+  String get shortcutsRelation => 'Relatievelden';
+
+  @override
+  String get shortcutsList => 'Lijstvelden';
+
+  @override
+  String get shortcutsDate => 'Datumvelden';
+
+  @override
+  String get shortcutSearchMenu => 'Menu doorzoeken';
+
+  @override
+  String get shortcutToggleMenu => 'Menu tonen/verbergen';
+
+  @override
+  String get shortcutPreviousTab => 'Vorig tabblad';
+
+  @override
+  String get shortcutNextTab => 'Volgend tabblad';
+
+  @override
+  String get shortcutQuit => 'Afsluiten';
+
+  @override
+  String get shortcutRelationNew => 'Nieuwe relatie aanmaken';
+
+  @override
+  String get shortcutRelationOpen => 'Relatie openen/zoeken';
+
+  @override
+  String get shortcutListSwitch => 'Andere weergave';
+
+  @override
+  String get shortcutListNew => 'Nieuwe regel aanmaken/kiezen';
+
+  @override
+  String get shortcutListOpen => 'Relatie openen';
+
+  @override
+  String get shortcutListDelete => 'Regel markeren voor verwijderen';
+
+  @override
+  String get shortcutListRemove => 'Regel markeren voor ontkoppelen';
+
+  @override
+  String get shortcutListUndelete => 'Verwijdermarkering opheffen';
+
+  @override
+  String get shortcutDateToday => 'Vandaag';
+
+  @override
+  String get shortcutDateAdd =>
+      'Seconde/minuut/uur/dag/week/maand/jaar optellen';
+
+  @override
+  String get shortcutDateSubtract =>
+      'Seconde/minuut/uur/dag/week/maand/jaar aftrekken';
+
+  @override
+  String get keyDelete => 'Delete';
+
+  @override
+  String get keyInsert => 'Insert';
+
+  @override
+  String get ctxCopy => 'Kopiëren';
+
+  @override
+  String get ctxCopyRow => 'Regel kopiëren';
+
+  @override
+  String get ctxCopyRows => 'Regels kopiëren';
+
+  @override
+  String get ctxCopyColumn => 'Kolom kopiëren';
+
+  @override
+  String get ctxPasteRows => 'Regels plakken';
+
+  @override
+  String get ctxEdit => 'Bewerken…';
+
+  @override
+  String get ctxPrint => 'Afdrukken…';
+
+  @override
+  String get x2mCreate => 'Nieuw record aanmaken';
+
+  @override
+  String get x2mEdit => 'Geselecteerd record bewerken';
+
+  @override
+  String get x2mDelete => 'Geselecteerd record verwijderen';
+
+  @override
+  String get x2mAdd => 'Bestaand record toevoegen';
+
+  @override
+  String get x2mRemove => 'Geselecteerd record ontkoppelen';
+
+  @override
+  String get x2mUndelete => 'Geselecteerd record herstellen';
+
+  @override
+  String get x2mRestore => 'Geselecteerd record terugzetten';
+
+  @override
+  String get x2mSwitch => 'Wisselen';
+
+  @override
+  String get x2mPrevious => 'Vorige';
+
+  @override
+  String get x2mNext => 'Volgende';
+
+  @override
+  String get x2mMore => 'Meer';
 }

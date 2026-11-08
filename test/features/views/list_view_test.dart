@@ -69,7 +69,7 @@ void main() {
     final sum = find.byKey(const ValueKey('sum-amount#0'));
     expect(tester.widget<Text>(sum).data, '6.75\n6.75');
     // select row A (checkbox): selected / all
-    final rowA = find.ancestor(of: find.text('A'), matching: find.byType(InkWell)).first;
+    final rowA = find.ancestor(of: find.text('A'), matching: find.byType(Material)).first;
     await tester.tap(find.descendant(of: rowA, matching: find.byType(Checkbox)));
     await settle(tester);
     expect(tester.widget<Text>(sum).data, '1.50\n6.75');
@@ -229,7 +229,7 @@ void main() {
     await settle(tester);
     final get = rpc.named('model.ir.ui.view_tree_state.get').single;
     expect(get.params, ['test.line', '[]', null]);
-    final rowB = find.ancestor(of: find.text('B'), matching: find.byType(InkWell)).first;
+    final rowB = find.ancestor(of: find.text('B'), matching: find.byType(Material)).first;
     expect(
         tester
             .widget<Checkbox>(find.descendant(of: rowB, matching: find.byType(Checkbox)))

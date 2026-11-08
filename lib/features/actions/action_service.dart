@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,6 +13,9 @@ import '../../shared/errors/error_handler.dart';
 import '../auth/auth_provider.dart';
 import '../model/field_support.dart';
 import '../model/model_rpc.dart';
+import '../../core/serialization/tryton_serializer.dart';
+import '../../shared/utils/file_actions.dart';
+import '../../shared/utils/zip_reader.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
 import '../auth/session_bootstrap.dart';
@@ -242,6 +247,12 @@ class ActionService {
     }
   }
 
+  /// `ir.action.report` (spec 12.4, Python `Action.exec_report`):
+  /// `report.<report_name>.execute(ids, data, ctx ∪ {direct_print})` →
+  /// `[type, data, print_p, name]`; the file `<name>.<type>` is written to
+  /// a temporary directory, then printed (`print_p` or `direct_print`) or
+  /// opened (desktop: system application, mobile: share sheet); a `zip`
+  /// gives its files one by one.
   Future<void> _executeReport(Map<String, dynamic> action,
       Map<String, dynamic> data, Map<String, dynamic> context, ActionUi? ui) async {
     final reportName = action['report_name'];
@@ -249,15 +260,47 @@ class ActionService {
     final ids = [
       for (final id in (data['ids'] as List? ?? const [])) id as int
     ];
+    final directPrint = action['direct_print'] == true;
     await ui?.message(ui.generatingReport());
-    final result = await _svc.executeReport(
-        reportName, ids, '${data['model'] ?? ''}');
-    // result = [format, data, direct_print, name]; file output with G2
-    final format = result[0] as String? ?? 'pdf';
-    final name = result.length > 3
-        ? result[3]?.toString() ?? '${action['name']}'
-        : '${action['name']}';
-    await ui?.message(ui.reportGenerated(name, format));
+    final result = await _svc.executeMethod<dynamic>(
+        'report.$reportName.execute', [ids, data],
+        context: {...context, 'direct_print': directPrint});
+    if (result is! List || result.length < 2) return;
+    final type = '${result[0] ?? 'pdf'}';
+    final content = result[1];
+    final bytes = content is TrytonBytes
+        ? Uint8List.fromList(content.bytes)
+        : Uint8List.fromList(utf8.encode('${content ?? ''}'));
+    final printP = (result.length > 2 && result[2] == true) || directPrint;
+    final name = result.length > 3 && result[3] != null
+        ? '${result[3]}'
+        : '${action['name'] ?? reportName}';
+    await outputReport(name, type, bytes, print: printP);
+  }
+
+  /// Writes a report and prints or opens it; a `zip` gives its files one
+  /// by one (each with its own extension).
+  static Future<void> outputReport(String name, String type, Uint8List bytes,
+      {bool print = false}) async {
+    final files = FileActions.instance;
+    final parts = type == 'zip'
+        ? [
+            for (final f in readZip(bytes))
+              (
+                name: f.name.split('/').last,
+                type: f.name.contains('.') ? f.name.split('.').last : '',
+                bytes: f.bytes
+              )
+          ]
+        : [(name: '$name.$type', type: type, bytes: bytes)];
+    for (final part in parts) {
+      final path = await files.writeTemp(part.name, part.bytes);
+      if (print) {
+        await files.print(part.name, part.type, part.bytes, path);
+      } else {
+        await files.open(path);
+      }
+    }
   }
 
   /// Actions of [keyword] for the record of [data] (`get_keyword`): one is

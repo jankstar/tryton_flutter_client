@@ -71,7 +71,8 @@ class FieldWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (field.invisible) return const SizedBox.shrink();
 
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: _buildField(context, ref));
+    // (the same gap as the other field widgets of the form)
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: _buildField(context, ref));
   }
 
   Widget _buildField(BuildContext context, WidgetRef ref) {
@@ -80,8 +81,7 @@ class FieldWidget extends ConsumerWidget {
     // No own widget yet (E13) → read-only placeholder, never a text input
     // (the value would be shown/edited as garbage and written back).
     if (isUnsupportedField(field.type, widgetOverride)) {
-      return _UnsupportedField(
-          field: field, kind: widgetOverride ?? field.type);
+      return _UnsupportedField(field: field, kind: widgetOverride ?? field.type);
     }
 
     // widget= XML attribute overrides the default type-based rendering.
@@ -122,20 +122,23 @@ class FieldWidget extends ConsumerWidget {
                   text: field.label,
                   style: DefaultTextStyle.of(context).style,
                   children: const [
-                    TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ],
                 ),
               )
             : Text(field.label, overflow: TextOverflow.ellipsis);
         return InkWell(
           onTap: effective ? null : () => onChanged?.call(!(value == true)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Checkbox(
-              value: value as bool? ?? false,
-              onChanged: effective ? null : (v) => onChanged?.call(v),
-            ),
-            Flexible(child: label),
-          ]),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Checkbox(value: value as bool? ?? false, onChanged: effective ? null : (v) => onChanged?.call(v)),
+              Flexible(child: label),
+            ],
+          ),
         );
 
       case 'selection':
@@ -206,9 +209,7 @@ class FieldWidget extends ConsumerWidget {
       case 'many2one':
       case 'one2one':
         return _TextInputField(
-          initialValue: value is List && value.length > 1 && value[1] is String
-              ? value[1] as String
-              : '',
+          initialValue: value is List && value.length > 1 && value[1] is String ? value[1] as String : '',
           decoration: _decoration(context),
           readOnly: true,
         );
@@ -248,7 +249,8 @@ class FieldWidget extends ConsumerWidget {
               text: field.label,
               style:
                   Theme.of(context).inputDecorationTheme.labelStyle ??
-                  TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 16),
+                  Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
               children: const [
                 TextSpan(
                   text: ' *',
@@ -445,8 +447,11 @@ class _SelectionField extends StatelessWidget {
     }
 
     return DropdownButtonFormField<String>(
-      value: selValue,
-      decoration: decoration,
+      initialValue: selValue,
+      // (the dense dropdown line is 24 px, a text line 20: less padding
+      // keeps the field as high as a text field)
+      decoration: decoration.copyWith(
+          contentPadding: const EdgeInsets.fromLTRB(10, 7, 10, 6)),
       isExpanded: true,
       items: items
           .map(
@@ -465,6 +470,7 @@ class _SelectionField extends StatelessWidget {
 
 class _UnsupportedField extends StatelessWidget {
   final FieldDefinition field;
+
   /// Field type or widget name, e.g. "binary" or "image".
   final String kind;
 
@@ -711,13 +717,14 @@ class _LinkField extends StatelessWidget {
         return IconButton(
           key: ValueKey('open-${field.name}'),
           icon: Icon(
-              switch (scheme) {
-                'email' => Icons.email_outlined,
-                'callto' || 'sip' => Icons.phone_outlined,
-                _ => Icons.open_in_new,
-              },
-              size: 18,
-              color: uri != null ? cs.primary : cs.outline),
+            switch (scheme) {
+              'email' => Icons.email_outlined,
+              'callto' || 'sip' => Icons.phone_outlined,
+              _ => Icons.open_in_new,
+            },
+            size: 18,
+            color: uri != null ? cs.primary : cs.outline,
+          ),
           tooltip: text,
           onPressed: uri == null
               ? null

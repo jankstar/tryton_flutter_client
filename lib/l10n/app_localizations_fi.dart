@@ -466,4 +466,374 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get editUserPreferences => 'Muokkaa käyttäjän asetuksia';
+
+  @override
+  String get saveAs => 'Tallenna nimellä…';
+
+  @override
+  String get selectFile => 'Valitse…';
+
+  @override
+  String get clear => 'Tyhjennä';
+
+  @override
+  String get openFile => 'Avaa…';
+
+  @override
+  String attachmentsOf(Object name) {
+    return 'Liitteet ($name)';
+  }
+
+  @override
+  String notesOf(Object name) {
+    return 'Muistiinpanot ($name)';
+  }
+
+  @override
+  String logsOf(Object name) {
+    return 'Lokit ($name)';
+  }
+
+  @override
+  String attachmentCount(Object count) {
+    return 'Liite ($count)';
+  }
+
+  @override
+  String get addFiles => 'Lisää…';
+
+  @override
+  String get manage => 'Hallitse…';
+
+  @override
+  String get logModel => 'Malli';
+
+  @override
+  String get logModule => 'Moduuli';
+
+  @override
+  String get logXmlId => 'XML-tunnus';
+
+  @override
+  String get logCreatedBy => 'Luonut';
+
+  @override
+  String get logCreatedAt => 'Luotu';
+
+  @override
+  String get logModifiedBy => 'Viimeksi muokannut';
+
+  @override
+  String get logModifiedAt => 'Viimeksi muokattu';
+
+  @override
+  String get exportData => 'Vie tiedot…';
+
+  @override
+  String get importData => 'Tuo tiedot…';
+
+  @override
+  String csvExportTitle(Object name) {
+    return 'CSV-vienti: $name';
+  }
+
+  @override
+  String csvImportTitle(Object name) {
+    return 'CSV-tuonti: $name';
+  }
+
+  @override
+  String get csvAllFields => 'Kaikki kentät';
+
+  @override
+  String get csvFieldsSelected => 'Valitut kentät';
+
+  @override
+  String get csvRemoveAll => 'Tyhjennä';
+
+  @override
+  String get csvParameters => 'CSV-parametrit';
+
+  @override
+  String get csvDelimiter => 'Erotin';
+
+  @override
+  String get csvQuoteChar => 'Lainausmerkki';
+
+  @override
+  String get csvEncoding => 'Merkistö';
+
+  @override
+  String get csvLocaleFormat => 'Käytä paikallista muotoa';
+
+  @override
+  String get csvAddFieldNames => 'Lisää kenttien nimet';
+
+  @override
+  String get csvListedRecords => 'Luetellut tietueet';
+
+  @override
+  String get csvSelectedRecords => 'Valitut tietueet';
+
+  @override
+  String get csvIgnoreSearchLimit => 'Ohita hakuraja';
+
+  @override
+  String get csvPredefinedExports => 'Valmiit viennit';
+
+  @override
+  String get csvSaveExport => 'Tallenna vienti';
+
+  @override
+  String get csvDeleteExport => 'Poista vienti';
+
+  @override
+  String get csvExportName => 'Mikä on tämän viennin nimi?';
+
+  @override
+  String csvOverrideExport(Object name) {
+    return 'Korvataanko määritys \'$name\'?';
+  }
+
+  @override
+  String csvRecordsSaved(Object count) {
+    return 'Tallennetut tietueet: $count';
+  }
+
+  @override
+  String get csvExportFailed => 'Vienti epäonnistui';
+
+  @override
+  String get csvFileToImport => 'Tuotava tiedosto';
+
+  @override
+  String get csvLinesToSkip => 'Ohitettavat rivit';
+
+  @override
+  String get csvAutoDetect => 'Tunnista automaattisesti';
+
+  @override
+  String get csvImport => 'Tuo';
+
+  @override
+  String get csvSelectImportFile => 'Valitse ensin tuontitiedosto.';
+
+  @override
+  String csvUnknownHeader(Object name) {
+    return 'Tuntematon sarakeotsikko \"$name\"';
+  }
+
+  @override
+  String get csvDetectionFailed => 'Tunnistus epäonnistui';
+
+  @override
+  String csvRecordsImported(Object count) {
+    return 'Tuodut tietueet: $count';
+  }
+
+  @override
+  String get csvImportFailed => 'Tuonti epäonnistui';
+
+  @override
+  String csvFieldString(Object name) {
+    return '$name (teksti)';
+  }
+
+  @override
+  String csvFieldModelName(Object name) {
+    return '$name (mallin nimi)';
+  }
+
+  @override
+  String csvFieldRecordName(Object name) {
+    return '$name/Tietueen nimi';
+  }
+
+  @override
+  String get open => 'Avaa';
+
+  @override
+  String get recordMenu => 'Tietuevalikko';
+
+  @override
+  String get menuSwitchView => 'Vaihda näkymää';
+
+  @override
+  String get menuPrevious => 'Edellinen';
+
+  @override
+  String get menuNext => 'Seuraava';
+
+  @override
+  String get menuSearch => 'Hae';
+
+  @override
+  String get menuNew => 'Uusi';
+
+  @override
+  String get menuSave => 'Tallenna';
+
+  @override
+  String get menuReload => 'Lataa uudelleen/Kumoa';
+
+  @override
+  String get menuDuplicate => 'Monista';
+
+  @override
+  String get menuDelete => 'Poista…';
+
+  @override
+  String get menuLogs => 'Näytä lokit…';
+
+  @override
+  String get menuRevisions => 'Näytä versiot…';
+
+  @override
+  String get menuAttachments => 'Liitteet…';
+
+  @override
+  String get menuNotes => 'Muistiinpanot…';
+
+  @override
+  String get menuActions => 'Toiminnot…';
+
+  @override
+  String get menuRelate => 'Liittyvät…';
+
+  @override
+  String get menuReport => 'Raportti…';
+
+  @override
+  String get menuEmail => 'Sähköposti…';
+
+  @override
+  String get menuCloseTab => 'Sulje välilehti';
+
+  @override
+  String get keyboardShortcuts => 'Pikanäppäimet';
+
+  @override
+  String get shortcutsGlobal => 'Yleiset';
+
+  @override
+  String get shortcutsForm => 'Lomake';
+
+  @override
+  String get shortcutsRelation => 'Viitekentät';
+
+  @override
+  String get shortcutsList => 'Luettelokentät';
+
+  @override
+  String get shortcutsDate => 'Päivämääräkentät';
+
+  @override
+  String get shortcutSearchMenu => 'Hae valikosta';
+
+  @override
+  String get shortcutToggleMenu => 'Näytä/piilota valikko';
+
+  @override
+  String get shortcutPreviousTab => 'Edellinen välilehti';
+
+  @override
+  String get shortcutNextTab => 'Seuraava välilehti';
+
+  @override
+  String get shortcutQuit => 'Lopeta';
+
+  @override
+  String get shortcutRelationNew => 'Luo uusi viite';
+
+  @override
+  String get shortcutRelationOpen => 'Avaa/hae viite';
+
+  @override
+  String get shortcutListSwitch => 'Vaihda näkymää';
+
+  @override
+  String get shortcutListNew => 'Luo/valitse uusi rivi';
+
+  @override
+  String get shortcutListOpen => 'Avaa viite';
+
+  @override
+  String get shortcutListDelete => 'Merkitse rivi poistettavaksi';
+
+  @override
+  String get shortcutListRemove => 'Merkitse rivi irrotettavaksi';
+
+  @override
+  String get shortcutListUndelete => 'Poista poistomerkintä';
+
+  @override
+  String get shortcutDateToday => 'Tänään';
+
+  @override
+  String get shortcutDateAdd =>
+      'Lisää sekunti/minuutti/tunti/päivä/viikko/kuukausi/vuosi';
+
+  @override
+  String get shortcutDateSubtract =>
+      'Vähennä sekunti/minuutti/tunti/päivä/viikko/kuukausi/vuosi';
+
+  @override
+  String get keyDelete => 'Delete';
+
+  @override
+  String get keyInsert => 'Insert';
+
+  @override
+  String get ctxCopy => 'Kopioi';
+
+  @override
+  String get ctxCopyRow => 'Kopioi rivi';
+
+  @override
+  String get ctxCopyRows => 'Kopioi rivit';
+
+  @override
+  String get ctxCopyColumn => 'Kopioi sarake';
+
+  @override
+  String get ctxPasteRows => 'Liitä rivit';
+
+  @override
+  String get ctxEdit => 'Muokkaa…';
+
+  @override
+  String get ctxPrint => 'Tulosta…';
+
+  @override
+  String get x2mCreate => 'Luo uusi tietue';
+
+  @override
+  String get x2mEdit => 'Muokkaa valittua tietuetta';
+
+  @override
+  String get x2mDelete => 'Poista valittu tietue';
+
+  @override
+  String get x2mAdd => 'Lisää olemassa oleva tietue';
+
+  @override
+  String get x2mRemove => 'Irrota valittu tietue';
+
+  @override
+  String get x2mUndelete => 'Palauta valittu tietue';
+
+  @override
+  String get x2mRestore => 'Palauta valittu tietue';
+
+  @override
+  String get x2mSwitch => 'Vaihda';
+
+  @override
+  String get x2mPrevious => 'Edellinen';
+
+  @override
+  String get x2mNext => 'Seuraava';
+
+  @override
+  String get x2mMore => 'Lisää';
 }

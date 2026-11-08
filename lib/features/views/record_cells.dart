@@ -108,8 +108,12 @@ String recordSumText(RecordGroup group, String name, Iterable<Record> selected,
   final field = group.model.fields[name];
   if (field == null) return '';
   final chosen = selected.toSet();
-  double? sum;
-  double? selectedSum;
+  // Numeric values are summed exactly like Python's Decimal, floats as
+  // double.
+  _Decimal? sum;
+  _Decimal? selectedSum;
+  double? fsum;
+  double? fselected;
   Duration? dsum;
   Duration? dselected;
   int? digit = 0;
@@ -123,10 +127,17 @@ String recordSumText(RecordGroup group, String name, Iterable<Record> selected,
       if (inSelection) dselected = (dselected ?? Duration.zero) + v;
       continue;
     }
-    final d = v is TrytonDecimal ? v.toDouble() : (v is num ? v.toDouble() : null);
-    if (d == null) continue;
-    sum = (sum ?? 0) + d;
-    if (inSelection) selectedSum = (selectedSum ?? 0) + d;
+    if (v is TrytonDecimal) {
+      final d = _Decimal.parse(v.value);
+      if (d == null) continue;
+      sum = sum == null ? d : sum + d;
+      if (inSelection) selectedSum = selectedSum == null ? d : selectedSum + d;
+    } else if (v is num) {
+      fsum = (fsum ?? 0) + v.toDouble();
+      if (inSelection) fselected = (fselected ?? 0) + v.toDouble();
+    } else {
+      continue;
+    }
     if (field is FloatField && field is! IntegerField) {
       final digits = field.digits(r);
       final dec = digits != null && digits.length > 1 ? digits[1] : null;
@@ -141,12 +152,61 @@ String recordSumText(RecordGroup group, String name, Iterable<Record> selected,
     return '${formatTimedelta(dselected ?? Duration.zero, conv)}\n'
         '${formatTimedelta(dsum ?? Duration.zero, conv)}';
   }
-  String f(double? v) => formatNumericValue(v ?? 0,
+  String f(_Decimal? d, double? v) => formatNumericValue(
+      d != null ? TrytonDecimal(d.toString()) : (v ?? 0),
       digits: [null, digit],
       locale: locale,
       numberLocale: numberLocale,
       isInteger: field is IntegerField);
-  return '${f(selectedSum)}\n${f(sum)}';
+  final decimal = sum != null || selectedSum != null;
+  return decimal
+      ? '${f(selectedSum ?? _Decimal.zero, null)}\n${f(sum ?? _Decimal.zero, null)}'
+      : '${f(null, fselected)}\n${f(null, fsum)}';
+}
+
+/// An exact decimal (unscaled integer and scale) for the sums of numeric
+/// fields (Python `Decimal`): `0.1 + 0.2` stays `0.3`.
+class _Decimal {
+  final BigInt unscaled;
+  final int scale;
+  const _Decimal(this.unscaled, this.scale);
+
+  static final zero = _Decimal(BigInt.zero, 0);
+
+  static _Decimal? parse(String text) {
+    var t = text.trim();
+    if (t.contains('e') || t.contains('E')) {
+      final d = double.tryParse(t);
+      if (d == null) return null;
+      t = d.toString();
+      if (t.contains('e')) return null;
+    }
+    final negative = t.startsWith('-');
+    if (negative || t.startsWith('+')) t = t.substring(1);
+    final parts = t.split('.');
+    if (parts.length > 2) return null;
+    final fraction = parts.length == 2 ? parts[1] : '';
+    final digits = '${parts[0].isEmpty ? '0' : parts[0]}$fraction';
+    final value = BigInt.tryParse(digits);
+    if (value == null) return null;
+    return _Decimal(negative ? -value : value, fraction.length);
+  }
+
+  _Decimal operator +(_Decimal other) {
+    final scale = this.scale > other.scale ? this.scale : other.scale;
+    BigInt at(_Decimal d) => d.unscaled * BigInt.from(10).pow(scale - d.scale);
+    return _Decimal(at(this) + at(other), scale);
+  }
+
+  @override
+  String toString() {
+    final negative = unscaled.isNegative;
+    var digits = unscaled.abs().toString();
+    if (scale == 0) return '${negative ? '-' : ''}$digits';
+    digits = digits.padLeft(scale + 1, '0');
+    final point = digits.length - scale;
+    return '${negative ? '-' : ''}${digits.substring(0, point)}.${digits.substring(point)}';
+  }
 }
 
 /// Touch devices (Android, iOS): tapping a row opens it, a long press

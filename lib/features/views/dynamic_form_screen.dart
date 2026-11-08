@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,16 +12,17 @@ import '../auth/auth_provider.dart';
 import '../auth/session_bootstrap.dart';
 import '../model/model_service.dart';
 import '../model/toolbar_data.dart';
-import '../shell/app_shell.dart';
 import '../shell/tab_manager.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
 import '../model/selection_loader.dart';
 import 'record_form.dart';
+import 'csv_dialogs.dart';
+import 'record_menu.dart';
+import 'resource_dialogs.dart';
 import 'record_widget_values.dart';
 import '../../core/l10n/locale_provider.dart';
-import '../../shared/utils/date_format_utils.dart';
 
 /// Server-driven form – loads the view definition via
 /// `fields_view_get` and renders layout, groups and tabs dynamically.
@@ -230,6 +233,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// Attachment and note counters (`resources`, without error dialog).
   Future<void> _loadResources() async {
     final record = _record;
+    unawaited(_updateResourceRef());
     if (record == null || record.id < 0) return;
     try {
       final resources = await record.getResources(reload: true);
@@ -564,10 +568,6 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   bool get _hasHistory =>
       ref.read(modelServiceProvider).metadata?.hasHistory(_model) ?? false;
 
-  /// Shown revision with milliseconds (SAO `%H:%M:%S.%f`).
-  static String _revisionText(DateTime dt) =>
-      '${formatDateTimeValue(dt)}.${dt.toLocal().millisecond.toString().padLeft(3, '0')}';
-
   /// Revisions (spec 11.7): `history_revisions(ids)` → choice of a
   /// revision or "Current"; the group gets `_datetime` (+1 ms) and the
   /// records are read again – everything read only in the revision.
@@ -575,35 +575,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (!await _confirmDiscard() || !mounted) return;
     final record = _record;
     if (record == null || record.id < 0) return;
-    final List revisions;
-    try {
-      revisions = await _screen.model.execute('history_revisions', [
-        [record.id]
-      ], context: _screen.context) as List? ?? const [];
-    } on HandledRpcError {
-      return;
-    }
-    if (!mounted) return;
-    final l = context.l10n;
-    final choice = await showDialog<Object>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(l.selectRevision),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.pop(ctx, 'current'),
-            child: Text(l.currentRevision),
-          ),
-          for (final r in revisions)
-            if (r is List && r.isNotEmpty && r[0] is DateTime)
-              SimpleDialogOption(
-                onPressed: () => Navigator.pop(ctx, r[0]),
-                child: Text('${_revisionText(r[0] as DateTime)}'
-                    '${r.length > 2 ? '  ${r[2]}' : ''}'),
-              ),
-        ],
-      ),
-    );
+    final choice = await chooseRevision(context, _screen, [record.id]);
     if (choice == null || !mounted) return;
     _screen.group.revision = choice is DateTime
         ? choice.add(const Duration(milliseconds: 1))
@@ -620,22 +592,51 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (mounted) setState(() {});
   }
 
-  Future<void> _viewLogs() async {
-    if (_isNew) return;
-    ref.read(tabsProvider.notifier).openTab(
-      title: 'Logs',
-      model: 'ir.model.log',
-      initialDomain: [['resource', '=', '$_model,$_recordId']],
-    );
+  /// CSV export (spec 11.9) of the form's records, after the save
+  /// prompt (Python `Form.sig_export`).
+  Future<void> _exportCsv() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    await showCsvExport(context, screen: _screen, name: _effectiveTitle);
   }
 
+  /// A predefined export of the print menu (Python `Form.do_export`).
+  Future<void> _predefinedExport(Map<String, dynamic> export) async {
+    if (!await _confirmDiscard() || !mounted) return;
+    await runPredefinedExport(context, _screen, export);
+  }
+
+  /// CSV import (spec 11.8) into the model of the form.
+  Future<void> _importCsv() async {
+    await showCsvImport(context,
+        model: _model, importContext: _screen.context, name: _effectiveTitle);
+  }
+
+  /// The record for the resource dialogs (attachments, notes, logs).
+  ResourceRef? _resourceRef;
+
+  Future<void> _updateResourceRef() async {
+    final r = await resourceOf(_isNew ? null : _record);
+    if (mounted) setState(() => _resourceRef = r);
+  }
+
+  /// Logs (spec 11.6): header and `ir.model.log` of the record.
+  Future<void> _viewLogs() async {
+    final r = await resourceOf(_isNew ? null : _record);
+    if (r == null || !mounted) return;
+    try {
+      await showLogs(context, ref, r);
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
+    }
+  }
+
+  /// Notes (spec 11.5): marked as read when closed; counters again.
   Future<void> _openNote() async {
-    if (_isNew) return;
-    ref.read(tabsProvider.notifier).openTab(
-      title: 'Notes',
-      model: 'ir.note',
-      initialDomain: [['resource', '=', '$_model,$_recordId']],
-    );
+    final r = await resourceOf(_isNew ? null : _record);
+    if (r == null || !mounted) return;
+    await showNotes(context, r, onChanged: _loadResources);
   }
 
   /// Shows the SAO-style "This record has been modified" dialog (spec
@@ -701,6 +702,70 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     }
   }
 
+  // Dropdown buttons opened by the record menu and its shortcuts.
+  final _attachKey = GlobalKey();
+  final _actionKey = GlobalKey();
+  final _relateKey = GlobalKey();
+  final _printKey = GlobalKey();
+  final _emailKey = GlobalKey();
+
+  /// „Search“ (Python `Form.sig_search`): the searchable view with the
+  /// focus in its search entry.
+  Future<void> _searchView() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    await _flushPending();
+    _screen.searchFocusRequested = true;
+    if (!await _screen.switchView(searchable: true)) {
+      _screen.searchFocusRequested = false;
+    }
+  }
+
+  /// The entries of the record menu and their shortcuts with the
+  /// activation of the toolbar buttons (spec 10.3).
+  RecordActions _recordActions(List<ButtonNode> buttons) {
+    final idle = !_saving;
+    final saved = !_isNew;
+    List<ButtonNode> keyword(String k) =>
+        [for (final b in buttons) if ((b.keyword ?? 'action') == k) b];
+    VoidCallback? menu(GlobalKey key, bool active) =>
+        idle && active ? () => pressButtonOf(key) : null;
+    return {
+      RecordAction.switchView:
+          idle && _screen.numberOfViews > 1 ? _switchView : null,
+      RecordAction.previous:
+          idle && _screen.hasPrevious ? () => _navigate(next: false) : null,
+      RecordAction.next:
+          idle && _screen.hasNext ? () => _navigate(next: true) : null,
+      RecordAction.search:
+          idle && _screen.numberOfViews > 1 ? _searchView : null,
+      RecordAction.newRecord: idle && _screen.canCreate ? _newRecord : null,
+      RecordAction.save: idle &&
+              _screen.canSave(modified: _isDirty || _isNew) &&
+              !(_record?.readonly ?? true)
+          ? _save
+          : null,
+      RecordAction.reload: idle ? _reload : null,
+      RecordAction.copy: idle && saved && _screen.canCreate ? _duplicate : null,
+      RecordAction.delete: idle && saved && _screen.canDelete ? _delete : null,
+      RecordAction.logs: saved ? _viewLogs : null,
+      if (_hasHistory) RecordAction.revision: idle && saved ? _revisions : null,
+      RecordAction.attach: menu(_attachKey, _resourceRef != null),
+      RecordAction.note: saved ? _openNote : null,
+      RecordAction.action: menu(_actionKey,
+          saved && (_toolbar.actions.isNotEmpty || keyword('action').isNotEmpty)),
+      RecordAction.relate: menu(_relateKey,
+          saved && (_toolbar.relate.isNotEmpty || keyword('relate').isNotEmpty)),
+      RecordAction.print: menu(
+          _printKey,
+          saved && (_toolbar.print.isNotEmpty || keyword('print').isNotEmpty) ||
+              _toolbar.exports.isNotEmpty),
+      RecordAction.email: menu(_emailKey, saved && _toolbar.emails.isNotEmpty),
+      RecordAction.export: idle ? _exportCsv : null,
+      RecordAction.import: idle && _screen.canCreate ? _importCsv : null,
+      RecordAction.close: () => widget.onClose?.call(),
+    };
+  }
+
   void _showSnack(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
@@ -714,6 +779,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     final hasPrev = _screen.hasPrevious;
     final hasNext = _screen.hasNext;
     final resources = _resources;
+    final actions = _recordActions(buttons);
 
     return PopScope(
       canPop: false,
@@ -723,11 +789,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           if (context.mounted) Navigator.of(context).pop();
         }
       },
+      child: RecordShortcuts(
+      actions: actions,
       child: Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         scrolledUnderElevation: 0,
-        title: Column(
+        // record menu at the title (spec 10.3)
+        title: RecordTitleMenu(actions: actions, title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -735,7 +804,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             Text(
                 _screen.group.revision == null
                     ? _effectiveTitle
-                    : '$_effectiveTitle @ ${_revisionText(_screen.group.revision!)}',
+                    : '$_effectiveTitle @ ${revisionText(_screen.group.revision!)}',
                 style: const TextStyle(fontSize: 14)),
             // Subtitle: model display name + record position (3 / 47)
             // Show both together, separated by · when both are available.
@@ -747,10 +816,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
                     color: Theme.of(context).colorScheme.outline),
               ),
           ],
-        ),
+        )),
         // Narrow screens: the actions scroll instead of overflowing.
         actions: [
-          ConstrainedBox(
+          // Flexible: also bounded by the space the AppBar really has
+          Flexible(child: ConstrainedBox(
             constraints: BoxConstraints(
                 maxWidth: MediaQuery.sizeOf(context).width * 0.7),
             child: SingleChildScrollView(
@@ -834,10 +904,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
                 tooltip: context.l10n.revisions,
                 onPressed: _saving ? null : _revisions,
               ),
-            _AttachmentIconButton(
-              model: _model,
-              recordId: _recordId,
+            AttachmentMenuButton(
+              key: _attachKey,
+              resource: _resourceRef,
               count: (resources?['attachment_count'] as num?)?.toInt() ?? 0,
+              onChanged: _loadResources,
             ),
             _NoteIconButton(
               total: (resources?['note_count'] as num?)?.toInt() ?? 0,
@@ -850,6 +921,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           // Always shown like in SAO original (disabled when no items).
           if (!_isNew) ...[
             ToolbarDropdownButton(
+              key: _actionKey,
               screen: _screen,
               icon: Icons.rocket_launch_outlined, // tryton-launch
               tooltip: l.launchActions,
@@ -864,6 +936,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onButton: _executeButton,
             ),
             ToolbarDropdownButton(
+              key: _relateKey,
               screen: _screen,
               icon: Icons.link,                   // tryton-link
               tooltip: l.relatedRecords,
@@ -878,6 +951,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onButton: _executeButton,
             ),
             ToolbarDropdownButton(
+              key: _printKey,
               screen: _screen,
               icon: Icons.print_outlined,         // tryton-print
               tooltip: l.reports,
@@ -890,8 +964,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
                   if ((b.keyword ?? 'action') == 'print') b
               ],
               onButton: _executeButton,
+              exports: _toolbar.exports,
+              onExport: _predefinedExport,
             ),
             ToolbarDropdownButton(
+              key: _emailKey,
               screen: _screen,
               icon: Icons.email_outlined,         // tryton-email
               tooltip: l.email,
@@ -911,11 +988,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           ),
               ]),
             ),
-          ),
+          )),
         ],
       ),
       body: _buildBody(),
     ), // Scaffold
+    ), // RecordShortcuts
     ); // PopScope
   }
 
@@ -990,26 +1068,27 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
     // Separate root-level buttons from field content so they stay in a
     // sticky footer while only the fields scroll.
-    final rootChildren = _formRoot!.children;
-    final buttonNodes = rootChildren.whereType<ButtonNode>().toList();
-    final contentRoot = buttonNodes.isEmpty
-        ? _formRoot!
-        : FormRoot(
-            col: _formRoot!.col,
-            children: rootChildren.where((n) => n is! ButtonNode).toList(),
-            attrs: _formRoot!.attrs,
-          );
-
+    // The buttons of the top level (and of button-only groups there) are
+    // in a fixed footer, always visible (spec 9.2.2).
+    final split = FormButtonFooter.split(_formRoot!);
     final scrollBody = LayoutBuilder(
       builder: (context, constraints) {
         final hPad = (constraints.maxWidth * 0.03).clamp(12.0, 40.0);
+        const vPad = 16.0;
+        // the visible height is the form's minimum height: notebook and
+        // lists (yexpand) take the rest down to the footer (spec 9.2.2)
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 16),
-          child: RecordForm(
+          padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+                minHeight: constraints.hasBoundedHeight
+                    ? math.max(0, constraints.maxHeight - 2 * vPad)
+                    : 0),
+            child: RecordForm(
             // Another record (Prev/Next, New, …): new field states.
             key: ObjectKey(record),
             model: _model,
-            root: contentRoot,
+            root: split.content,
             viewDef: _viewDef!,
             record: record,
             onTextChanged: _onTextChanged,
@@ -1017,6 +1096,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             onChangedImmediate: _onFieldChangedImmediate,
             isReadOnly: record.readonly,
             onButton: _executeButton,
+          ),
           ),
         );
       },
@@ -1027,9 +1107,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       children: [
         _buildNotifications(),
         Expanded(child: scrollBody),
-        if (buttonNodes.isNotEmpty)
+        if (split.buttons.isNotEmpty)
           FormButtonFooter(
-            nodes: buttonNodes,
+            nodes: split.buttons,
             record: record,
             onButton: _executeButton,
           ),
@@ -1083,110 +1163,4 @@ class _NoteIconButton extends StatelessWidget {
 }
 
 
-// ─── Attachment button with count badge ──────────────────────────────────────
-
-/// Attachment button with count badge and dropdown (Add / Manage)
-/// – like SAO's attachment dropdown with Add, Preview, Manage.
-class _AttachmentIconButton extends ConsumerWidget {
-  final String model;
-  final int recordId;
-  final int count;
-
-  const _AttachmentIconButton({
-    required this.model,
-    required this.recordId,
-    required this.count,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l10n;
-    final badge = count > 0;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.attach_file),
-          tooltip: l.attachments,
-          position: PopupMenuPosition.under,
-          onSelected: (choice) {
-            switch (choice) {
-              case 'add':
-                pushFormScreen(context,
-                    model: 'ir.attachment',
-                    recordId: -1,
-                    title: 'Add Attachment',
-                    screenDomain: const []);
-              case 'manage':
-                ref.read(tabsProvider.notifier).openTab(
-                  title: 'Attachments',
-                  model: 'ir.attachment',
-                  initialDomain: [
-                    ['resource', '=', '$model,$recordId']
-                  ],
-                );
-            }
-          },
-          itemBuilder: (ctx) => [
-            // Header
-            PopupMenuItem<String>(
-              enabled: false,
-              height: 28,
-              child: Text(
-                '${l.attachments}${badge ? " ($count)" : ""}',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(ctx).colorScheme.primary,
-                ),
-              ),
-            ),
-            const PopupMenuDivider(height: 1),
-            // Add
-            PopupMenuItem<String>(
-              value: 'add',
-              child: Row(children: [
-                const Icon(Icons.add, size: 16),
-                const SizedBox(width: 8),
-                Text('Add'),
-              ]),
-            ),
-            // Manage (always available)
-            PopupMenuItem<String>(
-              value: 'manage',
-              child: Row(children: [
-                const Icon(Icons.folder_outlined, size: 16),
-                const SizedBox(width: 8),
-                Text('Manage${badge ? " ($count)" : ""}'),
-              ]),
-            ),
-          ],
-        ),
-        // Count badge
-        if (badge)
-          Positioned(
-            right: 4,
-            top: 4,
-            child: IgnorePointer(
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                constraints:
-                    const BoxConstraints(minWidth: 16, minHeight: 16),
-                child: Text(
-                  count > 99 ? '99+' : '$count',
-                  style: const TextStyle(color: Colors.white, fontSize: 9),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
 

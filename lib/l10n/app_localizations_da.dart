@@ -466,4 +466,373 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get editUserPreferences => 'Rediger brugerindstillinger';
+
+  @override
+  String get saveAs => 'Gem som …';
+
+  @override
+  String get selectFile => 'Vælg …';
+
+  @override
+  String get clear => 'Ryd';
+
+  @override
+  String get openFile => 'Åbn …';
+
+  @override
+  String attachmentsOf(Object name) {
+    return 'Vedhæftninger ($name)';
+  }
+
+  @override
+  String notesOf(Object name) {
+    return 'Noter ($name)';
+  }
+
+  @override
+  String logsOf(Object name) {
+    return 'Logfiler ($name)';
+  }
+
+  @override
+  String attachmentCount(Object count) {
+    return 'Vedhæftning ($count)';
+  }
+
+  @override
+  String get addFiles => 'Tilføj …';
+
+  @override
+  String get manage => 'Administrer …';
+
+  @override
+  String get logModel => 'Model';
+
+  @override
+  String get logModule => 'Modul';
+
+  @override
+  String get logXmlId => 'XML-id';
+
+  @override
+  String get logCreatedBy => 'Oprettet af';
+
+  @override
+  String get logCreatedAt => 'Oprettet';
+
+  @override
+  String get logModifiedBy => 'Sidst ændret af';
+
+  @override
+  String get logModifiedAt => 'Sidst ændret';
+
+  @override
+  String get exportData => 'Eksporter data …';
+
+  @override
+  String get importData => 'Importer data …';
+
+  @override
+  String csvExportTitle(Object name) {
+    return 'CSV-eksport: $name';
+  }
+
+  @override
+  String csvImportTitle(Object name) {
+    return 'CSV-import: $name';
+  }
+
+  @override
+  String get csvAllFields => 'Alle felter';
+
+  @override
+  String get csvFieldsSelected => 'Valgte felter';
+
+  @override
+  String get csvRemoveAll => 'Ryd';
+
+  @override
+  String get csvParameters => 'CSV-parametre';
+
+  @override
+  String get csvDelimiter => 'Skilletegn';
+
+  @override
+  String get csvQuoteChar => 'Citattegn';
+
+  @override
+  String get csvEncoding => 'Kodning';
+
+  @override
+  String get csvLocaleFormat => 'Brug lokalt format';
+
+  @override
+  String get csvAddFieldNames => 'Tilføj feltnavne';
+
+  @override
+  String get csvListedRecords => 'Viste poster';
+
+  @override
+  String get csvSelectedRecords => 'Valgte poster';
+
+  @override
+  String get csvIgnoreSearchLimit => 'Ignorer søgegrænse';
+
+  @override
+  String get csvPredefinedExports => 'Foruddefinerede eksporter';
+
+  @override
+  String get csvSaveExport => 'Gem eksport';
+
+  @override
+  String get csvDeleteExport => 'Slet eksport';
+
+  @override
+  String get csvExportName => 'Hvad skal denne eksport hedde?';
+
+  @override
+  String csvOverrideExport(Object name) {
+    return 'Overskriv definitionen af \'$name\'?';
+  }
+
+  @override
+  String csvRecordsSaved(Object count) {
+    return 'Gemte poster: $count';
+  }
+
+  @override
+  String get csvExportFailed => 'Eksport mislykkedes';
+
+  @override
+  String get csvFileToImport => 'Fil der skal importeres';
+
+  @override
+  String get csvLinesToSkip => 'Linjer der springes over';
+
+  @override
+  String get csvAutoDetect => 'Auto-detekter';
+
+  @override
+  String get csvImport => 'Importer';
+
+  @override
+  String get csvSelectImportFile => 'Du skal først vælge en importfil.';
+
+  @override
+  String csvUnknownHeader(Object name) {
+    return 'Ukendt kolonneoverskrift \"$name\"';
+  }
+
+  @override
+  String get csvDetectionFailed => 'Detektering mislykkedes';
+
+  @override
+  String csvRecordsImported(Object count) {
+    return 'Importerede poster: $count';
+  }
+
+  @override
+  String get csvImportFailed => 'Import mislykkedes';
+
+  @override
+  String csvFieldString(Object name) {
+    return '$name (tekst)';
+  }
+
+  @override
+  String csvFieldModelName(Object name) {
+    return '$name (modelnavn)';
+  }
+
+  @override
+  String csvFieldRecordName(Object name) {
+    return '$name/Postnavn';
+  }
+
+  @override
+  String get open => 'Åbn';
+
+  @override
+  String get recordMenu => 'Postmenu';
+
+  @override
+  String get menuSwitchView => 'Skift visning';
+
+  @override
+  String get menuPrevious => 'Forrige';
+
+  @override
+  String get menuNext => 'Næste';
+
+  @override
+  String get menuSearch => 'Søg';
+
+  @override
+  String get menuNew => 'Ny';
+
+  @override
+  String get menuSave => 'Gem';
+
+  @override
+  String get menuReload => 'Genindlæs/Fortryd';
+
+  @override
+  String get menuDuplicate => 'Dupliker';
+
+  @override
+  String get menuDelete => 'Slet …';
+
+  @override
+  String get menuLogs => 'Vis logge …';
+
+  @override
+  String get menuRevisions => 'Vis revisioner …';
+
+  @override
+  String get menuAttachments => 'Vedhæftninger …';
+
+  @override
+  String get menuNotes => 'Noter …';
+
+  @override
+  String get menuActions => 'Handlinger …';
+
+  @override
+  String get menuRelate => 'Relaterede …';
+
+  @override
+  String get menuReport => 'Rapport …';
+
+  @override
+  String get menuEmail => 'E-mail …';
+
+  @override
+  String get menuCloseTab => 'Luk fane';
+
+  @override
+  String get keyboardShortcuts => 'Tastaturgenveje';
+
+  @override
+  String get shortcutsGlobal => 'Generelt';
+
+  @override
+  String get shortcutsForm => 'Formular';
+
+  @override
+  String get shortcutsRelation => 'Relationsfelter';
+
+  @override
+  String get shortcutsList => 'Listefelter';
+
+  @override
+  String get shortcutsDate => 'Datofelter';
+
+  @override
+  String get shortcutSearchMenu => 'Søg i menu';
+
+  @override
+  String get shortcutToggleMenu => 'Vis/skjul menu';
+
+  @override
+  String get shortcutPreviousTab => 'Forrige fane';
+
+  @override
+  String get shortcutNextTab => 'Næste fane';
+
+  @override
+  String get shortcutQuit => 'Afslut';
+
+  @override
+  String get shortcutRelationNew => 'Opret ny relation';
+
+  @override
+  String get shortcutRelationOpen => 'Åbn/søg relation';
+
+  @override
+  String get shortcutListSwitch => 'Skift visning';
+
+  @override
+  String get shortcutListNew => 'Opret/vælg ny linje';
+
+  @override
+  String get shortcutListOpen => 'Åbn relation';
+
+  @override
+  String get shortcutListDelete => 'Markér linje til sletning/fjernelse';
+
+  @override
+  String get shortcutListRemove => 'Markér linje til fjernelse';
+
+  @override
+  String get shortcutListUndelete => 'Fjern sletningsmarkering';
+
+  @override
+  String get shortcutDateToday => 'I dag';
+
+  @override
+  String get shortcutDateAdd => 'Læg sekund/minut/time/dag/uge/måned/år til';
+
+  @override
+  String get shortcutDateSubtract =>
+      'Træk sekund/minut/time/dag/uge/måned/år fra';
+
+  @override
+  String get keyDelete => 'Delete';
+
+  @override
+  String get keyInsert => 'Insert';
+
+  @override
+  String get ctxCopy => 'Kopiér';
+
+  @override
+  String get ctxCopyRow => 'Kopiér række';
+
+  @override
+  String get ctxCopyRows => 'Kopiér rækker';
+
+  @override
+  String get ctxCopyColumn => 'Kopiér kolonne';
+
+  @override
+  String get ctxPasteRows => 'Indsæt rækker';
+
+  @override
+  String get ctxEdit => 'Redigér …';
+
+  @override
+  String get ctxPrint => 'Udskriv …';
+
+  @override
+  String get x2mCreate => 'Opret en ny post';
+
+  @override
+  String get x2mEdit => 'Redigér valgte post';
+
+  @override
+  String get x2mDelete => 'Slet valgte post';
+
+  @override
+  String get x2mAdd => 'Tilføj eksisterende post';
+
+  @override
+  String get x2mRemove => 'Fjern valgte post';
+
+  @override
+  String get x2mUndelete => 'Gendan valgte post';
+
+  @override
+  String get x2mRestore => 'Gendan valgte post';
+
+  @override
+  String get x2mSwitch => 'Skift';
+
+  @override
+  String get x2mPrevious => 'Forrige';
+
+  @override
+  String get x2mNext => 'Næste';
+
+  @override
+  String get x2mMore => 'Mere';
 }

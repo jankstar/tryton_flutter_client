@@ -133,10 +133,14 @@ void main() {
     final dialog = tester.getSize(find
         .descendant(of: find.byType(Dialog), matching: find.byType(Material))
         .first);
-    for (final e in find.byType(InputDecorator).evaluate()) {
-      expect((e.renderObject as RenderBox).size.width,
-          greaterThan(dialog.width * 0.8),
-          reason: 'not 1/10 of the width');
-    }
+    final widths = [
+      for (final e in find.byType(InputDecorator).evaluate())
+        (e.renderObject as RenderBox).size.width
+    ]..sort();
+    expect(widths, hasLength(2));
+    expect(widths.last, greaterThan(dialog.width * 0.8),
+        reason: 'char: not 1/10 of the width');
+    // the date keeps its natural width (spec 9.2.2), not a tenth either
+    expect(widths.first, inInclusiveRange(120, 250));
   });
 }

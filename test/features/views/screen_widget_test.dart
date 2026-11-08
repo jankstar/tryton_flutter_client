@@ -90,7 +90,7 @@ void main() {
     expect(find.text('1/3'), findsOneWidget);
     expect(rpc.named('model.test.party.search'), hasLength(1));
     // the row of N1 is selected (its selection checkbox)
-    final row = find.ancestor(of: find.text('N1'), matching: find.byType(InkWell)).first;
+    final row = find.ancestor(of: find.text('N1'), matching: find.byType(Material)).first;
     final checkbox = tester.widget<Checkbox>(
         find.descendant(of: row, matching: find.byType(Checkbox)));
     expect(checkbox.value, isTrue);

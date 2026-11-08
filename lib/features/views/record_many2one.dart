@@ -534,6 +534,9 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
           onPressed: onPressed,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          // no 48 px tap target: the field keeps the height of the others
+          style: IconButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap),
         );
     if (_hasTarget && _readAccess) {
       buttons.add(button(Icons.open_in_new, l.openRecord, () {

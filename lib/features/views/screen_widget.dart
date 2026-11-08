@@ -40,6 +40,10 @@ class ScreenWidget extends ConsumerStatefulWidget {
   /// "Add attachment") and pops the new id.
   final bool closeOnSaveNew;
 
+  /// Called with the screen once it is created (dialogs that act on its
+  /// records when closed, e.g. notes marked as read).
+  final void Function(TrytonScreen screen)? onScreen;
+
   const ScreenWidget({
     super.key,
     required this.attributes,
@@ -47,6 +51,7 @@ class ScreenWidget extends ConsumerStatefulWidget {
     this.onClose,
     this.closeOnSaveNew = false,
     this.tabRoot = false,
+    this.onScreen,
   });
 
   @override
@@ -237,6 +242,7 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
     _screen?.removeListener(_onScreenChanged);
     _screen?.dispose();
     final screen = _screen = _newScreen();
+    widget.onScreen?.call(screen);
     setState(() {
       _view = null;
       _loading = true;

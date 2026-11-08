@@ -465,4 +465,374 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get editUserPreferences => 'Redigera användarinställningar';
+
+  @override
+  String get saveAs => 'Spara som …';
+
+  @override
+  String get selectFile => 'Välj …';
+
+  @override
+  String get clear => 'Rensa';
+
+  @override
+  String get openFile => 'Öppna …';
+
+  @override
+  String attachmentsOf(Object name) {
+    return 'Bilagor ($name)';
+  }
+
+  @override
+  String notesOf(Object name) {
+    return 'Anteckningar ($name)';
+  }
+
+  @override
+  String logsOf(Object name) {
+    return 'Loggar ($name)';
+  }
+
+  @override
+  String attachmentCount(Object count) {
+    return 'Bilaga ($count)';
+  }
+
+  @override
+  String get addFiles => 'Lägg till …';
+
+  @override
+  String get manage => 'Hantera …';
+
+  @override
+  String get logModel => 'Modell';
+
+  @override
+  String get logModule => 'Modul';
+
+  @override
+  String get logXmlId => 'XML-id';
+
+  @override
+  String get logCreatedBy => 'Skapad av';
+
+  @override
+  String get logCreatedAt => 'Skapad';
+
+  @override
+  String get logModifiedBy => 'Senast ändrad av';
+
+  @override
+  String get logModifiedAt => 'Senast ändrad';
+
+  @override
+  String get exportData => 'Exportera data…';
+
+  @override
+  String get importData => 'Importera data…';
+
+  @override
+  String csvExportTitle(Object name) {
+    return 'CSV-export: $name';
+  }
+
+  @override
+  String csvImportTitle(Object name) {
+    return 'CSV-import: $name';
+  }
+
+  @override
+  String get csvAllFields => 'Alla fält';
+
+  @override
+  String get csvFieldsSelected => 'Valda fält';
+
+  @override
+  String get csvRemoveAll => 'Rensa';
+
+  @override
+  String get csvParameters => 'CSV-parametrar';
+
+  @override
+  String get csvDelimiter => 'Avgränsare';
+
+  @override
+  String get csvQuoteChar => 'Citattecken';
+
+  @override
+  String get csvEncoding => 'Teckenkodning';
+
+  @override
+  String get csvLocaleFormat => 'Använd lokalt format';
+
+  @override
+  String get csvAddFieldNames => 'Lägg till fältnamn';
+
+  @override
+  String get csvListedRecords => 'Listade poster';
+
+  @override
+  String get csvSelectedRecords => 'Valda poster';
+
+  @override
+  String get csvIgnoreSearchLimit => 'Ignorera sökgräns';
+
+  @override
+  String get csvPredefinedExports => 'Fördefinierade exporter';
+
+  @override
+  String get csvSaveExport => 'Spara export';
+
+  @override
+  String get csvDeleteExport => 'Ta bort export';
+
+  @override
+  String get csvExportName => 'Vad heter denna export?';
+
+  @override
+  String csvOverrideExport(Object name) {
+    return 'Skriva över definitionen av \'$name\'?';
+  }
+
+  @override
+  String csvRecordsSaved(Object count) {
+    return 'Sparade poster: $count';
+  }
+
+  @override
+  String get csvExportFailed => 'Exporten misslyckades';
+
+  @override
+  String get csvFileToImport => 'Fil att importera';
+
+  @override
+  String get csvLinesToSkip => 'Rader att hoppa över';
+
+  @override
+  String get csvAutoDetect => 'Identifiera automatiskt';
+
+  @override
+  String get csvImport => 'Importera';
+
+  @override
+  String get csvSelectImportFile => 'Du måste först välja en importfil.';
+
+  @override
+  String csvUnknownHeader(Object name) {
+    return 'Okänd kolumnrubrik \"$name\"';
+  }
+
+  @override
+  String get csvDetectionFailed => 'Identifieringen misslyckades';
+
+  @override
+  String csvRecordsImported(Object count) {
+    return 'Importerade poster: $count';
+  }
+
+  @override
+  String get csvImportFailed => 'Importen misslyckades';
+
+  @override
+  String csvFieldString(Object name) {
+    return '$name (text)';
+  }
+
+  @override
+  String csvFieldModelName(Object name) {
+    return '$name (modellnamn)';
+  }
+
+  @override
+  String csvFieldRecordName(Object name) {
+    return '$name/Postnamn';
+  }
+
+  @override
+  String get open => 'Öppna';
+
+  @override
+  String get recordMenu => 'Postmeny';
+
+  @override
+  String get menuSwitchView => 'Byt vy';
+
+  @override
+  String get menuPrevious => 'Föregående';
+
+  @override
+  String get menuNext => 'Nästa';
+
+  @override
+  String get menuSearch => 'Sök';
+
+  @override
+  String get menuNew => 'Ny';
+
+  @override
+  String get menuSave => 'Spara';
+
+  @override
+  String get menuReload => 'Läs om/Ångra';
+
+  @override
+  String get menuDuplicate => 'Duplicera';
+
+  @override
+  String get menuDelete => 'Ta bort …';
+
+  @override
+  String get menuLogs => 'Visa loggar …';
+
+  @override
+  String get menuRevisions => 'Visa revisioner …';
+
+  @override
+  String get menuAttachments => 'Bilagor …';
+
+  @override
+  String get menuNotes => 'Anteckningar …';
+
+  @override
+  String get menuActions => 'Åtgärder …';
+
+  @override
+  String get menuRelate => 'Relaterade …';
+
+  @override
+  String get menuReport => 'Rapport …';
+
+  @override
+  String get menuEmail => 'E-post …';
+
+  @override
+  String get menuCloseTab => 'Stäng flik';
+
+  @override
+  String get keyboardShortcuts => 'Kortkommandon';
+
+  @override
+  String get shortcutsGlobal => 'Allmänt';
+
+  @override
+  String get shortcutsForm => 'Formulär';
+
+  @override
+  String get shortcutsRelation => 'Relationsfält';
+
+  @override
+  String get shortcutsList => 'Listfält';
+
+  @override
+  String get shortcutsDate => 'Datumfält';
+
+  @override
+  String get shortcutSearchMenu => 'Sök i menyn';
+
+  @override
+  String get shortcutToggleMenu => 'Visa/dölj meny';
+
+  @override
+  String get shortcutPreviousTab => 'Föregående flik';
+
+  @override
+  String get shortcutNextTab => 'Nästa flik';
+
+  @override
+  String get shortcutQuit => 'Avsluta';
+
+  @override
+  String get shortcutRelationNew => 'Skapa ny relation';
+
+  @override
+  String get shortcutRelationOpen => 'Öppna/sök relation';
+
+  @override
+  String get shortcutListSwitch => 'Byt vy';
+
+  @override
+  String get shortcutListNew => 'Skapa/välj ny rad';
+
+  @override
+  String get shortcutListOpen => 'Öppna relation';
+
+  @override
+  String get shortcutListDelete => 'Markera rad för borttagning';
+
+  @override
+  String get shortcutListRemove => 'Markera rad för frikoppling';
+
+  @override
+  String get shortcutListUndelete => 'Ta bort borttagningsmarkering';
+
+  @override
+  String get shortcutDateToday => 'Idag';
+
+  @override
+  String get shortcutDateAdd =>
+      'Lägg till sekund/minut/timme/dag/vecka/månad/år';
+
+  @override
+  String get shortcutDateSubtract =>
+      'Dra av sekund/minut/timme/dag/vecka/månad/år';
+
+  @override
+  String get keyDelete => 'Delete';
+
+  @override
+  String get keyInsert => 'Insert';
+
+  @override
+  String get ctxCopy => 'Kopiera';
+
+  @override
+  String get ctxCopyRow => 'Kopiera rad';
+
+  @override
+  String get ctxCopyRows => 'Kopiera rader';
+
+  @override
+  String get ctxCopyColumn => 'Kopiera kolumn';
+
+  @override
+  String get ctxPasteRows => 'Klistra in rader';
+
+  @override
+  String get ctxEdit => 'Redigera …';
+
+  @override
+  String get ctxPrint => 'Skriv ut …';
+
+  @override
+  String get x2mCreate => 'Skapa en ny post';
+
+  @override
+  String get x2mEdit => 'Redigera vald post';
+
+  @override
+  String get x2mDelete => 'Ta bort vald post';
+
+  @override
+  String get x2mAdd => 'Lägg till befintlig post';
+
+  @override
+  String get x2mRemove => 'Koppla bort vald post';
+
+  @override
+  String get x2mUndelete => 'Återställ vald post';
+
+  @override
+  String get x2mRestore => 'Återställ vald post';
+
+  @override
+  String get x2mSwitch => 'Växla';
+
+  @override
+  String get x2mPrevious => 'Föregående';
+
+  @override
+  String get x2mNext => 'Nästa';
+
+  @override
+  String get x2mMore => 'Mer';
 }

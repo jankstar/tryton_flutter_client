@@ -38,9 +38,8 @@ InputDecoration recordDecoration(BuildContext context, FieldDefinition fd,
           text: TextSpan(
             text: fd.label,
             style: Theme.of(context).inputDecorationTheme.labelStyle ??
-                TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 16),
+                Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
             children: const [
               TextSpan(text: ' *', style: TextStyle(color: Colors.red)),
             ],
@@ -671,7 +670,10 @@ class _RecordSelectionMany2OneState extends State<RecordSelectionMany2One> {
     if (a.readOnly) {
       return InputDecorator(
         decoration: a.decoration(context),
-        child: Text(name, overflow: TextOverflow.ellipsis),
+        // (the text style of an input: as high as the other fields)
+        child: Text(name,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyLarge),
       );
     }
     final entries = [..._entries];
@@ -689,7 +691,10 @@ class _RecordSelectionMany2OneState extends State<RecordSelectionMany2One> {
       key: ValueKey('m2o-selection-${a.node.name}-$id'),
       initialValue: id,
       isExpanded: true,
-      decoration: a.decoration(context),
+      // (the dense dropdown line is 24 px, a text line 20: less padding
+      // keeps the field as high as a text field)
+      decoration: a.decoration(context).copyWith(
+          contentPadding: const EdgeInsets.fromLTRB(10, 7, 10, 6)),
       items: [
         for (final e in entries)
           DropdownMenuItem<int?>(value: e.$1, child: label(e)),

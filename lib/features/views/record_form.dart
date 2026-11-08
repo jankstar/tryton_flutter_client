@@ -8,7 +8,11 @@ import '../../core/xml/view_definition.dart';
 import '../../shared/widgets/field_widget.dart';
 import '../model/field_definition.dart';
 import 'embedded_tree_widget.dart';
+import 'fill_column.dart';
+import 'form_grid.dart';
+import 'record_binary_widgets.dart';
 import 'record_field_widgets.dart';
+import 'record_richtext.dart';
 import 'record_link.dart';
 import 'record_many2one.dart';
 import 'record_widget_values.dart';
@@ -69,7 +73,10 @@ class _RecordFormState extends State<RecordForm> {
   @override
   Widget build(BuildContext context) {
     _values = recordWidgetValues(_record);
-    return _renderNodes(widget.root.children, _safeCol(widget.root.col));
+    return Theme(
+      data: compactFormTheme(Theme.of(context)),
+      child: _renderNodes(widget.root.children, _safeCol(widget.root.col)),
+    );
   }
 
   /// `states` of the field evaluated into its state attributes (SAO
@@ -115,9 +122,8 @@ class _RecordFormState extends State<RecordForm> {
       }
     }
 
-    // Rows of cells (List<_Cell>) or full-width widgets (notebook,
-    // separator).
-    final rows = <Object>[];
+    // Rows of cells; a notebook or separator is a full-width row.
+    final rows = <List<_Cell>>[];
     var currentRow = <_Cell>[];
     var used = 0;
 
@@ -147,12 +153,15 @@ class _RecordFormState extends State<RecordForm> {
         final cell = _cellOf(node, col);
         if (cell == null) continue;
         flushRow();
-        rows.add(cell.visible ? cell.child : const SizedBox.shrink());
+        // (a notebook takes the remaining height, yexpand default 1)
+        rows.add([cell.at(0, col, full: true)]);
         continue;
       }
 
       final cell = _cellOf(node, hbox ? 1 : col,
-          extraColspan: node is FieldNode ? labelColspanMap[node.name] ?? 0 : 0);
+          extraColspan:
+              node is FieldNode ? labelColspanMap[node.name] ?? 0 : 0,
+          hbox: hbox);
       if (cell == null) continue;
       if (hbox) {
         currentRow.add(cell.at(currentRow.length, 1));
@@ -166,7 +175,7 @@ class _RecordFormState extends State<RecordForm> {
 
     return _Grid(
       rows: rows,
-      cols: hbox ? rows.whereType<List<_Cell>>().fold(1, (m, r) => r.length > m ? r.length : m) : col,
+      cols: hbox ? rows.fold(1, (m, r) => r.length > m ? r.length : m) : col,
       hbox: hbox,
     );
   }
@@ -177,7 +186,8 @@ class _RecordFormState extends State<RecordForm> {
       (n is GroupNode && _hasField(n.children, name)));
 
   /// The cell of [node] in a container of [col] columns (null: no cell).
-  _Cell? _cellOf(FormNode node, int col, {int extraColspan = 0}) {
+  _Cell? _cellOf(FormNode node, int col, {int extraColspan = 0,
+    bool hbox = false,}) {
     final maxCol = col < 1 ? 1 : col;
     var colspan = switch (node) {
       FieldNode() => node.colspan,
@@ -191,29 +201,110 @@ class _RecordFormState extends State<RecordForm> {
       _ => 1,
     };
     colspan = (colspan + extraColspan).clamp(1, maxCol);
-    if (node is FieldNode) {
-      // one2many / many2many tables always need full width – force it even
-      // when the XML omits an explicit colspan (Tryton forms always intend
-      // this, but our parser defaults to 1).
-      final fd = widget.viewDef.fields[node.name];
-      if (fd != null && (fd.type == 'one2many' || fd.type == 'many2many')) {
-        colspan = maxCol;
-      }
-    }
     // Invisible cells keep their position but are not built.
     final visible = !_isInvisible(node);
-    final child = visible ? _buildNode(node) : const SizedBox.shrink();
+    var child = visible ? _buildNode(node) : const SizedBox.shrink();
     if (child == null) return null;
+    // In a horizontal box an input gets a natural width instead of the
+    // whole line (spec 9.2.2); checkboxes keep their own width.
+    if (hbox && visible && node is FieldNode) {
+      final maxWidth = _hboxWidth(node);
+      if (maxWidth != null) {
+        child = ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: child,
+        );
+      }
+    }
+    // Natural width per widget (spec 9.2.2): numbers, dates, booleans
+    // and char with `size` do not fill their cell; the grid gives the
+    // cells of a column the same width (amounts stay one below the other).
+    double? naturalWidth;
+    if (!hbox && visible && node is FieldNode) {
+      final type = widget.viewDef.fields[node.name]?.type;
+      if (type == 'boolean') {
+        child = Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: child,
+        );
+      } else {
+        naturalWidth = _naturalWidth(node);
+      }
+    }
     // Labels and separator texts do not expand (xexpand 0), everything
     // else does (default xexpand = 1).
     final defaultExpand = node is! LabelNode;
+    // yexpand (spec 9.2.2): notebooks and x2many lists take the
+    // remaining height of the form
+    var fill = false;
+    if (node is NotebookNode) fill = node.yexpand ?? true;
+    if (node is FieldNode) {
+      final type = widget.viewDef.fields[node.name]?.type;
+      // an x2many shown first as form (e.g. the addresses of the party)
+      // keeps its natural height, like SAO
+      fill =
+          (type == 'one2many' || type == 'many2many') &&
+          node.mode.firstOrNull != 'form' &&
+          (node.yexpand ?? true);
+    }
     return _Cell(
       child: visible ? _sized(node, child) : const SizedBox.shrink(),
       colspan: colspan,
       visible: visible,
       expand: node.xexpand ?? defaultExpand,
       xalign: node.xalign ?? (node is LabelNode ? 1.0 : null),
+      fill: fill,
+      naturalWidth: naturalWidth,
     );
+  }
+
+  /// Natural width of the input of [node] in a horizontal box (null:
+  /// its own width, e.g. a checkbox): numbers 120, others 220 px, never
+  /// narrower than the floating label; lists and texts the whole line.
+  double? _hboxWidth(FieldNode node) {
+    final fd = widget.viewDef.fields[node.name];
+    if (fd == null) return 220;
+    final type = node.widget ?? fd.type;
+    if (type == 'boolean') return null;
+    // lists and multi-line texts fill the box (GTK `expand`)
+    if (const {'one2many', 'many2many', 'text', 'richtext'}.contains(fd.type) ||
+        const {'text', 'richtext'}.contains(type)) {
+      return double.infinity;
+    }
+    final label = fd.label.length * 8.5 + 40;
+    final width =
+        const {'integer', 'float', 'numeric', 'timedelta'}.contains(type)
+        ? 120.0
+        : 220.0;
+    return width > label ? width : label;
+  }
+
+  /// Natural width of the input of [node] in a grid cell (null: fills
+  /// the cell), spec 9.2.2 „Natürliche Breite je Widget“: numbers 8
+  /// characters, dates their format, char with `size` min(120, size)
+  /// characters; never narrower than the floating label.
+  double? _naturalWidth(FieldNode node) {
+    final fd = widget.viewDef.fields[node.name];
+    if (fd == null) return null;
+    const charWidth = 8.5, padding = 40.0;
+    final type = node.widget ?? fd.type;
+    double? width;
+    if (const {'integer', 'float', 'numeric', 'timedelta'}.contains(type)) {
+      width = 8 * charWidth + padding + 20; // + symbol
+    } else if (type == 'date') {
+      width = 10 * charWidth + padding + 40; // + calendar button
+    } else if (type == 'datetime') {
+      width = 19 * charWidth + padding + 40;
+    } else if (type == 'time') {
+      width = 8 * charWidth + padding + 40;
+    } else if (type == 'char' &&
+        (widget.viewDef.rawFields[node.name] as Map?)?['size'] is int) {
+      final size = (widget.viewDef.rawFields[node.name] as Map)['size'] as int;
+      width = (size < 120 ? size : 120) * charWidth + padding;
+    }
+    if (width == null) return null;
+    final label = fd.label.length * charWidth + padding;
+    return width > label ? width : label;
   }
 
   /// `width`/`height` of the node as size request (GTK
@@ -303,7 +394,7 @@ class _RecordFormState extends State<RecordForm> {
     if ((fd.type == 'many2one' || fd.type == 'one2one') &&
         node.widget == 'selection') {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: _fieldGap),
         child: RecordSelectionMany2One(
           key: ValueKey('m2o-sel-${node.name}'),
           args: RecordFieldArgs(
@@ -326,7 +417,7 @@ class _RecordFormState extends State<RecordForm> {
         fd.type == 'one2one' ||
         fd.type == 'reference') {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: _fieldGap),
         child: RecordMany2One(
           record: _record,
           node: node,
@@ -355,7 +446,7 @@ class _RecordFormState extends State<RecordForm> {
     final special = _recordWidget(fd, node, args);
     if (special != null) {
       return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8), child: special);
+          padding: const EdgeInsets.symmetric(vertical: _fieldGap), child: special);
     }
 
     // Text-input fields: kept locally on keystroke, written to the record
@@ -365,9 +456,9 @@ class _RecordFormState extends State<RecordForm> {
     final isTextInput = fd.type == 'char' || fd.type == 'text' ||
         fd.type == 'integer' || fd.type == 'float' || fd.type == 'numeric';
 
-    final input = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: FieldWidget(
+    // (FieldWidget has its own _fieldGap above and below)
+
+    final Widget input = FieldWidget(
         field: fd,
         value: _values[node.name],
         readOnly: readOnly,
@@ -387,8 +478,7 @@ class _RecordFormState extends State<RecordForm> {
             ? (v) => widget.onTextChanged(node.name, v)
             : (v) => widget.onChangedImmediate(node.name, v),
         onBlur: isTextInput ? () => widget.onBlur(node.name) : null,
-      ),
-    );
+      );
     // Translation dialog of translatable char/text fields (spec 9.2.5).
     if (node.attrs['translate'] == true &&
         (fd.type == 'char' || fd.type == 'text') &&
@@ -430,6 +520,12 @@ class _RecordFormState extends State<RecordForm> {
     final w = node.widget;
     if (w == 'progressbar') return null;
     switch (w) {
+      case 'image':
+        return RecordImageField(args: args);
+      case 'document':
+        return RecordDocumentField(args: args);
+      case 'richtext':
+        return RecordRichTextField(args: args);
       case 'color':
         return RecordColorInput(args: args);
       case 'pyson':
@@ -448,6 +544,8 @@ class _RecordFormState extends State<RecordForm> {
         return RecordMultiSelection(args: args);
       case 'dict':
         return RecordDictField(args: args);
+      case 'binary':
+        return RecordBinaryField(args: args);
     }
     return null;
   }
@@ -460,18 +558,14 @@ class _RecordFormState extends State<RecordForm> {
 
   Widget _buildX2ManyField(
       FieldDefinition fd, Field field, bool readOnly, FieldNode node) {
+    // the title is part of the widget's header (Python One2Many); the
+    // list gets the height given to the field (yexpand)
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return FillColumn(
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 4),
-          child: Text(fd.label,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  )),
-        ),
+        const SizedBox(height: 8),
+        FillChild(
+          child:
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: Theme.of(context).colorScheme.outline.withAlpha(80)),
@@ -489,6 +583,7 @@ class _RecordFormState extends State<RecordForm> {
             // the records follow the parent record, not the field state
             parentReadOnly: widget.isReadOnly,
             breadcrumb: widget.breadcrumb,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -594,22 +689,18 @@ class _RecordFormState extends State<RecordForm> {
             node: node, record: _record, onPressed: widget.onButton),
       );
 
+  /// Notebook: tabs and the selected page in its natural height (spec
+  /// 9.2.2: no own scroll area and no fixed height, nothing cut off – the
+  /// form scrolls as a whole).
+
   Widget _buildNotebook(NotebookNode node) {
     // Filter pages based on their states/invisible conditions
     final visiblePages = node.pages.where((p) => !_isInvisible(p)).toList();
     if (visiblePages.isEmpty) return const SizedBox.shrink();
 
-    return DefaultTabController(
-      length: visiblePages.length,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 8),
-          TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: [
-              for (final p in visiblePages)
+    return _NotebookView(
+      pages: visiblePages,
+      tab:(p) =>
                 Tab(
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     if (p.icon != null) ...[
@@ -619,20 +710,8 @@ class _RecordFormState extends State<RecordForm> {
                     Text(_pageLabel(p)),
                   ]),
                 ),
-            ],
-          ),
-          SizedBox(
-            height: _estimateNotebookHeight(visiblePages),
-            child: TabBarView(
-              children: visiblePages.map((page) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: _renderNodes(page.children, _safeCol(page.col)),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
+      page: (p
+          ) => _renderNodes(p.children, _safeCol(p.col)
       ),
     );
   }
@@ -666,22 +745,6 @@ class _RecordFormState extends State<RecordForm> {
         .join(' ');
   }
 
-  // Estimates the minimum height of a notebook based on the number of fields
-  double _estimateNotebookHeight(List<PageNode> pages) {
-    final maxFields = pages.fold<int>(0, (max, page) {
-      final count = page.children.whereType<FieldNode>().length;
-      return count > max ? count : max;
-    });
-    final x2mCount = pages.fold<int>(0, (max, page) {
-      final count = page.children.whereType<FieldNode>().where((f) {
-        final fd = widget.viewDef.fields[f.name];
-        return fd?.type == 'one2many' || fd?.type == 'many2many';
-      }).length;
-      return count > max ? count : max;
-    });
-    return (maxFields * 64.0 + x2mCount * 200.0 + 40).clamp(200, 800);
-  }
-
   Widget _unknownField(String name) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -691,10 +754,13 @@ class _RecordFormState extends State<RecordForm> {
 
 }
 
-// ─── Sticky button footer ─────────────────────────────────────────────────────
+// ─── Button footer ────────────────────────────────────────────────────────────
 
-/// Renders root-level form buttons in a fixed footer bar that stays visible
-/// while the form content scrolls.
+/// The buttons of a form in a fixed footer below the scroll area (always
+/// visible, also while scrolling): the buttons of the form's top level
+/// and of its top-level groups that hold only buttons (e.g. the workflow
+/// group of an invoice), see [FormButtonFooter.split]. One line per
+/// button text, the footer wraps into several lines when needed.
 class FormButtonFooter extends StatelessWidget {
   final List<ButtonNode> nodes;
   /// The record whose values the button states use.
@@ -708,6 +774,37 @@ class FormButtonFooter extends StatelessWidget {
     this.onButton,
   });
 
+  /// The footer buttons of [root] and the root without them.
+  static ({List<ButtonNode> buttons, FormRoot content}) split(FormRoot root) {
+    bool onlyButtons(FormNode node) =>
+        node is GroupNode &&
+        node.children.isNotEmpty &&
+        node.children.every((c) => c is ButtonNode || onlyButtons(c));
+    Iterable<ButtonNode> buttonsOf(FormNode node) sync* {
+      if (node is ButtonNode) yield node;
+      if (node is GroupNode) {
+        for (final c in node.children) {
+          yield* buttonsOf(c);
+        }
+      }
+    }
+
+    final buttons = <ButtonNode>[];
+    final rest = <FormNode>[];
+    for (final node in root.children) {
+      if (node is ButtonNode || onlyButtons(node)) {
+        buttons.addAll(buttonsOf(node));
+      } else {
+        rest.add(node);
+      }
+    }
+    if (buttons.isEmpty) return (buttons: buttons, content: root);
+    return (
+      buttons: buttons,
+      content: FormRoot(col: root.col, children: rest, attrs: root.attrs),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -719,6 +816,7 @@ class FormButtonFooter extends StatelessWidget {
     if (buttons.isEmpty) return const SizedBox.shrink();
 
     return Container(
+      key: const ValueKey('form-button-footer'),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         border: Border(
@@ -728,7 +826,7 @@ class FormButtonFooter extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Wrap(
         spacing: 8,
-        runSpacing: 4,
+        runSpacing: 6,
         children: buttons,
       ),
     );
@@ -781,13 +879,20 @@ class RecordButton extends StatelessWidget {
         record.group.rootGroup.revision != null ||
         onPressed == null;
     final label = node.string ?? node.name;
+    // one line, never wrapped (shortened when there is no room)
+    final caption = Text(
+      label,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.ellipsis,
+    );
     final Widget text = node.rule
         ? Row(mainAxisSize: MainAxisSize.min, children: [
-            Text(label),
+              Flexible(child: caption),
             const SizedBox(width: 6),
             _ClickCounter(record: record, name: node.name),
           ])
-        : Text(label);
+        : caption;
     final iconName = states.icon;
     void press() => onPressed?.call(node);
     return iconName != null && iconName.isNotEmpty
@@ -847,6 +952,16 @@ class _Cell {
   /// `xexpand`: the cell's columns grow (else they take the cell's width).
   final bool expand;
   final double? xalign;
+
+  /// `yexpand` of a notebook or a list: takes the remaining height.
+  final bool fill;
+
+  /// Natural width of the input (null: fills the cell), spec 9.2.2.
+  final double? naturalWidth;
+
+  /// A full-width row (notebook, separator).
+  final bool full;
+
   const _Cell({
     required this.child,
     required this.colspan,
@@ -854,53 +969,144 @@ class _Cell {
     this.visible = true,
     this.expand = true,
     this.xalign,
+    this.fill = false,
+    this.naturalWidth,
+    this.full = false,
   });
 
-  _Cell at(int column, int colspan) => _Cell(
+  _Cell at(int column, int colspan, {bool full = false}) => _Cell(
       child: child,
       colspan: colspan,
       column: column,
       visible: visible,
       expand: expand,
-      xalign: xalign);
+      xalign: xalign,
+      fill: fill,
+      naturalWidth: naturalWidth,
+      full: full);
 }
 
 /// Grid of a container (spec 9.2.2): rows of cells at fixed columns or
-/// full-width widgets. Columns with a visible expanding cell share the
-/// width; columns without a visible cell collapse; other columns take
-/// their cells' width. On narrow screens (or when the columns would get
-/// too narrow) the cells are laid out in one column, the labels above the
-/// fields (GTK `client.modepda`, SAO responsive).
+/// full-width rows, laid out by [FormGrid] (column widths the same in all
+/// rows). Only in a narrow window (< [narrowWidth]) the cells are laid out
+/// in one column (GTK `client.modepda`, SAO responsive).
 class _Grid extends StatelessWidget {
-  final List<Object> rows;
+  final List<List<_Cell>> rows;
   final int cols;
   final bool hbox;
 
   /// Screen width below which forms use one column.
   static const double narrowWidth = 600;
 
-  /// Minimum width per column before a container wraps.
-  static const double _minColWidth = 160.0;
-
   const _Grid({required this.rows, required this.cols, this.hbox = false});
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.maybeSizeOf(context)?.width ?? double.infinity;
-    return LayoutBuilder(builder: (context, constraints) {
-      final narrow = screenWidth < narrowWidth ||
-          (cols > 1 && constraints.maxWidth / _usedCols < _minColWidth);
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final row in rows)
-            if (row is List<_Cell>)
-              narrow ? _column(row) : _row(row)
-            else
-              row as Widget,
-        ],
-      );
-    });
+    // one column only by the width of the window, never by the width of a
+    // single container (spec 9.2.2)
+    final narrow = screenWidth < narrowWidth;
+    if (hbox) return _box(narrow);
+    if (narrow) {
+      // rows in their natural height; the yexpand rows (notebook, list)
+      // share a remaining height
+      return FillColumn(children: [
+        for (final row in rows)
+          if (row.length == 1 && row.single.full)
+            _fullRow(row.single)
+          else
+            _column(row),
+      ]);
+    }
+    final naturalWidths = _naturalWidths();
+    return FormGrid(
+      columns: _usedCols,
+      children: [
+        for (final (i, row) in rows.indexed)
+          for (final cell in row)
+            if (cell.visible)
+              FormGridCell(
+                row: i,
+                column: cell.column,
+                colspan: cell.colspan,
+                expand: cell.expand,
+                xalign: cell.xalign,
+                fill: cell.fill,
+                full: cell.full,
+                child: cell.full
+                    ? cell.child
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _natural(cell, naturalWidths, cell.child),
+                      ),
+              ),
+      ],
+    );
+  }
+
+  /// A horizontal box (`col ≤ 0`): natural widths, not stretched; a box
+  /// holding only a list (e.g. a notebook page `col="-1"` with one
+  /// x2many) passes the remaining height on to it (yexpand).
+  Widget _box(bool narrow) {
+    final visible = [
+      for (final row in rows)
+        for (final c in row)
+          if (c.visible) c,
+    ];
+    if (visible.length == 1 && visible.single.fill) {
+      return FillColumn(children: [
+        FillChild(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: visible.single.child,
+          ),
+        ),
+      ]);
+    }
+    return Column(
+      crossAxisAlignment:
+          narrow ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
+      children: [
+        for (final row in rows)
+          if (row.length == 1 && row.single.full)
+            row.single.visible ? row.single.child : const SizedBox.shrink()
+          else
+            _line(row),
+      ],
+    );
+  }
+
+  /// A full-width row in the narrow layout (a notebook takes the
+  /// remaining height).
+  Widget _fullRow(_Cell cell) {
+    if (!cell.visible) return const SizedBox.shrink();
+    return cell.fill ? FillChild(child: cell.child) : cell.child;
+  }
+
+  /// The widest natural width per first column: inputs of a column get
+  /// the same width, so amounts stand one below the other.
+  Map<int, double> _naturalWidths() {
+    final widths = <int, double>{};
+    for (final row in rows) {
+      for (final cell in row) {
+        final w = cell.naturalWidth;
+        if (w == null || !cell.visible) continue;
+        final current = widths[cell.column];
+        if (current == null || w > current) widths[cell.column] = w;
+      }
+    }
+    return widths;
+  }
+
+  /// The input of [cell] in its natural width ([widths]: per column).
+  Widget _natural(_Cell cell, Map<int, double> widths, Widget child) {
+    if (cell.naturalWidth == null) return child;
+    final width = widths[cell.column] ?? cell.naturalWidth!;
+    return Align(
+      alignment: AlignmentDirectional.topStart,
+      child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: width), child: child),
+    );
   }
 
   /// Columns actually used (unused trailing columns collapse, e.g.
@@ -908,94 +1114,125 @@ class _Grid extends StatelessWidget {
   int get _usedCols {
     var used = 1;
     for (final row in rows) {
-      if (row is List<_Cell> && row.isNotEmpty) {
-        final end = row.last.column + row.last.colspan;
-        if (end > used) used = end;
-      }
+      if (row.isEmpty || row.last.full) continue;
+      final end = row.last.column + row.last.colspan;
+      if (end > used) used = end;
     }
     return used.clamp(1, cols < 1 ? 1 : cols);
   }
 
-  /// Per column: has a visible cell / has a visible expanding cell.
-  ({List<bool> visible, List<bool> expand}) _columns() {
-    final n = _usedCols;
-    final visible = List.filled(n, false);
-    final expand = List.filled(n, false);
-    for (final row in rows) {
-      if (row is! List<_Cell>) continue;
-      for (final cell in row) {
-        if (!cell.visible) continue;
-        for (var c = cell.column; c < cell.column + cell.colspan && c < n; c++) {
-          visible[c] = true;
-          if (cell.expand) expand[c] = true;
-        }
-      }
-    }
-    return (visible: visible, expand: expand);
-  }
-
-  Widget _row(List<_Cell> cells) {
-    if (cells.every((c) => !c.visible)) return const SizedBox.shrink();
-    final columns = _columns();
-    final n = columns.visible.length;
-    int weight(int from, int to) {
-      var w = 0;
-      for (var c = from; c < to && c < n; c++) {
-        if (columns.expand[c]) w++;
-      }
-      return w;
-    }
-
-    final children = <Widget>[];
-    var next = 0;
-    void gap(int to) {
-      final w = weight(next, to);
-      if (w > 0) children.add(Spacer(flex: w));
-    }
-
-    for (final cell in cells) {
-      gap(cell.column);
-      final end = cell.column + cell.colspan;
-      final w = weight(cell.column, end);
-      final content = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: cell.child,
+  /// A horizontal box (`col ≤ 0`, spec 9.2.2): the cells side by side in
+  /// their natural width, wrapping only when the line is full – also in
+  /// the narrow layout.
+  Widget _line(List<_Cell> cells) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            for (final cell in cells)
+              if (cell.visible) cell.child,
+          ],
+        ),
       );
-      if (w > 0) {
-        // A non-expanding cell in expanding columns keeps its alignment.
-        children.add(Expanded(
-          flex: w,
-          child: cell.expand || cell.xalign == null
-              ? content
-              : Align(alignment: Alignment(cell.xalign! * 2 - 1, -1), child: content),
-        ));
-      } else if (cell.visible) {
-        // Own width, but never wider than the row (text inputs).
-        children.add(Flexible(child: content));
-      }
-      next = end;
-    }
-    gap(n);
-    if (hbox && children.isNotEmpty && !children.any((c) => c is Expanded || c is Spacer)) {
-      children.add(const Spacer());
-    }
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: children);
-  }
 
   /// One cell per line (narrow screens); labels left aligned above.
-  Widget _column(List<_Cell> cells) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final cell in cells)
-            if (cell.visible)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: cell.expand
-                    ? cell.child
-                    : Align(alignment: AlignmentDirectional.centerStart, child: cell.child),
-              ),
-        ],
-      );
+  Widget _column(List<_Cell> cells) {
+    final naturalWidths = _naturalWidths();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final cell in cells)
+          if (cell.visible)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _natural(
+                  cell,
+                  naturalWidths,
+                  cell.expand
+                      ? cell.child
+                      : Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: cell.child)),
+            ),
+      ],
+    );
+  }
+}
+
+/// Tabs of a notebook and the selected page in its natural height.
+class _NotebookView extends StatefulWidget {
+  final List<PageNode> pages;
+  final Widget Function(PageNode page) tab;
+  final Widget Function(PageNode page) page;
+
+  const _NotebookView({
+    required this.pages,
+    required this.tab,
+    required this.page,
+  });
+
+  @override
+  State<_NotebookView> createState() => _NotebookViewState();
+}
+
+class _NotebookViewState extends State<_NotebookView>
+    with TickerProviderStateMixin {
+  late TabController _controller = _create(0);
+
+  TabController _create(int index) => TabController(
+    length: widget.pages.length,
+    initialIndex: index.clamp(0, widget.pages.length - 1),
+    vsync: this,
+  )..addListener(_onTab);
+
+  void _onTab() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(_NotebookView old) {
+    super.didUpdateWidget(old);
+    // pages shown/hidden by their states: keep the selected index
+    if (old.pages.length != widget.pages.length) {
+      final index = _controller.index;
+      _controller.dispose();
+      _controller = _create(index);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final index = _controller.index;
+    // the page gets the remaining height of the notebook (yexpand)
+    return FillColumn(
+      children: [
+        const SizedBox(height: 8),
+        TabBar(
+          controller: _controller,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          tabs: [for (final p in widget.pages) widget.tab(p)],
+        ),
+        FillChild(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: KeyedSubtree(
+              key: ValueKey('page-$index'),
+              child: widget.page(widget.pages[index]),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// `<group expandable="0|1">` as expander (SAO/GTK `Expander`).
@@ -1042,4 +1279,32 @@ class _GroupExpanderState extends State<_GroupExpander> {
       ],
     );
   }
+}
+
+/// Theme of forms: 14 pt text and labels, dense inputs with less padding
+/// (compact like the reference clients).
+/// Space above and below every field of a form: the same for all widget
+/// kinds, so the inputs of a row line up (FieldWidget's own padding).
+const double _fieldGap = 4;
+
+ThemeData compactFormTheme(ThemeData theme) {
+  final text = theme.textTheme;
+  return theme.copyWith(
+    textTheme: text.copyWith(
+      bodyLarge: text.bodyLarge?.copyWith(fontSize: 14),
+      titleMedium: text.titleMedium?.copyWith(fontSize: 14),
+      bodyMedium: text.bodyMedium?.copyWith(fontSize: 13),
+    ),
+    inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      // the buttons of many2one fields without the 48 px tap target (one
+      // height for all single-line inputs)
+      prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      suffixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+    ),
+    // checkboxes 40 px like the inputs (no 48 px tap target)
+    checkboxTheme: theme.checkboxTheme
+        .copyWith(materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+  );
 }

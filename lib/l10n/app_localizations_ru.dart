@@ -466,4 +466,374 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get editUserPreferences => 'Изменить настройки пользователя';
+
+  @override
+  String get saveAs => 'Сохранить как…';
+
+  @override
+  String get selectFile => 'Выбрать…';
+
+  @override
+  String get clear => 'Очистить';
+
+  @override
+  String get openFile => 'Открыть…';
+
+  @override
+  String attachmentsOf(Object name) {
+    return 'Вложения ($name)';
+  }
+
+  @override
+  String notesOf(Object name) {
+    return 'Заметки ($name)';
+  }
+
+  @override
+  String logsOf(Object name) {
+    return 'Журналы ($name)';
+  }
+
+  @override
+  String attachmentCount(Object count) {
+    return 'Вложение ($count)';
+  }
+
+  @override
+  String get addFiles => 'Добавить…';
+
+  @override
+  String get manage => 'Управлять…';
+
+  @override
+  String get logModel => 'Модель';
+
+  @override
+  String get logModule => 'Модуль';
+
+  @override
+  String get logXmlId => 'XML ID';
+
+  @override
+  String get logCreatedBy => 'Создано';
+
+  @override
+  String get logCreatedAt => 'Дата создания';
+
+  @override
+  String get logModifiedBy => 'Изменено';
+
+  @override
+  String get logModifiedAt => 'Дата изменения';
+
+  @override
+  String get exportData => 'Экспорт данных…';
+
+  @override
+  String get importData => 'Импорт данных…';
+
+  @override
+  String csvExportTitle(Object name) {
+    return 'Экспорт CSV: $name';
+  }
+
+  @override
+  String csvImportTitle(Object name) {
+    return 'Импорт CSV: $name';
+  }
+
+  @override
+  String get csvAllFields => 'Все поля';
+
+  @override
+  String get csvFieldsSelected => 'Выбранные поля';
+
+  @override
+  String get csvRemoveAll => 'Очистить';
+
+  @override
+  String get csvParameters => 'Параметры CSV';
+
+  @override
+  String get csvDelimiter => 'Разделитель';
+
+  @override
+  String get csvQuoteChar => 'Кавычки';
+
+  @override
+  String get csvEncoding => 'Кодировка';
+
+  @override
+  String get csvLocaleFormat => 'Использовать локальный формат';
+
+  @override
+  String get csvAddFieldNames => 'Добавить имена полей';
+
+  @override
+  String get csvListedRecords => 'Показанные записи';
+
+  @override
+  String get csvSelectedRecords => 'Выбранные записи';
+
+  @override
+  String get csvIgnoreSearchLimit => 'Игнорировать лимит поиска';
+
+  @override
+  String get csvPredefinedExports => 'Предопределённые экспорты';
+
+  @override
+  String get csvSaveExport => 'Сохранить экспорт';
+
+  @override
+  String get csvDeleteExport => 'Удалить экспорт';
+
+  @override
+  String get csvExportName => 'Как назвать этот экспорт?';
+
+  @override
+  String csvOverrideExport(Object name) {
+    return 'Перезаписать определение «$name»?';
+  }
+
+  @override
+  String csvRecordsSaved(Object count) {
+    return 'Сохранено записей: $count';
+  }
+
+  @override
+  String get csvExportFailed => 'Ошибка экспорта';
+
+  @override
+  String get csvFileToImport => 'Файл для импорта';
+
+  @override
+  String get csvLinesToSkip => 'Пропустить строк';
+
+  @override
+  String get csvAutoDetect => 'Автоопределение';
+
+  @override
+  String get csvImport => 'Импорт';
+
+  @override
+  String get csvSelectImportFile => 'Сначала выберите файл для импорта.';
+
+  @override
+  String csvUnknownHeader(Object name) {
+    return 'Неизвестный заголовок столбца «$name»';
+  }
+
+  @override
+  String get csvDetectionFailed => 'Ошибка определения';
+
+  @override
+  String csvRecordsImported(Object count) {
+    return 'Импортировано записей: $count';
+  }
+
+  @override
+  String get csvImportFailed => 'Ошибка импорта';
+
+  @override
+  String csvFieldString(Object name) {
+    return '$name (текст)';
+  }
+
+  @override
+  String csvFieldModelName(Object name) {
+    return '$name (имя модели)';
+  }
+
+  @override
+  String csvFieldRecordName(Object name) {
+    return '$name/Имя записи';
+  }
+
+  @override
+  String get open => 'Открыть';
+
+  @override
+  String get recordMenu => 'Меню записи';
+
+  @override
+  String get menuSwitchView => 'Переключить вид';
+
+  @override
+  String get menuPrevious => 'Предыдущая';
+
+  @override
+  String get menuNext => 'Следующая';
+
+  @override
+  String get menuSearch => 'Поиск';
+
+  @override
+  String get menuNew => 'Создать';
+
+  @override
+  String get menuSave => 'Сохранить';
+
+  @override
+  String get menuReload => 'Перезагрузить/Отменить';
+
+  @override
+  String get menuDuplicate => 'Дублировать';
+
+  @override
+  String get menuDelete => 'Удалить…';
+
+  @override
+  String get menuLogs => 'Журнал…';
+
+  @override
+  String get menuRevisions => 'Показать ревизии…';
+
+  @override
+  String get menuAttachments => 'Вложения…';
+
+  @override
+  String get menuNotes => 'Заметки…';
+
+  @override
+  String get menuActions => 'Действия…';
+
+  @override
+  String get menuRelate => 'Связанные…';
+
+  @override
+  String get menuReport => 'Отчёт…';
+
+  @override
+  String get menuEmail => 'Эл. почта…';
+
+  @override
+  String get menuCloseTab => 'Закрыть вкладку';
+
+  @override
+  String get keyboardShortcuts => 'Сочетания клавиш';
+
+  @override
+  String get shortcutsGlobal => 'Общие';
+
+  @override
+  String get shortcutsForm => 'Форма';
+
+  @override
+  String get shortcutsRelation => 'Поля связей';
+
+  @override
+  String get shortcutsList => 'Поля списков';
+
+  @override
+  String get shortcutsDate => 'Поля даты';
+
+  @override
+  String get shortcutSearchMenu => 'Поиск в меню';
+
+  @override
+  String get shortcutToggleMenu => 'Показать/скрыть меню';
+
+  @override
+  String get shortcutPreviousTab => 'Предыдущая вкладка';
+
+  @override
+  String get shortcutNextTab => 'Следующая вкладка';
+
+  @override
+  String get shortcutQuit => 'Выход';
+
+  @override
+  String get shortcutRelationNew => 'Создать связь';
+
+  @override
+  String get shortcutRelationOpen => 'Открыть/найти связь';
+
+  @override
+  String get shortcutListSwitch => 'Переключить вид';
+
+  @override
+  String get shortcutListNew => 'Создать/выбрать строку';
+
+  @override
+  String get shortcutListOpen => 'Открыть связь';
+
+  @override
+  String get shortcutListDelete => 'Пометить строку на удаление';
+
+  @override
+  String get shortcutListRemove => 'Пометить строку на отвязку';
+
+  @override
+  String get shortcutListUndelete => 'Снять пометку удаления';
+
+  @override
+  String get shortcutDateToday => 'Сегодня';
+
+  @override
+  String get shortcutDateAdd =>
+      'Прибавить секунду/минуту/час/день/неделю/месяц/год';
+
+  @override
+  String get shortcutDateSubtract =>
+      'Вычесть секунду/минуту/час/день/неделю/месяц/год';
+
+  @override
+  String get keyDelete => 'Delete';
+
+  @override
+  String get keyInsert => 'Insert';
+
+  @override
+  String get ctxCopy => 'Копировать';
+
+  @override
+  String get ctxCopyRow => 'Копировать строку';
+
+  @override
+  String get ctxCopyRows => 'Копировать строки';
+
+  @override
+  String get ctxCopyColumn => 'Копировать столбец';
+
+  @override
+  String get ctxPasteRows => 'Вставить строки';
+
+  @override
+  String get ctxEdit => 'Изменить…';
+
+  @override
+  String get ctxPrint => 'Печать…';
+
+  @override
+  String get x2mCreate => 'Создать новую запись';
+
+  @override
+  String get x2mEdit => 'Изменить выбранную запись';
+
+  @override
+  String get x2mDelete => 'Удалить выбранную запись';
+
+  @override
+  String get x2mAdd => 'Добавить существующую запись';
+
+  @override
+  String get x2mRemove => 'Отвязать выбранную запись';
+
+  @override
+  String get x2mUndelete => 'Восстановить выбранную запись';
+
+  @override
+  String get x2mRestore => 'Вернуть выбранную запись';
+
+  @override
+  String get x2mSwitch => 'Переключить';
+
+  @override
+  String get x2mPrevious => 'Предыдущая';
+
+  @override
+  String get x2mNext => 'Следующая';
+
+  @override
+  String get x2mMore => 'Ещё';
 }

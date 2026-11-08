@@ -2,23 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
-import '../../core/model/model.dart';
+import '../../core/model/model.dart' hide TextField;
 import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/errors/error_dialogs.dart';
-import '../auth/user_preferences_provider.dart';
 import '../model/field_definition.dart';
 import '../model/field_support.dart';
 import '../model/model_service.dart';
+import 'fill_column.dart';
 import 'form_dialog.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 import 'search_dialog.dart';
-import 'record_cells.dart';
+import 'tree_view.dart';
+import 'wizard_widget.dart' show wizardInvalidTexts;
 
 /// Views of x2many relations (`fields_view_get`), loaded once per
 /// relation and view type (values, not futures: a cached future would be
@@ -86,18 +86,20 @@ class EmbeddedTreeWidget extends ConsumerStatefulWidget {
 }
 
 class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
-  TreeViewDefinition? _treeDef;
   ViewDefinition? _treeView;
 
-  final Set<Record> _selected = {};
+  /// Screen of the table on the child group with the tree view (the
+  /// table is a [TreeView] like the main list, spec 9.2.7).
+  TrytonScreen? _treeScreen;
+  ScreenView? _treeScreenView;
+  final _table = TreeViewController();
+
+  /// The selected records of the table.
+  List<Record> get _selected => _treeScreen?.selectedRecords ?? const [];
 
   /// A popup is open.
   bool _popup = false;
 
-  /// Records whose row values are being loaded.
-  final Set<Record> _loading = {};
-
-  final _hScrollController = ScrollController();
 
   /// Inline form view (`form` in `mode`).
   ViewDefinition? _formView;
@@ -112,8 +114,6 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   /// Text typed in the inline form, written on focus loss.
   final Map<String, dynamic> _pending = {};
 
-  /// Keyboard focus of the table (Enter opens the selected record).
-  final _tableFocus = FocusNode();
   bool _loadingView = false;
   String? _error;
 
@@ -158,8 +158,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
   @override
   void dispose() {
-    _hScrollController.dispose();
-    _tableFocus.dispose();
+    _treeScreen?.dispose();
     super.dispose();
   }
 
@@ -176,22 +175,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       if (_formMode || !_hasTree) await _loadFormView();
       if (!_hasTree) return;
       final view = await _view(svc, _relModel, 'tree', _viewIdFor('tree'));
-      final treeDef = TreeXmlParser().parse(
-        view.arch,
-        view.fields.map(
-          (k, v) => MapEntry(k, <String, dynamic>{'string': v.label, 'type': v.type, 'selection': v.selection}),
-        ),
-      );
       if (!mounted) return;
-      setState(() {
-        _treeView = view;
-        _treeDef = TreeViewDefinition(
-          columns: treeDef.columns,
-          fields: view.fields,
-          editable: treeDef.editable,
-          visual: treeDef.visual,
-        );
-      });
+      setState(() => _treeView = view);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     } finally {
@@ -218,25 +203,21 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   }
 
   /// The fields of [view] in the child model (the group's model is new
-  /// after each reload of the parent).
+  /// after each reload of the parent), marked as fields of the view: a
+  /// record loads with `load('*')` only the fields of its views (Python
+  /// `screen.add_view`), e.g. the function fields of the inline form.
   void _ensureFields(RecordGroup group, ViewDefinition? view) {
     if (view == null) return;
-    if (view.rawFields.keys.every(group.model.fields.containsKey)) return;
+    final key = view.viewId ?? view.type;
+    final fields = group.model.fields;
+    if (view.rawFields.keys
+        .every((name) => fields[name]?.views.contains(key) ?? false)) {
+      return;
+    }
     group.model.addFields(view.rawFields);
-  }
-
-  /// Loads the row values of [record] (eager: the neighbours of the group
-  /// come in the same `read`), without error dialog.
-  void _ensureLoaded(Record record, String field) {
-    if (record.isLoaded(field) || _loading.contains(record)) return;
-    _loading.add(record);
-    record
-        .load(field, processException: false)
-        .catchError((Object _) {})
-        .whenComplete(() {
-      _loading.remove(record);
-      if (mounted) setState(() {});
-    });
+    for (final name in view.rawFields.keys) {
+      fields[name]!.views.add(key);
+    }
   }
 
   // ─── Actions ──────────────────────────────────────────────────────────────
@@ -278,12 +259,8 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       _group?.model.access ??
       TrytonModel(_relModel, session: widget.parent.model.session).access;
 
-  bool get _canAdd =>
-      (_isMany2Many || _addRemove != null) && _access.write && _access.read;
   bool get _canDelete =>
       !_isMany2Many && _flag('delete') && _access.delete;
-  bool get _canRemove =>
-      (_isMany2Many || _addRemove != null) && _access.write && _access.read;
   bool get _canCreate => _flag('create') && _access.create;
   bool get _canOpen => _access.read;
 
@@ -373,16 +350,33 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
         }
       });
 
-  /// New: form popup with a new record in the child group ("Add and New"
-  /// up to the `size` limit).
-  Future<void> _newRecord() => _popupRun(() async {
+  /// New: in an editable table a new row (spec 9.2.7), else the form
+  /// popup with a new record in the child group ("Add and New" up to the
+  /// `size` limit).
+  Future<void> _newRecord([Map<String, dynamic>? defaults]) =>
+      _popupRun(() async {
         final group = _group;
         if (group == null || _sizeLimitReached) return;
+        // add_remove: the text of the search entry (Python `_sig_new`)
+        final text = _addText?.text.trim() ?? '';
+        if (_addRemove != null && text.isNotEmpty) {
+          defaults = {...?defaults, 'rec_name': text};
+          _addText?.clear();
+        }
+        final tree = _treeScreen;
+        if (!_formMode && tree != null && _table.editable) {
+          if (!await _table.leaveRow(null)) return;
+          final record = await group.newRecordWithDefaults(defaults: defaults);
+          group.add(record, position: tree.newPosition);
+          if (mounted) _table.edit(record);
+          return;
+        }
         final screen = await _childScreen(group);
         try {
           if (!mounted) return;
           await showFormDialog(context, screen,
               newRecord: true,
+              defaults: defaults,
               many: _remaining,
               x2many: true,
               removeOnDelete: _isMany2Many,
@@ -393,52 +387,141 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
         }
       });
 
+  /// Domain of „Add“: `add_remove` AND field domain without the records
+  /// already contained.
+  List<dynamic> get _addDomain {
+    final parent = widget.parent;
+    var domain = <dynamic>[_field.getDomain(parent)];
+    final addRemove = _addRemove;
+    if (addRemove is List && addRemove.isNotEmpty) domain.add(addRemove);
+    final existing = [
+      for (final id in _field.getEval(parent) as List)
+        if (id is int && id >= 0) id
+    ];
+    if (existing.isNotEmpty) {
+      domain = [
+        domain,
+        ['id', 'not in', existing]
+      ];
+    }
+    return domain;
+  }
+
   /// Add (many2many / `add_remove`): search dialog with multiple
-  /// selection, domain `add_remove` AND field domain without the records
-  /// already contained; the chosen records are loaded as added.
-  Future<void> _addRecords() => _popupRun(() async {
+  /// selection on [_addDomain] (with the [text] of the entry); the chosen
+  /// records are loaded as added.
+  Future<void> _addRecords([String text = '']) => _popupRun(() async {
         final group = _group;
         if (group == null || _sizeLimitReached) return;
-        final parent = widget.parent;
-        var domain = <dynamic>[_field.getDomain(parent)];
-        final addRemove = _addRemove;
-        if (addRemove is List && addRemove.isNotEmpty) domain.add(addRemove);
-        final existing = [
-          for (final id in _field.getEval(parent) as List)
-            if (id is int && id >= 0) id
-        ];
-        if (existing.isNotEmpty) {
-          domain = [
-            domain,
-            ['id', 'not in', existing]
-          ];
-        }
         final result = await showSearchDialog(
           context,
           model: _relModel,
           session: group.model.session,
-          domain: domain,
-          searchContext: _field.getSearchContext(parent),
+          domain: _addDomain,
+          searchContext: _field.getSearchContext(widget.parent),
           order: _asList(_field.description['order']),
           viewIds: [?_viewIdFor('tree')],
           multi: true,
           allowNew: _canCreate,
+          searchText: text.isEmpty ? null : text,
           title: widget.fieldDef.label,
           okLabel: context.l10n.add,
         );
+        _addText?.clear();
         if (result.isEmpty) return;
         group.load([for (final r in result) r.id], modified: true);
       });
 
+  /// Text of the `add_remove` entry (set by its Autocomplete).
+  TextEditingController? _addText;
+
+  /// Completion of the `add_remove` entry (Python `update_completion`):
+  /// `autocomplete(text, domain, limit, order)` of the relation.
+  Future<Iterable<Map<String, dynamic>>> _completeAdd(String text) async {
+    final group = _group;
+    if (group == null || text.isEmpty) return const [];
+    try {
+      final result = await group.model.execute('autocomplete', [
+        text,
+        _addDomain,
+        group.model.session.limit,
+        _field.getSearchOrder(widget.parent),
+      ], context: _field.getSearchContext(widget.parent), processException: false);
+      // Many2Many: also the „Create …“ entries (id null) with create
+      // right (Python `get_completion(create=…)`)
+      final create = _isMany2Many && _canCreate;
+      return [
+        for (final v in result as List? ?? const [])
+          if (v is Map && (v['id'] is int || create)) Map<String, dynamic>.from(v)
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// The search entry (spec 9.2.7; one2many with `add_remove`, always for
+  /// many2many): completion → the record is added (a „Create …“ entry
+  /// opens a new record with its defaults); Enter → the search dialog
+  /// with the text. Active like „Add“.
+  Widget _buildAddEntry({required bool enabled, double width = 180}) => SizedBox(
+        width: width,
+        height: 32,
+        child: Autocomplete<Map<String, dynamic>>(
+          displayStringForOption: (o) => '${o['name'] ?? ''}',
+          optionsBuilder: (value) =>
+              enabled ? _completeAdd(value.text) : const <Map<String, dynamic>>[],
+          onSelected: (o) {
+            final group = _group;
+            if (group == null || _sizeLimitReached) return;
+            _addText?.clear();
+            final id = o['id'];
+            if (id is int) {
+              group.load([id], modified: true);
+              setState(() {});
+            } else {
+              final defaults = o['defaults'];
+              _newRecord(defaults is Map ? defaults.cast<String, dynamic>() : null);
+            }
+          },
+          fieldViewBuilder: (context, controller, focus, _) {
+            _addText = controller;
+            return TextField(
+              key: const ValueKey('x2m-add-entry'),
+              controller: controller,
+              focusNode: focus,
+              enabled: enabled,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: context.l10n.search,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: const OutlineInputBorder(),
+              ),
+              onSubmitted: (text) {
+                if (text.trim().isNotEmpty) _addRecords(text.trim());
+              },
+            );
+          },
+        ),
+      );
+
   static List<dynamic>? _asList(dynamic value) => value is List ? value : null;
+
+  /// The records the buttons act on: the record of the inline form,
+  /// else the selection of the table.
+  List<Record> get _actionRecords => _formMode ? [?_current] : _selected;
 
   /// Delete (one2many) or remove the link – both only marked.
   void _markSelected({required bool remove}) {
     final group = _group;
     if (group == null) return;
-    for (final r in _selected.toList()) {
+    final records = _actionRecords.toList();
+    for (final r in records) {
       group.remove(r, remove: remove);
-      if (!group.contains(r)) _selected.remove(r);
+    }
+    if (!_formMode) {
+      _table.select([for (final r in records) if (group.contains(r)) r]);
     }
     setState(() {});
   }
@@ -446,10 +529,247 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   void _unmarkSelected() {
     final group = _group;
     if (group == null) return;
-    for (final r in _selected) {
+    for (final r in _actionRecords) {
       if (r.deleted || r.removed) group.unremove(r);
     }
     setState(() {});
+  }
+
+  // ─── Toolbar (spec 9.2.7 „Kopfzeile im Detail“) ──────────────────────────
+
+  /// Readonly (spec 9.2.7): the field (static or `states`), the parent
+  /// record or a revision; switch, navigation and Edit (view only) stay.
+  bool get _readonly =>
+      widget.readOnly ||
+      widget.parentReadOnly ||
+      widget.parent.group.rootGroup.revision != null;
+
+  /// Records in the shown order (table) or the group's (inline form).
+  List<Record> get _navRecords {
+    final rows = _table.rows;
+    if (_formMode || rows.isEmpty) return _group?.toList() ?? const [];
+    return [for (final r in rows) if (r.depth == 0) r.record];
+  }
+
+  /// Position of the current record (1-based; null without, Python
+  /// `record_message`).
+  int? get _position {
+    final record = _formMode ? _current : _selected.firstOrNull;
+    if (record == null) return null;
+    final i = _navRecords.indexOf(record);
+    return i < 0 ? null : i + 1;
+  }
+
+  /// Activation of the buttons (Python `_set_button_sensitive` of
+  /// `One2Many` / `Many2Many`).
+  ({
+    bool switchView,
+    bool previous,
+    bool next,
+    bool add,
+    bool remove,
+    bool create,
+    bool open,
+    bool delete,
+    bool undelete,
+  }) get _enabled {
+    final readonly = _readonly;
+    final limit = _sizeLimitReached;
+    final position = _position;
+    final length = _navRecords.length;
+    final records = _actionRecords;
+    final removable = records.any((r) => !r.deleted && !r.removed);
+    final unremovable = records.any((r) => r.deleted || r.removed);
+    if (_isMany2Many) {
+      return (
+        switchView: false,
+        previous: false,
+        next: false,
+        add: !readonly && !limit,
+        remove: !readonly && removable && position != null,
+        create: !readonly && _canCreate && !limit,
+        open: position != null && _canOpen,
+        delete: false,
+        undelete: !readonly && !limit && unremovable && position != null,
+      );
+    }
+    final rights = _access.write && _access.read;
+    return (
+      switchView: (position != null || _formMode) && _hasTree && _hasForm,
+      previous: length > 0 && (position == null || position > 1),
+      next: length > 0 && (position == null || position < length),
+      add: !readonly && !limit && rights,
+      remove: !readonly && position != null && rights,
+      create: !readonly && _canCreate && !limit,
+      open: position != null && _canOpen && _hasForm,
+      delete: !readonly &&
+          _canDelete &&
+          removable &&
+          records.every((r) => r.deletable) &&
+          position != null,
+      undelete: !readonly && !limit && unremovable && position != null,
+    );
+  }
+
+  /// Previous/next record (Python `screen.display_prev/next`): in the
+  /// inline form the shown record, in the table the selection follows.
+  Future<void> _navigate(int delta) async {
+    if (_formMode) {
+      if (_current == null) {
+        final records = _navRecords;
+        if (records.isNotEmpty) {
+          setState(() => _current = delta > 0 ? records.first : records.last);
+        }
+        return;
+      }
+      await _move(delta);
+      return;
+    }
+    final records = _navRecords;
+    if (records.isEmpty) return;
+    final position = _position;
+    final index = position == null
+        ? (delta > 0 ? 0 : records.length - 1)
+        : (position - 1 + delta).clamp(0, records.length - 1);
+    final target = records[index];
+    if (!await _table.leaveRow(target) || !mounted) return;
+    _table.select([target]);
+  }
+
+  /// The header of the widget (Python `One2Many`/`Many2Many`): all
+  /// buttons always shown, disabled when not allowed; on narrow screens
+  /// the rare ones (switch, add, remove, undelete) in a „More“ menu.
+  Widget _buildToolbar(RecordGroup group) {
+    final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final enabled = _enabled;
+    final records = _actionRecords;
+    final position = _position;
+    final selected = records.length;
+    final positionText =
+        '${position ?? '_'}${selected > 1 ? '#$selected' : ''}/${_navRecords.length}';
+    final first = records.firstOrNull;
+    final searchEntry = _isMany2Many || _addRemove != null;
+
+    // (key, icon, tooltip, action, rare)
+    final items = <(String, IconData, String, VoidCallback?, bool)>[
+      if (!_isMany2Many) ...[
+        ('switch', Icons.compare_arrows, l.x2mSwitch,
+            enabled.switchView ? _switch : null, true),
+        ('previous', Icons.chevron_left, l.x2mPrevious,
+            enabled.previous ? () => _navigate(-1) : null, false),
+        ('position', Icons.tag, positionText, null, false),
+        ('next', Icons.chevron_right, l.x2mNext,
+            enabled.next ? () => _navigate(1) : null, false),
+      ],
+      if (searchEntry) ...[
+        ('add', Icons.playlist_add, l.x2mAdd,
+            enabled.add ? _addRecords : null, true),
+        if (_isMany2Many) ('position', Icons.tag, positionText, null, false),
+        ('remove', Icons.link_off, l.x2mRemove,
+            enabled.remove ? () => _markSelected(remove: true) : null, true),
+      ],
+      if (!_isMany2Many) ...[
+        ('new', Icons.add, l.x2mCreate,
+            enabled.create ? (_formMode ? _newInline : _newRecord) : null, false),
+        ('open', Icons.edit_outlined, l.x2mEdit,
+            enabled.open && first != null ? () => _openRecord(first) : null, false),
+        ('delete', Icons.delete_outline, l.x2mDelete,
+            enabled.delete ? () => _markSelected(remove: false) : null, false),
+      ],
+      ('undelete', Icons.restore_from_trash_outlined,
+          _isMany2Many ? l.x2mRestore : l.x2mUndelete,
+          enabled.undelete ? _unmarkSelected : null, true),
+    ];
+
+    Widget button((String, IconData, String, VoidCallback?, bool) item) {
+      final (name, icon, tip, onPressed, _) = item;
+      if (name == 'position') {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(tip,
+              key: const ValueKey('x2m-position'),
+              style: TextStyle(fontSize: 12, color: cs.outline)),
+        );
+      }
+      final color = onPressed == null
+          ? null
+          : switch (name) {
+              'delete' || 'remove' => cs.error,
+              'undelete' => Colors.green.shade700,
+              _ => null,
+            };
+      return _TBtn(
+          key: ValueKey('x2m-$name'),
+          icon: icon,
+          tip: tip,
+          color: color,
+          onPressed: onPressed);
+    }
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final narrow = constraints.maxWidth < 560;
+      final shown = [for (final i in items) if (!narrow || !i.$5) i];
+      final more = [for (final i in items) if (narrow && i.$5) i];
+      return Container(
+        key: const ValueKey('x2m-toolbar'),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(children: [
+          // the title (Python: label of the field)
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Text(widget.fieldDef.label,
+                  key: const ValueKey('x2m-title'),
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: cs.primary,
+                      )),
+            ),
+          ),
+          // the controls never overflow (scroll on very narrow screens)
+          Flexible(
+            flex: 4,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (searchEntry)
+                    _buildAddEntry(enabled: enabled.add, width: narrow ? 120 : 180),
+                  for (final item in shown) button(item),
+                ]),
+              ),
+            ),
+          ),
+          if (more.isNotEmpty)
+            PopupMenuButton<VoidCallback>(
+              key: const ValueKey('x2m-more'),
+              icon: const Icon(Icons.more_vert, size: 16),
+              tooltip: l.x2mMore,
+              padding: EdgeInsets.zero,
+              onSelected: (action) => action(),
+              itemBuilder: (_) => [
+                for (final (name, icon, tip, onPressed, _) in more)
+                  PopupMenuItem<VoidCallback>(
+                    key: ValueKey('x2m-more-$name'),
+                    value: onPressed,
+                    enabled: onPressed != null,
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(icon, size: 18),
+                      title: Text(tip),
+                    ),
+                  ),
+              ],
+            ),
+        ]),
+      );
+    });
   }
 
   /// Keys of the table (desktop, Python `One2Many.on_keypress`): Enter/F2
@@ -458,39 +778,34 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   KeyEventResult _onKey(KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     final key = event.logicalKey;
-    final hasSelection = _selected.isNotEmpty;
-    final editable = !widget.readOnly;
+    final enabled = _enabled;
+    final first = _actionRecords.firstOrNull;
     if ((key == LogicalKeyboardKey.enter ||
             key == LogicalKeyboardKey.numpadEnter ||
             key == LogicalKeyboardKey.f2) &&
-        hasSelection &&
+        first != null &&
         _canOpen) {
-      _openRecord(_selected.first);
+      _openRecord(first);
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.f3 &&
-        editable &&
-        _canCreate &&
-        !_sizeLimitReached) {
+    if (key == LogicalKeyboardKey.f3 && enabled.create) {
       _newRecord();
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.f4) {
+    if (key == LogicalKeyboardKey.f4 && enabled.switchView) {
       _switch();
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.delete &&
-        editable &&
-        hasSelection) {
+    if (key == LogicalKeyboardKey.delete) {
       final ctrl = HardwareKeyboard.instance.isControlPressed ||
           HardwareKeyboard.instance.isMetaPressed;
       final remove = _isMany2Many || (!ctrl && _addRemove != null);
-      if (remove ? _canRemove : _canDelete) {
+      if (remove ? enabled.remove : enabled.delete) {
         _markSelected(remove: remove);
         return KeyEventResult.handled;
       }
     }
-    if (key == LogicalKeyboardKey.insert && editable && hasSelection) {
+    if (key == LogicalKeyboardKey.insert && enabled.undelete) {
       _unmarkSelected();
       return KeyEventResult.handled;
     }
@@ -511,8 +826,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       final current = _current;
       setState(() {
         _formMode = false;
-        _selected.clear();
-        if (current != null && group.contains(current)) _selected.add(current);
+        // the table shows the record of the form selected
+        final screen = _treeScreen;
+        if (screen != null) {
+          screen.selectedRecords =
+              current != null && group.contains(current) ? [current] : const [];
+        }
       });
       return;
     }
@@ -587,67 +906,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (current == null || !group.contains(current)) {
       current = _current = records.isEmpty ? null : records.first;
     }
-    final index = current == null ? -1 : records.indexOf(current);
     if (current != null) _ensureFormLoaded(current);
     final marked = current != null && (current.deleted || current.removed);
-    final limitReached = _sizeLimitReached;
-    Widget btn(IconData icon, String tip, VoidCallback? onPressed,
-            {Key? key, Color? color}) =>
-        _TBtn(key: key, icon: icon, tip: tip, onPressed: onPressed, color: color);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: [
-              if (_hasTree)
-                btn(Icons.compare_arrows, l.switchView, _switch,
-                    key: const ValueKey('x2m-switch')),
-              btn(Icons.chevron_left, l.previousRecord,
-                  index > 0 ? () => _move(-1) : null,
-                  key: const ValueKey('x2m-previous')),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                    records.isEmpty ? '0 / 0' : '${index + 1} / ${records.length}',
-                    key: const ValueKey('x2m-position'),
-                    style: TextStyle(fontSize: 12, color: cs.outline)),
-              ),
-              btn(Icons.chevron_right, l.nextRecord,
-                  index >= 0 && index < records.length - 1 ? () => _move(1) : null,
-                  key: const ValueKey('x2m-next')),
-              if (!widget.readOnly) ...[
-                if (_canCreate)
-                  btn(Icons.add, l.createNew, limitReached ? null : _newInline,
-                      key: const ValueKey('x2m-new')),
-                if (_canAdd)
-                  btn(Icons.playlist_add, l.add, limitReached ? null : _addRecords,
-                      key: const ValueKey('x2m-add')),
-                if (current != null && marked)
-                  btn(Icons.undo, l.undelete, () {
-                    group.unremove(current!);
-                    setState(() {});
-                  }, color: Colors.green),
-                if (current != null && !marked && _canRemove)
-                  btn(Icons.link_off, l.remove, () {
-                    group.remove(current!, remove: true);
-                    setState(() {});
-                  }, key: const ValueKey('x2m-remove'), color: cs.error),
-                if (current != null && !marked && _canDelete)
-                  btn(Icons.delete_outline, l.delete, () {
-                    group.remove(current!, remove: false);
-                    setState(() {});
-                  }, key: const ValueKey('x2m-delete'), color: cs.error),
-              ],
-            ]),
-          ),
-        ),
+        _buildToolbar(group),
         const SizedBox(height: 4),
         if (current == null)
           Padding(
@@ -695,287 +959,78 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       _ensureFields(group, _formView);
       return _buildForm(group);
     }
-    if (_treeDef == null) return const SizedBox.shrink();
-    _ensureFields(group, _treeView);
-
-    // The parent was reloaded: its group (and records) are new.
-    _selected.removeWhere((r) => !group.contains(r));
-
-    return _buildTable(group);
+    final view = _treeView;
+    if (view == null) return const SizedBox.shrink();
+    _ensureFields(group, view);
+    return _buildTable(group, _screenFor(group, view));
   }
 
-  Widget _buildTable(RecordGroup group) {
-    final l = context.l10n;
-    final primary = Theme.of(context).colorScheme.primary;
-    final errorColor = Theme.of(context).colorScheme.error;
-    final records = group.toList();
-    final columns = _treeDef!.columns
-        .where((c) => !c.treeInvisible && !c.isButton)
-        .toList();
-    final hasSelection = _selected.isNotEmpty;
-    bool isMarked(Record r) => r.deleted || r.removed;
-    final selectedAreMarked = hasSelection && _selected.every(isMarked);
-    final selectedHaveMarked = _selected.any(isMarked);
-    final markedCount = group.recordDeleted.length + group.recordRemoved.length;
-    final limitReached = _sizeLimitReached;
-    final touch = isTouchPlatform(context);
-    // Row values: one eager load reads the neighbours too.
-    if (columns.isNotEmpty) {
-      for (final r in records) {
-        if (r.id >= 0 && !r.isLoaded(columns.first.name)) {
-          _ensureLoaded(r, columns.first.name);
-          break;
-        }
-      }
+  /// The table's screen on [group]; a new one when the parent was
+  /// reloaded (its group and records are new).
+  TrytonScreen _screenFor(RecordGroup group, ViewDefinition view) {
+    final current = _treeScreen;
+    if (current != null && identical(current.group, group)) return current;
+    final screen = TrytonScreen.forGroup(
+      ScreenAttributes(
+        _relModel,
+        mode: const ['tree'],
+        viewIds: [?_viewIdFor('tree')],
+        readonly: widget.parentReadOnly,
+        excludeField: widget.fieldDef.relationField,
+      ),
+      group,
+    );
+    screen.onViewAdded = (v) => markUnsupportedFields(screen.model, v);
+    screen.invalidTexts = () => wizardInvalidTexts(context);
+    _treeScreenView = screen.currentView = screen.addView(view);
+    if (current != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => current.dispose());
     }
+    return _treeScreen = screen;
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _buildTable(RecordGroup group, TrytonScreen screen) {
+    final l = context.l10n;
+    final records = group.toList();
+    bool isMarked(Record r) => r.deleted || r.removed;
+    final height = widget.node?.height;
+
+    // the table takes the height given to the field (yexpand, 9.2.2)
+    return FillColumn(
       children: [
-        // ── Toolbar ───────────────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            children: [
-              // ── Buttons (scrollable so narrow layouts don't overflow) ─────
-              Flexible(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: TrytonIcon(
-                          iconName: 'tryton-switch',
-                          size: 16,
-                          color: hasSelection ? primary : Theme.of(context).disabledColor,
-                          fallback: Icons.compare_arrows,
-                        ),
-                        tooltip: l.openInForm,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        onPressed: (_hasForm ? records.isNotEmpty : hasSelection) && _canOpen
-                            ? _switch
-                            : null,
-                      ),
-                      if (!widget.readOnly) ...[
-                        if (_canCreate)
-                          _TBtn(
-                            key: const ValueKey('x2m-new'),
-                            icon: Icons.add,
-                            tip: l.createNew,
-                            onPressed: limitReached ? null : _newRecord,
-                          ),
-                        if (_canAdd)
-                          _TBtn(
-                            key: const ValueKey('x2m-add'),
-                            icon: Icons.playlist_add,
-                            tip: l.add,
-                            onPressed: limitReached ? null : _addRecords,
-                          ),
-                        _TBtn(
-                          icon: Icons.undo,
-                          tip: l.undelete,
-                          color: selectedHaveMarked ? Colors.green : null,
-                          onPressed: selectedHaveMarked ? _unmarkSelected : null,
-                        ),
-                        if (_canRemove)
-                          _TBtn(
-                            key: const ValueKey('x2m-remove'),
-                            icon: Icons.link_off,
-                            tip: l.remove,
-                            color: hasSelection && !selectedAreMarked ? errorColor : null,
-                            onPressed: hasSelection && !selectedAreMarked
-                                ? () => _markSelected(remove: true)
-                                : null,
-                          ),
-                        if (_canDelete)
-                          _TBtn(
-                            key: const ValueKey('x2m-delete'),
-                            icon: Icons.delete_outline,
-                            tip: l.delete,
-                            color: hasSelection && !selectedAreMarked ? errorColor : null,
-                            onPressed: hasSelection && !selectedAreMarked
-                                ? () => _markSelected(remove: false)
-                                : null,
-                          ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              // ── Counts (pinned right) ─────────────────────────────────────
-              if (markedCount > 0)
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Text('$markedCount ×', style: TextStyle(fontSize: 11, color: errorColor)),
-                ),
-              if (records.isNotEmpty)
-                Text('${records.length}', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline)),
-            ],
-          ),
-        ),
+        _buildToolbar(group),
         const SizedBox(height: 4),
 
-        // ── Table ─────────────────────────────────────────────────────────
-        if (records.isEmpty)
+        // ── Table: the tree view of the child screen (spec 9.3) ──────────
+        if (records.isEmpty && !_editableTree)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(l.noEntries, style: TextStyle(color: Theme.of(context).colorScheme.outline, fontSize: 13)),
           )
         else
-          Focus(
-            focusNode: _tableFocus,
+          FillChild(child: Focus(
+            canRequestFocus: false,
+            skipTraversal: true,
             onKeyEvent: (node, event) => _onKey(event),
-            child: Scrollbar(
-            controller: _hScrollController,
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              controller: _hScrollController,
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 12,
-                headingRowHeight: 34,
-                dataRowMinHeight: 30,
-                dataRowMaxHeight: 44,
-                headingRowColor: WidgetStateProperty.all(
-                  Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(120),
-                ),
-                columns: [
-                  DataColumn(
-                    label: Checkbox(
-                      tristate: true,
-                      value: _selected.length == records.length
-                          ? true
-                          : _selected.isEmpty
-                          ? false
-                          : null,
-                      onChanged: (_) {
-                        setState(() {
-                          if (_selected.length == records.length) {
-                            _selected.clear();
-                          } else {
-                            _selected.addAll(records);
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                  ...columns.map(
-                    (c) => DataColumn(
-                      label: Text(c.label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                    ),
-                  ),
-                ],
-                rows: records.map((record) {
-                  final isSelected = _selected.contains(record);
-                  final isDeleted = isMarked(record);
-                  final visual = recordVisual(record, _treeDef?.visual);
-
-                  return DataRow(
-                    selected: isSelected,
-                    color: WidgetStateProperty.resolveWith((states) {
-                      if (isDeleted) return errorColor.withAlpha(20);
-                      if (states.contains(WidgetState.selected)) return primary.withAlpha(40);
-                      switch (visual) {
-                        case 'success':
-                          return Colors.green.withAlpha(30);
-                        case 'warning':
-                          return Colors.orange.withAlpha(40);
-                        case 'danger':
-                          return errorColor.withAlpha(40);
-                        default:
-                          return null;
-                      }
-                    }),
-                    cells: [
-                      DataCell(
-                        Checkbox(
-                          value: isSelected,
-                          onChanged: (_) {
-                            setState(() {
-                              if (isSelected) {
-                                _selected.remove(record);
-                              } else {
-                                _selected.add(record);
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                      ...columns.map((col) {
-                        final fd = _treeDef!.fields[col.name];
-                        final cellStyle = TextStyle(
-                          fontSize: 12,
-                          decoration: isDeleted ? TextDecoration.lineThrough : null,
-                          decorationColor: isDeleted ? errorColor : null,
-                          color: isDeleted ? errorColor.withAlpha(160) : null,
-                        );
-                        return DataCell(
-                          isNumericField(fd)
-                              ? RecordNumericCell.of(record, col.name, fd!, style: cellStyle)
-                              : RecordTextCell(record, col.name, fd, style: cellStyle),
-                          // SAO: a click selects, a double click opens;
-                          // touch: tapping opens, a long press selects.
-                          onTap: touch
-                              ? (isDeleted || !_canOpen ? null : () => _openRecord(record))
-                              : () {
-                                  _tableFocus.requestFocus();
-                                  setState(() => _selected
-                                    ..clear()
-                                    ..add(record));
-                                },
-                          onDoubleTap: touch || isDeleted || !_canOpen
-                              ? null
-                              : () => _openRecord(record),
-                          onLongPress: touch
-                              ? () => setState(() {
-                                    if (!_selected.remove(record)) _selected.add(record);
-                                  })
-                              : null,
-                        );
-                      }),
-                    ],
-                  );
-                }).toList()
-                  // sum="1" columns: „selected / all“ (spec 9.3.4)
-                  ..addAll([
-                    if (columns.any((c) => c.sum))
-                      DataRow(
-                        key: const ValueKey('x2m-sum-row'),
-                        color: WidgetStateProperty.all(Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest
-                            .withAlpha(120)),
-                        cells: [
-                          const DataCell(SizedBox.shrink()),
-                          for (final c in columns)
-                            DataCell(c.sum
-                                ? Text(
-                                    recordSumText(group, c.name, _selected,
-                                        locale: Localizations.localeOf(context)
-                                            .toLanguageTag(),
-                                        numberLocale:
-                                            ref.watch(numberLocaleProvider)),
-                                    key: ValueKey('x2m-sum-${c.key}'),
-                                    textAlign: TextAlign.end,
-                                    style: const TextStyle(
-                                        fontSize: 11, fontWeight: FontWeight.w600))
-                                : const SizedBox.shrink()),
-                        ],
-                      ),
-                  ]),
-              ),
+            child: TreeView(
+              screen: screen,
+              view: _treeScreenView!,
+              controller: _table,
+              keyPrefix: 'x2m',
+              shrinkWrap: true,
+              maxHeight: height != null && height > 0 ? height.toDouble() : null,
+              onActivate: (record) {
+                if (!isMarked(record) && _canOpen) _openRecord(record);
+              },
+              onSelectionChanged: () => setState(() {}),
             ),
-          ), // Scrollbar
-          ), // Focus
+          )),
       ],
     );
   }
 
+  /// The tree view is editable (`editable`, parent not readonly).
+  bool get _editableTree => _treeScreenView?.editable ?? false;
 }
 
 // ─── Compact toolbar button ───────────────────────────────────────────────────

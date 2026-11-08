@@ -351,6 +351,10 @@ class TrytonScreen extends ChangeNotifier {
       Map<String, dynamic> context)? onAction;
   InvalidMessages Function()? invalidTexts;
 
+  /// Set by „Search“ of a form (spec 10.3): the searchable view shown
+  /// next puts the focus into its search entry.
+  bool searchFocusRequested = false;
+
   /// Records selected in a list view (set by the view).
   List<Record> selectedRecords = const [];
 

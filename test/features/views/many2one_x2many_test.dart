@@ -218,6 +218,10 @@ void main() {
     IconButton button(String key) => tester.widget<IconButton>(find.descendant(
         of: find.byKey(ValueKey(key)), matching: find.byType(IconButton)));
     expect(button('x2m-add').onPressed, isNull);
-    expect(button('x2m-new').onPressed, isNull);
+    // many2many: no own New button; the search entry („Create …“) is off
+    expect(find.byKey(const ValueKey('x2m-new')), findsNothing);
+    expect(
+        tester.widget<TextField>(find.byKey(const ValueKey('x2m-add-entry'))).enabled,
+        isFalse);
   });
 }

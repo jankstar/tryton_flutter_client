@@ -466,4 +466,374 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get editUserPreferences => 'Editar preferências do usuário';
+
+  @override
+  String get saveAs => 'Salvar como…';
+
+  @override
+  String get selectFile => 'Selecionar…';
+
+  @override
+  String get clear => 'Limpar';
+
+  @override
+  String get openFile => 'Abrir…';
+
+  @override
+  String attachmentsOf(Object name) {
+    return 'Anexos ($name)';
+  }
+
+  @override
+  String notesOf(Object name) {
+    return 'Notas ($name)';
+  }
+
+  @override
+  String logsOf(Object name) {
+    return 'Registros ($name)';
+  }
+
+  @override
+  String attachmentCount(Object count) {
+    return 'Anexo ($count)';
+  }
+
+  @override
+  String get addFiles => 'Adicionar…';
+
+  @override
+  String get manage => 'Gerenciar…';
+
+  @override
+  String get logModel => 'Modelo';
+
+  @override
+  String get logModule => 'Módulo';
+
+  @override
+  String get logXmlId => 'ID XML';
+
+  @override
+  String get logCreatedBy => 'Criado por';
+
+  @override
+  String get logCreatedAt => 'Criado em';
+
+  @override
+  String get logModifiedBy => 'Modificado por';
+
+  @override
+  String get logModifiedAt => 'Modificado em';
+
+  @override
+  String get exportData => 'Exportar dados…';
+
+  @override
+  String get importData => 'Importar dados…';
+
+  @override
+  String csvExportTitle(Object name) {
+    return 'Exportar CSV: $name';
+  }
+
+  @override
+  String csvImportTitle(Object name) {
+    return 'Importar CSV: $name';
+  }
+
+  @override
+  String get csvAllFields => 'Todos os campos';
+
+  @override
+  String get csvFieldsSelected => 'Campos selecionados';
+
+  @override
+  String get csvRemoveAll => 'Limpar';
+
+  @override
+  String get csvParameters => 'Parâmetros CSV';
+
+  @override
+  String get csvDelimiter => 'Delimitador';
+
+  @override
+  String get csvQuoteChar => 'Aspas';
+
+  @override
+  String get csvEncoding => 'Codificação';
+
+  @override
+  String get csvLocaleFormat => 'Usar formato local';
+
+  @override
+  String get csvAddFieldNames => 'Adicionar nomes dos campos';
+
+  @override
+  String get csvListedRecords => 'Registros listados';
+
+  @override
+  String get csvSelectedRecords => 'Registros selecionados';
+
+  @override
+  String get csvIgnoreSearchLimit => 'Ignorar limite de pesquisa';
+
+  @override
+  String get csvPredefinedExports => 'Exportações predefinidas';
+
+  @override
+  String get csvSaveExport => 'Salvar exportação';
+
+  @override
+  String get csvDeleteExport => 'Excluir exportação';
+
+  @override
+  String get csvExportName => 'Qual é o nome desta exportação?';
+
+  @override
+  String csvOverrideExport(Object name) {
+    return 'Substituir a definição de \'$name\'?';
+  }
+
+  @override
+  String csvRecordsSaved(Object count) {
+    return 'Registros salvos: $count';
+  }
+
+  @override
+  String get csvExportFailed => 'Falha na exportação';
+
+  @override
+  String get csvFileToImport => 'Arquivo a importar';
+
+  @override
+  String get csvLinesToSkip => 'Linhas a ignorar';
+
+  @override
+  String get csvAutoDetect => 'Detectar automaticamente';
+
+  @override
+  String get csvImport => 'Importar';
+
+  @override
+  String get csvSelectImportFile =>
+      'Selecione primeiro um arquivo de importação.';
+
+  @override
+  String csvUnknownHeader(Object name) {
+    return 'Cabeçalho de coluna desconhecido \"$name\"';
+  }
+
+  @override
+  String get csvDetectionFailed => 'Falha na detecção';
+
+  @override
+  String csvRecordsImported(Object count) {
+    return 'Registros importados: $count';
+  }
+
+  @override
+  String get csvImportFailed => 'Falha na importação';
+
+  @override
+  String csvFieldString(Object name) {
+    return '$name (texto)';
+  }
+
+  @override
+  String csvFieldModelName(Object name) {
+    return '$name (nome do modelo)';
+  }
+
+  @override
+  String csvFieldRecordName(Object name) {
+    return '$name/Nome do registro';
+  }
+
+  @override
+  String get open => 'Abrir';
+
+  @override
+  String get recordMenu => 'Menu do registro';
+
+  @override
+  String get menuSwitchView => 'Alternar visualização';
+
+  @override
+  String get menuPrevious => 'Anterior';
+
+  @override
+  String get menuNext => 'Próximo';
+
+  @override
+  String get menuSearch => 'Pesquisar';
+
+  @override
+  String get menuNew => 'Novo';
+
+  @override
+  String get menuSave => 'Salvar';
+
+  @override
+  String get menuReload => 'Recarregar/Desfazer';
+
+  @override
+  String get menuDuplicate => 'Duplicar';
+
+  @override
+  String get menuDelete => 'Excluir…';
+
+  @override
+  String get menuLogs => 'Ver registros…';
+
+  @override
+  String get menuRevisions => 'Mostrar revisões…';
+
+  @override
+  String get menuAttachments => 'Anexos…';
+
+  @override
+  String get menuNotes => 'Notas…';
+
+  @override
+  String get menuActions => 'Ações…';
+
+  @override
+  String get menuRelate => 'Relacionados…';
+
+  @override
+  String get menuReport => 'Relatório…';
+
+  @override
+  String get menuEmail => 'E-mail…';
+
+  @override
+  String get menuCloseTab => 'Fechar aba';
+
+  @override
+  String get keyboardShortcuts => 'Atalhos de teclado';
+
+  @override
+  String get shortcutsGlobal => 'Geral';
+
+  @override
+  String get shortcutsForm => 'Formulário';
+
+  @override
+  String get shortcutsRelation => 'Campos de relação';
+
+  @override
+  String get shortcutsList => 'Campos de lista';
+
+  @override
+  String get shortcutsDate => 'Campos de data';
+
+  @override
+  String get shortcutSearchMenu => 'Pesquisar no menu';
+
+  @override
+  String get shortcutToggleMenu => 'Mostrar/ocultar menu';
+
+  @override
+  String get shortcutPreviousTab => 'Aba anterior';
+
+  @override
+  String get shortcutNextTab => 'Próxima aba';
+
+  @override
+  String get shortcutQuit => 'Sair';
+
+  @override
+  String get shortcutRelationNew => 'Criar nova relação';
+
+  @override
+  String get shortcutRelationOpen => 'Abrir/pesquisar relação';
+
+  @override
+  String get shortcutListSwitch => 'Alternar visualização';
+
+  @override
+  String get shortcutListNew => 'Criar/selecionar nova linha';
+
+  @override
+  String get shortcutListOpen => 'Abrir relação';
+
+  @override
+  String get shortcutListDelete => 'Marcar linha para exclusão/remoção';
+
+  @override
+  String get shortcutListRemove => 'Marcar linha para remoção';
+
+  @override
+  String get shortcutListUndelete => 'Desmarcar exclusão da linha';
+
+  @override
+  String get shortcutDateToday => 'Hoje';
+
+  @override
+  String get shortcutDateAdd => 'Somar segundo/minuto/hora/dia/semana/mês/ano';
+
+  @override
+  String get shortcutDateSubtract =>
+      'Subtrair segundo/minuto/hora/dia/semana/mês/ano';
+
+  @override
+  String get keyDelete => 'Delete';
+
+  @override
+  String get keyInsert => 'Insert';
+
+  @override
+  String get ctxCopy => 'Copiar';
+
+  @override
+  String get ctxCopyRow => 'Copiar linha';
+
+  @override
+  String get ctxCopyRows => 'Copiar linhas';
+
+  @override
+  String get ctxCopyColumn => 'Copiar coluna';
+
+  @override
+  String get ctxPasteRows => 'Colar linhas';
+
+  @override
+  String get ctxEdit => 'Editar…';
+
+  @override
+  String get ctxPrint => 'Imprimir…';
+
+  @override
+  String get x2mCreate => 'Criar um novo registro';
+
+  @override
+  String get x2mEdit => 'Editar o registro selecionado';
+
+  @override
+  String get x2mDelete => 'Excluir o registro selecionado';
+
+  @override
+  String get x2mAdd => 'Adicionar registro existente';
+
+  @override
+  String get x2mRemove => 'Remover o registro selecionado';
+
+  @override
+  String get x2mUndelete => 'Restaurar o registro selecionado';
+
+  @override
+  String get x2mRestore => 'Restaurar o registro selecionado';
+
+  @override
+  String get x2mSwitch => 'Alternar';
+
+  @override
+  String get x2mPrevious => 'Anterior';
+
+  @override
+  String get x2mNext => 'Próximo';
+
+  @override
+  String get x2mMore => 'Mais';
 }

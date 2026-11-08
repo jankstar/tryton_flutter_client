@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -94,6 +95,8 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
+        // flutter_quill (richtext widget)
+        FlutterQuillLocalizations.delegate,
       ],
       theme: currentTheme.buildThemeData(),
       themeMode: ThemeMode.light,

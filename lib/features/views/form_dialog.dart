@@ -12,6 +12,7 @@ import '../../core/xml/view_definition.dart';
 import '../model/model_service.dart';
 import '../model/selection_loader.dart';
 import 'record_form.dart';
+import 'record_menu.dart';
 import 'record_widget_values.dart';
 import 'wizard_widget.dart' show wizardInvalidTexts;
 
@@ -316,6 +317,7 @@ class _FormDialogState extends ConsumerState<FormDialog> {
       child: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.escape): _cancel,
+          ..._shortcuts(),
         },
         child: Dialog(
           insetPadding: const EdgeInsets.all(24),
@@ -378,6 +380,31 @@ class _FormDialogState extends ConsumerState<FormDialog> {
         ),
       ),
     );
+  }
+
+  /// The record shortcuts on the dialog's buttons (spec 10.3, SAO
+  /// `set_shortcuts`: Save/OK, and for x2many New, Delete,
+  /// Previous/Next).
+  Map<ShortcutActivator, VoidCallback> _shortcuts() {
+    if (_busy) return const {};
+    final record = _record;
+    final group = _screen.group;
+    final index = record == null ? -1 : group.indexOf(record);
+    final marked = record != null && (record.deleted || record.removed);
+    return {
+      recordShortcut(RecordAction.save)!: _accept,
+      if (widget.x2many) ...{
+        if (index > 0)
+          recordShortcut(RecordAction.previous)!: () => _navigate(next: false),
+        if (index >= 0 && index < group.length - 1)
+          recordShortcut(RecordAction.next)!: () => _navigate(next: true),
+        if (!_readonly && !(_many == 0 && widget.many != 0))
+          recordShortcut(RecordAction.newRecord)!: _newInGroup,
+        if (!_readonly && record != null && !marked)
+          recordShortcut(RecordAction.delete)!: () => _screen.remove(
+              records: [record], remove: widget.removeOnDelete),
+      },
+    };
   }
 
   /// x2many mini toolbar: Previous/Next with position, New, Delete,

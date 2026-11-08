@@ -1,11 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:ui' show AppExitType;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/locale_provider.dart';
 import '../tabs/menu_sidebar.dart';
 import '../tabs/user_chip.dart';
+import '../auth/preferences_dialog.dart';
+import '../views/record_menu.dart';
 import '../../core/screen/screen.dart';
 import '../views/screen_widget.dart';
 import '../views/wizard_widget.dart';
@@ -28,10 +32,24 @@ class _AppShellState extends ConsumerState<AppShell> {
     final cs = Theme.of(context).colorScheme;
 
     // Keyboard (desktop): Ctrl/Cmd+K global search, Ctrl+Tab /
-    // Ctrl+Shift+Tab and Ctrl+PageDown/PageUp next/previous tab (10.1/10.2).
+    // Ctrl+Shift+Tab and Ctrl+PageDown/PageUp next/previous tab (10.1/10.2);
+    // the record shortcuts go to the active tab when the focus is outside
+    // its screen, F1 / Ctrl+F1 help, Ctrl+M menu, Ctrl+, preferences,
+    // Ctrl+Q quit (Anhang B; Cmd on macOS, where the app menu quits).
     final tabs = ref.read(tabsProvider.notifier);
     return CallbackShortcuts(
       bindings: {
+        ...recordShellBindings(),
+        const SingleActivator(LogicalKeyboardKey.f1): () =>
+            showShortcutsHelp(context),
+        primaryShortcut(LogicalKeyboardKey.f1): () =>
+            showShortcutsHelp(context),
+        primaryShortcut(LogicalKeyboardKey.keyM): () =>
+            setState(() => _sidebarOpen = !_sidebarOpen),
+        primaryShortcut(LogicalKeyboardKey.comma): () =>
+            showPreferencesDialog(context, ref),
+        if (defaultTargetPlatform != TargetPlatform.macOS)
+          primaryShortcut(LogicalKeyboardKey.keyQ): _quit,
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
             showGlobalSearch(context, ref),
         const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () =>
@@ -95,6 +113,12 @@ class _AppShellState extends ConsumerState<AppShell> {
     ), // Scaffold
       ), // Focus
     ); // CallbackShortcuts
+  }
+
+  /// Quit (Ctrl+Q): all tabs close first, each with its save prompt.
+  Future<void> _quit() async {
+    if (!await ref.read(tabsProvider.notifier).requestCloseAll()) return;
+    await ServicesBinding.instance.exitApplication(AppExitType.required);
   }
 
   Widget _buildTabBar(TabsState state) {

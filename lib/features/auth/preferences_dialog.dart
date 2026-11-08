@@ -115,8 +115,7 @@ class _PreferencesDialogState extends ConsumerState<_PreferencesDialog> {
       }
       final root =
           FormXmlParser().parse(definition.arch, fields: definition.rawFields);
-      // fields without own widget (avatar image, signature richtext) are
-      // never written
+      // fields without own widget are never written
       for (final name in unsupportedFieldNames(definition.fields, root)) {
         model.fields[name]?.description['readonly'] = true;
       }
