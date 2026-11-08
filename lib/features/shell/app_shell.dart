@@ -14,6 +14,7 @@ import '../../core/screen/screen.dart';
 import '../views/board_view.dart';
 import '../views/screen_widget.dart';
 import '../views/wizard_widget.dart';
+import 'menu_width.dart';
 import 'tab_manager.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -25,12 +26,19 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   bool _sidebarOpen = true;
-  static const _sidebarWidth = 250.0;
+
+  /// The divider is dragged: the menu follows without animation.
+  bool _resizing = false;
 
   @override
   Widget build(BuildContext context) {
     final tabsState = ref.watch(tabsProvider);
     final cs = Theme.of(context).colorScheme;
+    // the menu at most so wide that the tabs keep 360 px
+    final maxMenu = (MediaQuery.sizeOf(context).width - 360)
+        .clamp(MenuWidthNotifier.minWidth, MenuWidthNotifier.maxWidth);
+    final sidebarWidth =
+        ref.watch(menuWidthProvider).clamp(MenuWidthNotifier.minWidth, maxMenu);
 
     // Keyboard (desktop): Ctrl/Cmd+K global search, Ctrl+Tab /
     // Ctrl+Shift+Tab and Ctrl+PageDown/PageUp next/previous tab (10.1/10.2);
@@ -72,21 +80,28 @@ class _AppShellState extends ConsumerState<AppShell> {
           // ── Sidebar (animated) ─────────────────────────────────────────
           ClipRect(
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: _resizing
+                  ? Duration.zero
+                  : const Duration(milliseconds: 180),
               curve: Curves.easeInOut,
-              width: _sidebarOpen ? _sidebarWidth : 0,
+              width: _sidebarOpen ? sidebarWidth : 0,
               child: OverflowBox(
                 alignment: Alignment.topLeft,
-                maxWidth: _sidebarWidth,
+                maxWidth: sidebarWidth,
                 child: SizedBox(
-                  width: _sidebarWidth,
+                  width: sidebarWidth,
                   child: const MenuSidebar(),
                 ),
               ),
             ),
           ),
+          // the divider: drag for the width of the menu (kept like the
+          // language), double click for the default
           if (_sidebarOpen)
-            VerticalDivider(width: 1, thickness: 1, color: cs.outlineVariant),
+            MenuResizeHandle(
+              maxWidth: maxMenu,
+              onDragging: (on) => setState(() => _resizing = on),
+            ),
           // ── Main content area ──────────────────────────────────────────
           Expanded(
             child: Column(

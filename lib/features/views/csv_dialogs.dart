@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../shared/utils/csv_format.dart';
 import '../../shared/utils/file_actions.dart';
 import '../model/model_service.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 
 // CSV export and import (spec 11.8, 11.9, Python gui/window/win_csv.py,
 // win_export.py, win_import.py): a tree of all fields (relations
@@ -203,19 +204,7 @@ String _slug(String name) {
 }
 
 Future<void> _message(BuildContext context, String title, String text) =>
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(text),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(ctx.l10n.ok),
-          ),
-        ],
-      ),
-    );
+    showMessage(context, title, description: text);
 
 /// The records and depths of an export with `records` [selected] or
 /// listed ([listed], default: the records of the group).
@@ -735,49 +724,12 @@ class _CsvExportDialogState extends State<_CsvExportDialog> {
   }
 
   Future<String?> _askName() async {
-    final c = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.l10n.csvExportName),
-        content: TextField(
-          key: const ValueKey('csv-export-name'),
-          controller: c,
-          autofocus: true,
-          onSubmitted: (v) => Navigator.pop(ctx, v),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(ctx.l10n.cancel)),
-          FilledButton(
-              key: const ValueKey('csv-export-name-ok'),
-              onPressed: () => Navigator.pop(ctx, c.text),
-              child: Text(ctx.l10n.ok)),
-        ],
-      ),
-    );
-    // not disposed: the closing dialog still shows the field
+    final name = await showAsk(context, context.l10n.csvExportName);
     return name == null || name.trim().isEmpty ? null : name.trim();
   }
 
-  Future<bool> _confirm(String text) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          content: Text(text),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(ctx.l10n.no)),
-            FilledButton(
-                key: const ValueKey('csv-confirm-yes'),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(ctx.l10n.yes)),
-          ],
-        ),
-      ) ??
-      false;
+  Future<bool> _confirm(String text) =>
+      showSur(context, text, okLabel: context.l10n.yes);
 
   /// Save Export (Python `addreplace_predef`): new → `ir.export.set`,
   /// chosen → `ir.export.update`; then the toolbar cache is cleared.

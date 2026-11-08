@@ -24,9 +24,11 @@ class SelectionLoader {
 
   SelectionLoader(this._fetch);
 
-  /// True when [fd] needs a server call (selection given as method name).
+  /// True when [fd] needs a server call (selection given as method name;
+  /// selection and multiselection, Python `SelectionMixin`).
   static bool isDynamic(FieldDefinition fd) =>
-      fd.type == 'selection' && fd.selectionFunction != null;
+      (fd.type == 'selection' || fd.type == 'multiselection') &&
+      fd.selectionFunction != null;
 
   /// True when [fd]'s selection depends on [changedField].
   static bool dependsOn(FieldDefinition fd, String changedField) =>

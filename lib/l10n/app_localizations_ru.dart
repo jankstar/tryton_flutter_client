@@ -833,4 +833,63 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get x2mMore => 'Ещё';
+
+  @override
+  String get reportBug => 'Сообщить об ошибке';
+
+  @override
+  String get selectionTitle => 'Выбор';
+
+  @override
+  String get yourSelection => 'Ваш выбор:';
+
+  @override
+  String emailTitle(Object name) {
+    return 'Эл. почта $name';
+  }
+
+  @override
+  String get emailTo => 'Кому';
+
+  @override
+  String get emailCc => 'Копия';
+
+  @override
+  String get emailBcc => 'Скрытая копия';
+
+  @override
+  String get emailSubject => 'Тема';
+
+  @override
+  String get emailBody => 'Текст';
+
+  @override
+  String get emailReports => 'Отчёты';
+
+  @override
+  String get emailAttachments => 'Вложения';
+
+  @override
+  String get emailFiles => 'Файлы';
+
+  @override
+  String get emailAddFile => 'Выбрать файл';
+
+  @override
+  String get emailRemoveFile => 'Удалить файл';
+
+  @override
+  String get emailSend => 'Отправить';
+
+  @override
+  String get emailTemplate => 'Шаблон';
+
+  @override
+  String get emailSent => 'Письмо отправлено.';
+
+  @override
+  String get attachmentPreview => 'Просмотр вложения';
+
+  @override
+  String get noAttachment => 'Нет вложений.';
 }

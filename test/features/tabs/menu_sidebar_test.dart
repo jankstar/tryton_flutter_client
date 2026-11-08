@@ -173,4 +173,11 @@ void main() {
     // favorites loaded again
     expect(rpc.named('model.ir.ui.menu.favorite.get'), hasLength(2));
   });
+
+  testWidgets('compact rows: 28 px also with the favorite star',
+      (tester) async {
+    final rpc = server();
+    await pumpMenu(tester, rpc);
+    expect(tester.getSize(find.byKey(const ValueKey('menu-1'))).height, 28);
+  });
 }

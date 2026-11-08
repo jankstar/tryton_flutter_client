@@ -833,4 +833,63 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get x2mMore => 'Lisää';
+
+  @override
+  String get reportBug => 'Ilmoita virheestä';
+
+  @override
+  String get selectionTitle => 'Valinta';
+
+  @override
+  String get yourSelection => 'Valintasi:';
+
+  @override
+  String emailTitle(Object name) {
+    return 'Sähköposti $name';
+  }
+
+  @override
+  String get emailTo => 'Vastaanottaja';
+
+  @override
+  String get emailCc => 'Kopio';
+
+  @override
+  String get emailBcc => 'Piilokopio';
+
+  @override
+  String get emailSubject => 'Aihe';
+
+  @override
+  String get emailBody => 'Viesti';
+
+  @override
+  String get emailReports => 'Raportit';
+
+  @override
+  String get emailAttachments => 'Liitteet';
+
+  @override
+  String get emailFiles => 'Tiedostot';
+
+  @override
+  String get emailAddFile => 'Valitse tiedosto';
+
+  @override
+  String get emailRemoveFile => 'Poista tiedosto';
+
+  @override
+  String get emailSend => 'Lähetä';
+
+  @override
+  String get emailTemplate => 'Malli';
+
+  @override
+  String get emailSent => 'Sähköposti lähetetty.';
+
+  @override
+  String get attachmentPreview => 'Liitteen esikatselu';
+
+  @override
+  String get noAttachment => 'Ei liitettä.';
 }

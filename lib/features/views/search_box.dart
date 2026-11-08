@@ -11,6 +11,7 @@ import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../model/model_service.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 
 /// Search bar of a list (spec 8.4, SAO `ScreenContainer`): text with the
 /// DomainParser syntax and completions, filter dialog, bookmarks (star +
@@ -140,29 +141,8 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
     if (mounted) setState(() {});
   }
 
-  Future<String?> _askName() {
-    final ctrl = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.l10n.bookmarkName),
-        content: TextField(
-          key: const ValueKey('bookmark-name'),
-          controller: ctrl,
-          autofocus: true,
-          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(ctx.l10n.cancel)),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: Text(ctx.l10n.ok)),
-        ],
-      ),
-    );
-  }
+  Future<String?> _askName() async =>
+      (await showAsk(context, context.l10n.bookmarkName))?.trim();
 
   void _activateBookmark(List<dynamic> bookmark) {
     final parser = _parser;

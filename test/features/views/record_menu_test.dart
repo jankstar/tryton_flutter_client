@@ -84,7 +84,7 @@ void main() {
       RecordAction.action: false, // nothing in view_toolbar_get
       RecordAction.relate: false,
       RecordAction.print: true, // a report
-      RecordAction.email: false,
+      RecordAction.email: true, // record saved (spec 10.3, 11.10)
       RecordAction.export: true,
       RecordAction.import: false, // no create right
       RecordAction.close: true,

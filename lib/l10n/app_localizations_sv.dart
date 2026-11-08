@@ -832,4 +832,63 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get x2mMore => 'Mer';
+
+  @override
+  String get reportBug => 'Rapportera fel';
+
+  @override
+  String get selectionTitle => 'Urval';
+
+  @override
+  String get yourSelection => 'Ditt val:';
+
+  @override
+  String emailTitle(Object name) {
+    return 'E-post $name';
+  }
+
+  @override
+  String get emailTo => 'Till';
+
+  @override
+  String get emailCc => 'Kopia';
+
+  @override
+  String get emailBcc => 'Hemlig kopia';
+
+  @override
+  String get emailSubject => 'Ämne';
+
+  @override
+  String get emailBody => 'Meddelande';
+
+  @override
+  String get emailReports => 'Rapporter';
+
+  @override
+  String get emailAttachments => 'Bilagor';
+
+  @override
+  String get emailFiles => 'Filer';
+
+  @override
+  String get emailAddFile => 'Välj fil';
+
+  @override
+  String get emailRemoveFile => 'Ta bort fil';
+
+  @override
+  String get emailSend => 'Skicka';
+
+  @override
+  String get emailTemplate => 'Mall';
+
+  @override
+  String get emailSent => 'E-post skickad.';
+
+  @override
+  String get attachmentPreview => 'Förhandsvisning av bilaga';
+
+  @override
+  String get noAttachment => 'Ingen bilaga.';
 }

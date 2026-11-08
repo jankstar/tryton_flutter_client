@@ -119,6 +119,13 @@ class _ListFormViewState extends ConsumerState<ListFormView> {
           return;
         }
         await _run(() async => previous.save());
+      } else if (screen.group.parent != null && screen.preValidate) {
+        var valid = false;
+        await _run(() async {
+          await previous.preValidate();
+          valid = true;
+        });
+        if (!valid) return;
       }
     }
     if (!mounted) return;

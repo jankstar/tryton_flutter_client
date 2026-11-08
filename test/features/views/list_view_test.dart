@@ -141,8 +141,10 @@ void main() {
     await tester.enterText(name, '');
     await tester.tap(find.text('B'));
     await settle(tester);
-    // required name: the row keeps the cursor
-    expect(find.byType(SnackBar), findsOneWidget);
+    // required name: a warning (spec 11.3), the row keeps the cursor
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('dialog-ok')));
+    await settle(tester);
     expect(textFieldOf('Name'), findsOneWidget);
     expect(rpc.named('model.test.line.write'), isEmpty);
 

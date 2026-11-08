@@ -1639,6 +1639,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More'**
   String get x2mMore;
+
+  /// No description provided for @reportBug.
+  ///
+  /// In en, this message translates to:
+  /// **'Report Bug'**
+  String get reportBug;
+
+  /// No description provided for @selectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Selection'**
+  String get selectionTitle;
+
+  /// No description provided for @yourSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Your selection:'**
+  String get yourSelection;
+
+  /// No description provided for @emailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email {name}'**
+  String emailTitle(Object name);
+
+  /// No description provided for @emailTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get emailTo;
+
+  /// No description provided for @emailCc.
+  ///
+  /// In en, this message translates to:
+  /// **'Cc'**
+  String get emailCc;
+
+  /// No description provided for @emailBcc.
+  ///
+  /// In en, this message translates to:
+  /// **'Bcc'**
+  String get emailBcc;
+
+  /// No description provided for @emailSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get emailSubject;
+
+  /// No description provided for @emailBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Body'**
+  String get emailBody;
+
+  /// No description provided for @emailReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get emailReports;
+
+  /// No description provided for @emailAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get emailAttachments;
+
+  /// No description provided for @emailFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get emailFiles;
+
+  /// No description provided for @emailAddFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Select File'**
+  String get emailAddFile;
+
+  /// No description provided for @emailRemoveFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove File'**
+  String get emailRemoveFile;
+
+  /// No description provided for @emailSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get emailSend;
+
+  /// No description provided for @emailTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Template'**
+  String get emailTemplate;
+
+  /// No description provided for @emailSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Email sent.'**
+  String get emailSent;
+
+  /// No description provided for @attachmentPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment preview'**
+  String get attachmentPreview;
+
+  /// No description provided for @noAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'No attachment.'**
+  String get noAttachment;
 }
 
 class _AppLocalizationsDelegate

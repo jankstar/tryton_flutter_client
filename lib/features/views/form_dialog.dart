@@ -205,6 +205,20 @@ class _FormDialogState extends ConsumerState<FormDialog> {
     return false;
   }
 
+  /// [_validate] and, with `pre_validate` of the x2many field, the check of
+  /// the server (Python `WinForm._validate`); errors were shown.
+  Future<bool> _validateAll() async {
+    if (!_validate()) return false;
+    final record = _record;
+    if (record == null || _readonly || !_screen.preValidate) return true;
+    try {
+      await record.preValidate();
+      return true;
+    } on HandledRpcError {
+      return false;
+    }
+  }
+
   /// OK / "… and New" (SAO `response(RESPONSE_OK/ACCEPT)`).
   Future<void> _accept({bool andNew = false}) async {
     if (_busy) return;
@@ -216,7 +230,7 @@ class _FormDialogState extends ConsumerState<FormDialog> {
         Navigator.of(context).pop(false);
         return;
       }
-      if (!_validate()) return;
+      if (!await _validateAll()) return;
       if (widget.saveCurrent && !await _screen.saveCurrent()) return;
       if (!mounted) return;
       if (andNew) {
@@ -257,13 +271,13 @@ class _FormDialogState extends ConsumerState<FormDialog> {
 
   Future<void> _navigate({required bool next}) async {
     await _flushPending();
-    if (!mounted || !_validate()) return;
+    if (!mounted || !await _validateAll()) return;
     next ? await _screen.displayNext() : await _screen.displayPrevious();
   }
 
   Future<void> _newInGroup() async {
     await _flushPending();
-    if (!mounted || !_validate()) return;
+    if (!mounted || !await _validateAll()) return;
     await _screen.newRecord();
   }
 

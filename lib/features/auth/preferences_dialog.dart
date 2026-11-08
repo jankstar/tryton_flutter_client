@@ -17,6 +17,7 @@ import '../views/record_form.dart';
 import '../views/record_widget_values.dart';
 import 'auth_provider.dart';
 import 'session_bootstrap.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 
 /// Preferences of the user (spec 3.3, Python `window/preference.py`):
 /// all tabs are closed first (question), the view comes from
@@ -30,20 +31,7 @@ Future<bool> showPreferencesDialog(BuildContext context, WidgetRef ref) async {
   final l = context.l10n;
   final tabs = ref.read(tabsProvider.notifier);
   if (ref.read(tabsProvider).tabs.isNotEmpty) {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: Text(l.closeAllTabsQuestion),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(l.cancel)),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(l.ok)),
-        ],
-      ),
-    );
+    final ok = await showSur(context, l.closeAllTabsQuestion);
     if (ok != true || !context.mounted) return false;
     if (!await tabs.requestCloseAll()) return false;
   }

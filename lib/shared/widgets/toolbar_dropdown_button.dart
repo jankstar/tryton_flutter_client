@@ -5,6 +5,7 @@ import '../../features/actions/action_service.dart';
 import '../../core/screen/screen.dart';
 import '../../core/xml/view_definition.dart';
 import '../../features/model/toolbar_data.dart';
+import '../errors/error_dialogs.dart';
 
 /// Reusable toolbar button for Action / Relate / Print / Email categories.
 /// Shows the category icon; opens a dropdown if multiple items are available.
@@ -71,10 +72,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
             screen: screen,
           );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
+      if (context.mounted) await showErrorDialog(context, e);
     }
   }
 

@@ -9,6 +9,7 @@ import '../../core/model/model.dart' hide TextField;
 import '../../core/serialization/tryton_serializer.dart';
 import '../../shared/utils/file_actions.dart';
 import 'record_field_widgets.dart';
+import '../../shared/errors/error_dialogs.dart';
 
 // Binary widgets on the record (spec 9.2.4, Python form_gtk/binary.py,
 // image.py, document.py): the value is the size (int) until the content
@@ -63,10 +64,7 @@ mixin _BinaryActions<T extends StatefulWidget> on State<T> {
     try {
       await action();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
+      if (mounted) await showErrorDialog(context, e);
     }
     if (mounted) setState(() {});
   }
@@ -259,6 +257,26 @@ class _RecordImageFieldState extends State<RecordImageField>
 
 /// `document`: preview of a PDF (printing) or an image, Open externally,
 /// Save As / Select / Clear.
+/// [bytes] start with `%PDF`.
+bool isPdf(Uint8List b) =>
+    b.length > 4 && b[0] == 0x25 && b[1] == 0x50 && b[2] == 0x44 && b[3] == 0x46;
+
+/// Preview of a document (widget `document`, attachment preview): a PDF
+/// with its pages, else an image (or the size when it is none).
+Widget documentPreview(Uint8List bytes, {required String keyName}) => isPdf(bytes)
+    ? PdfPreview(
+        key: ValueKey('document-pdf-$keyName'),
+        build: (_) async => bytes,
+        useActions: false,
+        canChangePageFormat: false,
+        canChangeOrientation: false,
+        canDebug: false,
+      )
+    : Image.memory(bytes,
+        key: ValueKey('document-image-$keyName'),
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => Center(child: Text(humanSize(bytes.length))));
+
 class RecordDocumentField extends StatefulWidget {
   final RecordFieldArgs args;
   const RecordDocumentField({super.key, required this.args});
@@ -287,38 +305,17 @@ class _RecordDocumentFieldState extends State<RecordDocumentField>
     }
   }
 
-  static bool isPdf(Uint8List b) =>
-      b.length > 4 && b[0] == 0x25 && b[1] == 0x50 && b[2] == 0x44 && b[3] == 0x46;
 
   @override
   Widget build(BuildContext context) {
     _update();
     final bytes = _bytes;
     final height = (args.node.height ?? 400).toDouble();
-    Widget preview;
-    if (bytes == null || bytes.isEmpty) {
-      preview = const SizedBox(height: 40);
-    } else if (isPdf(bytes)) {
-      preview = SizedBox(
-        height: height,
-        child: PdfPreview(
-          key: ValueKey('document-pdf-${args.node.name}'),
-          build: (_) async => bytes,
-          useActions: false,
-          canChangePageFormat: false,
-          canChangeOrientation: false,
-          canDebug: false,
-        ),
-      );
-    } else {
-      preview = SizedBox(
-        height: height,
-        child: Image.memory(bytes,
-            key: ValueKey('document-image-${args.node.name}'),
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => Center(child: Text(humanSize(bytes.length)))),
-      );
-    }
+    final preview = bytes == null || bytes.isEmpty
+        ? const SizedBox(height: 40)
+        : SizedBox(
+            height: height,
+            child: documentPreview(bytes, keyName: args.node.name));
     return InputDecorator(
       decoration: args.decoration(context),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [

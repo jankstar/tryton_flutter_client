@@ -8,6 +8,7 @@ import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../model/model_service.dart';
@@ -21,6 +22,8 @@ import 'list_form_view.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 import 'tree_view.dart';
+import 'email_dialog.dart';
+import '../shell/tab_manager.dart';
 
 export 'tree_view.dart' show clearListCaches;
 
@@ -88,8 +91,26 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     _init();
   }
 
+  /// Tab of this list and its notifier: closing the tab asks to save the
+  /// edited rows first (spec 10.4).
+  String? _tabId;
+  TabsNotifier? _tabs;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tabId = TabScope.of(context);
+    if (tabId != _tabId) {
+      if (_tabId != null) _tabs?.removeCloseGuard(_tabId!, _confirmSave);
+      _tabId = tabId;
+      _tabs = ref.read(tabsProvider.notifier);
+      if (tabId != null) _tabs!.addCloseGuard(tabId, _confirmSave);
+    }
+  }
+
   @override
   void dispose() {
+    if (_tabId != null) _tabs?.removeCloseGuard(_tabId!, _confirmSave);
     _searchCtrl.dispose();
     _searchFocus.dispose();
     _screen.removeListener(_onScreenChanged);
@@ -179,7 +200,30 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     }
   }
 
-  /// Searches again (search text, tab, context form) from the first rows.
+  /// Save prompt (spec 10.4, Python `modified_save`) of an editable list
+  /// with changes: Yes saves (stays on an error), No discards by searching
+  /// again, Cancel stops; true = go on.
+  Future<bool> _confirmSave() async {
+    final question = context.l10n.recordModified;
+    await _table.flush();
+    if (!mounted || !_screen.modified()) return true;
+    final choice = await showSur3(context, question);
+    switch (choice) {
+      case Sur3Choice.yes:
+        await _saveList();
+        return !_screen.modified();
+      case Sur3Choice.no:
+        await _search();
+        return true;
+      case Sur3Choice.cancel:
+        return false;
+    }
+  }
+
+  /// Reload (spec 10.3): save prompt, then the search again.
+  Future<void> _reload() async {
+    if (await _confirmSave()) await _search();
+  }
 
   /// Searches again (search text, tab, context form) from the first rows.
   Future<void> _search() => _run(() async {
@@ -249,6 +293,32 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     });
   }
 
+  /// Email of the selected record (spec 11.10); a modified list is saved
+  /// first (save prompt).
+  Future<void> _email() async {
+    final selected = _screen.selectedRecords;
+    if (selected.length != 1) return;
+    if (!await _confirmSave()) return;
+    final record = selected.first;
+    // (after a reload the record of the old search is gone)
+    if (!mounted || record.destroyed || !_screen.group.contains(record)) return;
+    await showEmailFlow(context,
+        record: record, toolbar: _toolbar, title: widget.title);
+  }
+
+  /// Class buttons of the list for the selected records with [keyword]
+  /// (default `action`) – the toolbar menus (Python `Screen.get_buttons`).
+  List<ButtonNode> _keywordButtons(String keyword) => [
+        for (final b in _screen.getButtons())
+          if ((b.keyword ?? 'action') == keyword) b
+      ];
+
+  /// A button of the menus on the selected records (save prompt first).
+  Future<void> _runButton(ButtonNode button) async {
+    if (!await _confirmSave()) return;
+    await _run(() => _screen.button(button));
+  }
+
   /// Logs / notes of the selected record (spec 11.5, 11.6).
   Future<void> _resourceDialog({required bool notes}) async {
     final selected = _screen.selectedRecords;
@@ -278,7 +348,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       RecordAction.search: _listForm ? null : _searchFocus.requestFocus,
       RecordAction.newRecord: _screen.canCreate ? _newRecord : null,
       RecordAction.save: _screen.modified() ? _saveList : null,
-      RecordAction.reload: _search,
+      RecordAction.reload: _reload,
       RecordAction.copy:
           hasSelection && _screen.canCreate ? _copySelected : null,
       RecordAction.delete:
@@ -287,14 +357,16 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       if (_hasHistory) RecordAction.revision: hasSelection ? _revisions : null,
       RecordAction.attach: menu(_attachKey, single),
       RecordAction.note: single ? () => _resourceDialog(notes: true) : null,
-      RecordAction.action:
-          menu(_actionKey, hasSelection && _toolbar.actions.isNotEmpty),
-      RecordAction.relate:
-          menu(_relateKey, hasSelection && _toolbar.relate.isNotEmpty),
-      RecordAction.print: menu(_printKey,
-          hasSelection && _toolbar.print.isNotEmpty || _toolbar.exports.isNotEmpty),
-      RecordAction.email:
-          menu(_emailKey, hasSelection && _toolbar.emails.isNotEmpty),
+      RecordAction.action: menu(_actionKey,
+          hasSelection && (_toolbar.actions.isNotEmpty || _keywordButtons('action').isNotEmpty)),
+      RecordAction.relate: menu(_relateKey,
+          hasSelection && (_toolbar.relate.isNotEmpty || _keywordButtons('relate').isNotEmpty)),
+      RecordAction.print: menu(
+          _printKey,
+          hasSelection &&
+                  (_toolbar.print.isNotEmpty || _keywordButtons('print').isNotEmpty) ||
+              _toolbar.exports.isNotEmpty),
+      RecordAction.email: single ? _email : null,
       RecordAction.export: () => showCsvExport(context,
           screen: _screen,
           name: widget.title,
@@ -345,7 +417,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
               ui: DialogActionUi(context));
           return;
         }
-        if (screen.modified()) return;
+        if (!await _confirmSave()) return;
         screen.currentRecord = record;
         await screen.switchView(viewType: 'form');
       });
@@ -371,6 +443,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// Switch: the form of the first selected record (spec 8.2).
   Future<void> _switchToForm() => _whileOpening(() => _run(() async {
         final screen = _screen;
+        if (!await _confirmSave()) return;
         if (!await _table.leaveRow(null)) return;
         _table.saveTreeState();
         final selected = screen.selectedRecords;
@@ -381,25 +454,10 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   Future<void> _deleteSelected() async {
     final screen = _screen;
     if (screen.selectedRecords.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.deleteRecords),
-        content:
-            Text('Really delete ${screen.selectedRecords.length} record(s)?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(context.l10n.cancel)),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(ctx).colorScheme.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.l10n.delete),
-          ),
-        ],
-      ),
-    );
+    final l = context.l10n;
+    final confirmed = await showSur(
+        context, l.reallyDeleteRecords(screen.selectedRecords.length),
+        title: l.deleteRecords, okLabel: l.delete, destructive: true);
     if (confirmed != true || !mounted) return;
     await _run(() async {
       final root = screen.group.parent == null;
@@ -486,7 +544,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l.reload,
-            onPressed: _search,
+            onPressed: _reload,
           ),
           IconButton(
             icon: Icon(Icons.copy_outlined,
@@ -506,9 +564,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           ),
 
           // ── Attachment (requires selection) ───────────────────────────
-          _AttachmentButton(
-            key: _attachKey,
+          _ResourceButtons(
+            attachKey: _attachKey,
             record: singleSelection ? _screen.selectedRecords.first : null,
+            onNote: actions[RecordAction.note] == null
+                ? null
+                : () => _resourceDialog(notes: true),
           ),
 
           // ── Action / Relate / Print / Email (require selection) ───────
@@ -521,6 +582,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             model: _model,
             selectedIds: selectedIds,
             enabled: hasSelection,
+            beforeExecute: _confirmSave,
+            buttons: _keywordButtons('action'),
+            onButton: _runButton,
           ),
           ToolbarDropdownButton(
             key: _relateKey,
@@ -531,6 +595,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             model: _model,
             selectedIds: selectedIds,
             enabled: hasSelection,
+            beforeExecute: _confirmSave,
+            buttons: _keywordButtons('relate'),
+            onButton: _runButton,
           ),
           ToolbarDropdownButton(
             key: _printKey,
@@ -541,19 +608,18 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             model: _model,
             selectedIds: selectedIds,
             enabled: hasSelection,
+            beforeExecute: _confirmSave,
+            buttons: _keywordButtons('print'),
+            onButton: _runButton,
             exports: _toolbar.exports,
             onExport: (export) => runPredefinedExport(context, _screen, export,
                 listed: _listed),
           ),
-          ToolbarDropdownButton(
+          IconButton(
             key: _emailKey,
-            screen: _screen,
-            icon: Icons.email_outlined,
+            icon: const Icon(Icons.email_outlined),
             tooltip: l.email,
-            items: _toolbar.emails,
-            model: _model,
-            selectedIds: selectedIds,
-            enabled: hasSelection,
+            onPressed: actions[RecordAction.email],
           ),
 
           // ── Close ─────────────────────────────────────────────────────
@@ -735,20 +801,24 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   }
 }
 
-// ─── Attachment button ────────────────────────────────────────────────────────
+// ─── Attachment and note buttons ─────────────────────────────────────────────
 
-/// Attachments of the selected record (spec 11.4): counter of
-/// `resources`, the dropdown of [AttachmentMenuButton].
-class _AttachmentButton extends StatefulWidget {
+/// Attachments and notes of the selected record (spec 10.3, 11.4, 11.5):
+/// the badges from `resources`, the attachment dropdown of
+/// [AttachmentMenuButton] and the notes dialog.
+class _ResourceButtons extends StatefulWidget {
   final Record? record;
-  const _AttachmentButton({super.key, this.record});
+  final GlobalKey attachKey;
+  final Future<void> Function()? onNote;
+  const _ResourceButtons(
+      {required this.record, required this.attachKey, this.onNote});
 
   @override
-  State<_AttachmentButton> createState() => _AttachmentButtonState();
+  State<_ResourceButtons> createState() => _ResourceButtonsState();
 }
 
-class _AttachmentButtonState extends State<_AttachmentButton> {
-  int _count = 0;
+class _ResourceButtonsState extends State<_ResourceButtons> {
+  Map<String, dynamic>? _resources;
   ResourceRef? _resource;
 
   @override
@@ -758,7 +828,7 @@ class _AttachmentButtonState extends State<_AttachmentButton> {
   }
 
   @override
-  void didUpdateWidget(_AttachmentButton old) {
+  void didUpdateWidget(_ResourceButtons old) {
     super.didUpdateWidget(old);
     if (!identical(old.record, widget.record)) _load();
   }
@@ -766,27 +836,41 @@ class _AttachmentButtonState extends State<_AttachmentButton> {
   Future<void> _load({bool reload = false}) async {
     final record = widget.record;
     final resource = await resourceOf(record);
-    var count = 0;
+    Map<String, dynamic>? resources;
     if (record != null && record.id >= 0) {
       try {
-        final r = await record.getResources(reload: reload);
-        count = (r?['attachment_count'] as num?)?.toInt() ?? 0;
+        resources = await record.getResources(reload: reload);
       } catch (_) {}
     }
     if (!mounted || !identical(record, widget.record)) return;
     setState(() {
       _resource = resource;
-      _count = count;
+      _resources = resources;
     });
   }
 
+  int _count(String key) => (_resources?[key] as num?)?.toInt() ?? 0;
+
   @override
   Widget build(BuildContext context) {
-    if (widget.record == null) return const SizedBox.shrink();
-    return AttachmentMenuButton(
-      resource: _resource,
-      count: _count,
-      onChanged: () => _load(reload: true),
-    );
+    final onNote = widget.onNote;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      AttachmentMenuButton(
+        key: widget.attachKey,
+        resource: widget.record == null ? null : _resource,
+        count: _count('attachment_count'),
+        onChanged: () => _load(reload: true),
+      ),
+      NoteIconButton(
+        total: _count('note_count'),
+        unread: _count('note_unread'),
+        onPressed: onNote == null
+            ? null
+            : () async {
+                await onNote();
+                await _load(reload: true);
+              },
+      ),
+    ]);
   }
 }

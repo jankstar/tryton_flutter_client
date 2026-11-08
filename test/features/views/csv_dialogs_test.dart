@@ -143,8 +143,8 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('csv-save-export')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('csv-export-name')), 'Quick');
-    await tester.tap(find.byKey(const ValueKey('csv-export-name-ok')));
+    await tester.enterText(find.byKey(const ValueKey('dialog-ask')), 'Quick');
+    await tester.tap(find.byKey(const ValueKey('dialog-ok')));
     await tester.pumpAndSettle();
     expect(rpc.named('model.ir.export.set').single.params[0], {
       'header': true,
@@ -206,7 +206,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('csv-save-export')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('csv-confirm-yes')));
+    await tester.tap(find.byKey(const ValueKey('dialog-ok')));
     await tester.pumpAndSettle();
     expect(rpc.named('model.ir.export.update').single.params, [
       7,

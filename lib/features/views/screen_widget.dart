@@ -5,6 +5,7 @@ import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart';
 import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
 import '../../shared/widgets/concurrency_dialog.dart';
@@ -164,48 +165,12 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
     return screen;
   }
 
-  /// `confirm` of a button: OK / Cancel.
-  Future<bool> _confirm(String text) async {
-    if (!mounted) return false;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        content: Text(text),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(ctx.l10n.cancel),
-          ),
-          FilledButton(
-            autofocus: true,
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ctx.l10n.ok),
-          ),
-        ],
-      ),
-    );
-    return ok ?? false;
-  }
+  /// `confirm` of a button: OK / Cancel (Sur, spec 11.3).
+  Future<bool> _confirm(String text) => showSur(context, text);
 
   /// Warning „Pre-validation“ with the invalid fields.
-  Future<void> _preValidationFailed(String message) async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.warning_amber_rounded),
-        title: Text(ctx.l10n.preValidation),
-        content: SingleChildScrollView(child: Text(message)),
-        actions: [
-          FilledButton(
-            autofocus: true,
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(ctx.l10n.ok),
-          ),
-        ],
-      ),
-    );
-  }
+  Future<void> _preValidationFailed(String message) =>
+      showWarning(context, context.l10n.preValidation, message);
 
   InvalidMessages _invalidTexts() {
     final l = context.l10n;

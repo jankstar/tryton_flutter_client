@@ -14,6 +14,7 @@ import '../model/model_service.dart';
 import '../model/toolbar_data.dart';
 import '../shell/tab_manager.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
 import '../model/selection_loader.dart';
@@ -23,6 +24,7 @@ import 'record_menu.dart';
 import 'resource_dialogs.dart';
 import 'record_widget_values.dart';
 import '../../core/l10n/locale_provider.dart';
+import 'email_dialog.dart';
 
 /// Server-driven form – loads the view definition via
 /// `fields_view_get` and renders layout, groups and tabs dynamically.
@@ -426,38 +428,13 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     return true;
   }
 
-  Future<void> _showInvalid(String message) => showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.warning_amber_rounded),
-          title: Text(ctx.l10n.invalidRecordTitle),
-          content: SingleChildScrollView(child: Text(message)),
-          actions: [
-            FilledButton(
-              autofocus: true,
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(ctx.l10n.ok),
-            ),
-          ],
-        ),
-      );
+  Future<void> _showInvalid(String message) =>
+      showWarning(context, context.l10n.invalidRecordTitle, message);
 
   Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.deleteRecord),
-        content: Text(context.l10n.reallyDelete),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(context.l10n.cancel)),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(context.l10n.delete),
-          ),
-        ],
-      ),
-    );
+    final l = context.l10n;
+    final ok = await showSur(context, l.reallyDelete,
+        title: l.deleteRecord, okLabel: l.delete, destructive: true);
     final record = _record;
     if (ok != true || !mounted || record == null) return;
     try {
@@ -652,32 +629,12 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// `'yes'` (saved), `'no'` (discarded) or null (cancelled / not saved).
   Future<String?> _askSave() async {
     if (!_screen.modified() && _pending.isEmpty) return 'clean';
-    final l = context.l10n;
-    final result = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        content: Text(l.recordModified),
-        actions: [
-          // Cancel – stay in form
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'cancel'),
-            child: Text(l.cancel),
-          ),
-          // No – discard changes and leave
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, 'no'),
-            child: Text(l.no),
-          ),
-          // Yes – save and leave
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, 'yes'),
-            child: Text(l.yes),
-          ),
-        ],
-      ),
-    );
-    if (result == 'cancel' || result == null) return null;
+    final result = switch (await showSur3(context, context.l10n.recordModified)) {
+      Sur3Choice.yes => 'yes',
+      Sur3Choice.no => 'no',
+      Sur3Choice.cancel => null,
+    };
+    if (result == null) return null;
     if (result == 'yes') {
       // If save failed or was cancelled, stay in form
       if (!await _saveRecord()) return null;
@@ -708,6 +665,16 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   final _relateKey = GlobalKey();
   final _printKey = GlobalKey();
   final _emailKey = GlobalKey();
+
+  /// Email (spec 11.10, Python `Form.sig_email`): save prompt, template,
+  /// then the email dialog of the record.
+  Future<void> _email() async {
+    if (!await _confirmDiscard() || !mounted) return;
+    final record = _record;
+    if (record == null || record.id < 0) return;
+    await showEmailFlow(context,
+        record: record, toolbar: _toolbar, title: widget.title);
+  }
 
   /// „Search“ (Python `Form.sig_search`): the searchable view with the
   /// focus in its search entry.
@@ -759,7 +726,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           _printKey,
           saved && (_toolbar.print.isNotEmpty || keyword('print').isNotEmpty) ||
               _toolbar.exports.isNotEmpty),
-      RecordAction.email: menu(_emailKey, saved && _toolbar.emails.isNotEmpty),
+      RecordAction.email: idle && saved ? _email : null,
       RecordAction.export: idle ? _exportCsv : null,
       RecordAction.import: idle && _screen.canCreate ? _importCsv : null,
       RecordAction.close: () => widget.onClose?.call(),
@@ -837,18 +804,21 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             tooltip: context.l10n.nextRecord,
             onPressed: hasNext ? () => _navigate(next: true) : null,
           ),
-          // Switch: like SAO's tryton-switch – the list of the screen
-          if (_screen.numberOfViews > 1)
-            IconButton(
-              icon: TrytonIcon(
-                iconName: 'tryton-switch',
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-                fallback: Icons.compare_arrows,
-              ),
-              tooltip: context.l10n.switchView,
-              onPressed: _saving ? null : _switchView,
+          // Switch: like SAO's tryton-switch – the list of the screen.
+          // All buttons are always shown; their activation is the one of
+          // the record menu (spec 10.3, Python `_update_sensitive`).
+          IconButton(
+            icon: TrytonIcon(
+              iconName: 'tryton-switch',
+              size: 20,
+              color: actions[RecordAction.switchView] == null
+                  ? Theme.of(context).disabledColor
+                  : Theme.of(context).colorScheme.primary,
+              fallback: Icons.compare_arrows,
             ),
+            tooltip: context.l10n.switchView,
+            onPressed: actions[RecordAction.switchView],
+          ),
 
           // ── CRUD ──────────────────────────────────────────────────────
           // Rights and revision view (spec 10.3, MODELACCESS)
@@ -873,53 +843,51 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             tooltip: l.reload,
             onPressed: _saving ? null : _reload,
           ),
-          if (!_isNew) ...[
-            IconButton(
-              icon: const Icon(Icons.copy_outlined),
-              tooltip: l.duplicate,
-              onPressed: _saving || !_screen.canCreate ? null : _duplicate,
-            ),
-            IconButton(
-              icon: Icon(Icons.delete_outline,
-                  color: _saving || !_screen.canDelete
-                      ? Theme.of(context).disabledColor
-                      : Theme.of(context).colorScheme.error),
-              tooltip: l.delete,
-              onPressed: _saving || !_screen.canDelete ? null : _delete,
-            ),
-          ],
+          IconButton(
+            icon: const Icon(Icons.copy_outlined),
+            tooltip: l.duplicate,
+            onPressed: actions[RecordAction.copy],
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline,
+                color: actions[RecordAction.delete] == null
+                    ? Theme.of(context).disabledColor
+                    : Theme.of(context).colorScheme.error),
+            tooltip: l.delete,
+            onPressed: actions[RecordAction.delete],
+          ),
 
           // ── Logs / Attachment / Note ──────────────────────────────────
-          if (!_isNew) ...[
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: context.l10n.viewLogs,
+            onPressed: actions[RecordAction.logs],
+          ),
+          // Revisions only for models with history (MODELHISTORY):
+          // otherwise the server answers "No history table".
+          if (_hasHistory)
             IconButton(
-              icon: const Icon(Icons.history),
-              tooltip: context.l10n.viewLogs,
-              onPressed: _viewLogs,
+              icon: const Icon(Icons.manage_history),
+              tooltip: context.l10n.revisions,
+              onPressed: actions[RecordAction.revision],
             ),
-            // Revisions only for models with history (MODELHISTORY):
-            // otherwise the server answers "No history table".
-            if (_hasHistory)
-              IconButton(
-                icon: const Icon(Icons.manage_history),
-                tooltip: context.l10n.revisions,
-                onPressed: _saving ? null : _revisions,
-              ),
-            AttachmentMenuButton(
-              key: _attachKey,
-              resource: _resourceRef,
-              count: (resources?['attachment_count'] as num?)?.toInt() ?? 0,
-              onChanged: _loadResources,
-            ),
-            _NoteIconButton(
-              total: (resources?['note_count'] as num?)?.toInt() ?? 0,
-              unread: (resources?['note_unread'] as num?)?.toInt() ?? 0,
-              onPressed: _openNote,
-            ),
-          ],
+          AttachmentMenuButton(
+            key: _attachKey,
+            resource: _resourceRef,
+            count: (resources?['attachment_count'] as num?)?.toInt() ?? 0,
+            onChanged: _loadResources,
+            onPreview: () => setState(() => _preview = !_preview),
+          ),
+          NoteIconButton(
+            total: (resources?['note_count'] as num?)?.toInt() ?? 0,
+            unread: (resources?['note_unread'] as num?)?.toInt() ?? 0,
+            onPressed: actions[RecordAction.note],
+          ),
 
           // ── Action / Relate / Print / Email ──────────────────────────
-          // Always shown like in SAO original (disabled when no items).
-          if (!_isNew) ...[
+          // Always shown like in SAO original (disabled when not
+          // available).
+          ...[
             ToolbarDropdownButton(
               key: _actionKey,
               screen: _screen,
@@ -928,6 +896,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               items: _toolbar.actions,
               model: _model,
               selectedIds: _isNew ? [] : [_recordId],
+              enabled: !_isNew && !_saving,
               beforeExecute: _confirmDiscard,
               buttons: [
                 for (final b in buttons)
@@ -943,6 +912,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               items: _toolbar.relate,
               model: _model,
               selectedIds: _isNew ? [] : [_recordId],
+              enabled: !_isNew && !_saving,
               beforeExecute: _confirmDiscard,
               buttons: [
                 for (final b in buttons)
@@ -958,6 +928,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               items: _toolbar.print,
               model: _model,
               selectedIds: _isNew ? [] : [_recordId],
+              enabled: !_isNew && !_saving,
               beforeExecute: _confirmDiscard,
               buttons: [
                 for (final b in buttons)
@@ -967,15 +938,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               exports: _toolbar.exports,
               onExport: _predefinedExport,
             ),
-            ToolbarDropdownButton(
+            IconButton(
               key: _emailKey,
-              screen: _screen,
-              icon: Icons.email_outlined,         // tryton-email
+              icon: const Icon(Icons.email_outlined), // tryton-email
               tooltip: l.email,
-              items: _toolbar.emails,
-              model: _model,
-              selectedIds: _isNew ? [] : [_recordId],
-              beforeExecute: _confirmDiscard,
+              onPressed: actions[RecordAction.email],
             ),
           ],
 
@@ -991,7 +958,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           )),
         ],
       ),
-      body: _buildBody(),
+      body: _withPreview(_buildBody()),
     ), // Scaffold
     ), // RecordShortcuts
     ); // PopScope
@@ -1043,6 +1010,31 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         ],
       ),
     );
+  }
+
+  /// The attachment preview is shown beside the form (spec 10.5).
+  bool _preview = false;
+
+  /// [body] with the attachment preview at its right side (wide windows).
+  Widget _withPreview(Widget body) {
+    final resource = _resourceRef;
+    if (!_preview || resource == null) return body;
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final panel = AttachmentPreviewPanel(
+      resource: resource,
+      revision: (_resources?['attachment_count'] as num?)?.toInt() ?? 0,
+      onClose: () => setState(() => _preview = false),
+    );
+    // narrow windows: the preview below the form
+    return wide
+        ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: body),
+            SizedBox(width: 380, child: panel),
+          ])
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(flex: 3, child: body),
+            Expanded(flex: 2, child: panel),
+          ]);
   }
 
   Widget _buildBody() {
@@ -1120,47 +1112,6 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
 /// Notes button with badge `unread/total` (spec 10.3; coloured when there
 /// are unread notes).
-class _NoteIconButton extends StatelessWidget {
-  final int total;
-  final int unread;
-  final VoidCallback onPressed;
-
-  const _NoteIconButton(
-      {required this.total, required this.unread, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.sticky_note_2_outlined),
-          tooltip: context.l10n.note,
-          onPressed: onPressed,
-        ),
-        if (total > 0)
-          Positioned(
-            right: 2,
-            top: 4,
-            child: IgnorePointer(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                decoration: BoxDecoration(
-                  color: unread > 0 ? cs.error : cs.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  unread > 0 ? '$unread/$total' : '$total',
-                  style: const TextStyle(color: Colors.white, fontSize: 9),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
 
 
 

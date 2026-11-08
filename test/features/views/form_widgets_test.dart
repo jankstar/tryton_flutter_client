@@ -230,6 +230,66 @@ void main() {
     });
   });
 
+  testWidgets('multiselection with a selection method and '
+      'selection_change_with (billing unit „Konditionstyp“): options loaded, '
+      'value checked, a click writes the list', (tester) async {
+    final rpc = server(
+      '<form><field name="property"/><field name="types"/></form>',
+      {
+        'property': {'type': 'integer', 'string': 'Property'},
+        'types': {
+          'type': 'multiselection',
+          'string': 'Types',
+          'selection': 'get_types',
+          'selection_change_with': ['property', '_parent_property.company'],
+          'sort': false,
+        },
+      },
+      {'property': 1, 'types': ['6']},
+      {
+        'model.test.form.get_types': (p) => [
+              ['6', 'Operating costs'],
+              ['7', 'Heating costs'],
+            ],
+      },
+    );
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    final call = rpc.named('model.test.form.get_types').single;
+    expect((call.params[0] as Map)['property'], 1);
+    FilterChip chip(String key) =>
+        tester.widget<FilterChip>(find.byKey(ValueKey('multi-types-$key')));
+    expect(find.text('Operating costs'), findsOneWidget);
+    expect(chip('6').selected, isTrue);
+    expect(chip('7').selected, isFalse);
+    await tester.tap(find.text('Heating costs'));
+    await tester.pumpAndSettle();
+    await save(tester);
+    expect(rpc.named('model.test.form.write').single.params[1], {
+      'types': ['6', '7']
+    });
+  });
+
+  testWidgets('multiselection: a stored value without option stays visible',
+      (tester) async {
+    final rpc = server(
+      '<form><field name="types"/></form>',
+      {
+        'types': {
+          'type': 'multiselection',
+          'string': 'Types',
+          'selection': [
+            ['a', 'A']
+          ],
+        },
+      },
+      {'types': ['x']},
+    );
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    expect(
+        tester.widget<FilterChip>(find.byKey(const ValueKey('multi-types-x'))).selected,
+        isTrue);
+  });
+
   group('date (H5)', () {
     testWidgets('locale date format, operators and "="', (tester) async {
       final rpc = server(

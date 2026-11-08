@@ -836,4 +836,63 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get x2mMore => 'Plus';
+
+  @override
+  String get reportBug => 'Signaler un bogue';
+
+  @override
+  String get selectionTitle => 'Sélection';
+
+  @override
+  String get yourSelection => 'Votre sélection :';
+
+  @override
+  String emailTitle(Object name) {
+    return 'E-mail $name';
+  }
+
+  @override
+  String get emailTo => 'À';
+
+  @override
+  String get emailCc => 'Cc';
+
+  @override
+  String get emailBcc => 'Cci';
+
+  @override
+  String get emailSubject => 'Objet';
+
+  @override
+  String get emailBody => 'Corps';
+
+  @override
+  String get emailReports => 'Rapports';
+
+  @override
+  String get emailAttachments => 'Pièces jointes';
+
+  @override
+  String get emailFiles => 'Fichiers';
+
+  @override
+  String get emailAddFile => 'Sélectionner un fichier';
+
+  @override
+  String get emailRemoveFile => 'Retirer le fichier';
+
+  @override
+  String get emailSend => 'Envoyer';
+
+  @override
+  String get emailTemplate => 'Modèle';
+
+  @override
+  String get emailSent => 'E-mail envoyé.';
+
+  @override
+  String get attachmentPreview => 'Aperçu des pièces jointes';
+
+  @override
+  String get noAttachment => 'Aucune pièce jointe.';
 }

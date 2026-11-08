@@ -16,6 +16,7 @@ import '../auth/user_preferences_provider.dart';
 import '../model/model_rpc.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
+import '../../shared/errors/error_dialogs.dart';
 
 // ─── Menu screen (spec 10.1) ──────────────────────────────────────────────────
 
@@ -134,10 +135,7 @@ Future<void> openMenuEntry(
           ui: DialogActionUi(context),
         );
   } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$e')));
-    }
+    if (context.mounted) await showErrorDialog(context, e);
   }
 }
 
@@ -370,6 +368,9 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
     );
   }
 
+  /// Height of a menu row (was 36 px).
+  static const double _rowHeight = 28;
+
   Widget _row(TrytonScreen screen, Record record, int depth, String? childs) {
     final cs = Theme.of(context).colorScheme;
     final l = context.l10n;
@@ -392,14 +393,17 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
       child: Padding(
         padding: EdgeInsets.only(left: 8 + depth * 16.0, right: 4),
         child: Row(children: [
+          // compact rows: 28 px, no 48 px tap targets
           SizedBox(
             width: 28,
-            height: 36,
+            height: _rowHeight,
             child: hasChildren
                 ? IconButton(
                     padding: EdgeInsets.zero,
                     constraints:
                         const BoxConstraints(minWidth: 28, minHeight: 28),
+                    style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                     icon: Icon(
                         expanded ? Icons.arrow_drop_down : Icons.arrow_right,
                         size: 20,
@@ -434,6 +438,8 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
               key: ValueKey('menu-star-${record.id}'),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
               icon: Icon(favorite ? Icons.star : Icons.star_border,
                   size: 16, color: favorite ? Colors.amber : cs.outline),
               tooltip: favorite ? l.removeFromFavorites : l.addToFavorites,

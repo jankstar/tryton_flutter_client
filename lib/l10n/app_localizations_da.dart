@@ -832,4 +832,63 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get x2mMore => 'Mere';
+
+  @override
+  String get reportBug => 'Rapportér fejl';
+
+  @override
+  String get selectionTitle => 'Valg';
+
+  @override
+  String get yourSelection => 'Dit valg:';
+
+  @override
+  String emailTitle(Object name) {
+    return 'E-mail $name';
+  }
+
+  @override
+  String get emailTo => 'Til';
+
+  @override
+  String get emailCc => 'Cc';
+
+  @override
+  String get emailBcc => 'Bcc';
+
+  @override
+  String get emailSubject => 'Emne';
+
+  @override
+  String get emailBody => 'Tekst';
+
+  @override
+  String get emailReports => 'Rapporter';
+
+  @override
+  String get emailAttachments => 'Vedhæftninger';
+
+  @override
+  String get emailFiles => 'Filer';
+
+  @override
+  String get emailAddFile => 'Vælg fil';
+
+  @override
+  String get emailRemoveFile => 'Fjern fil';
+
+  @override
+  String get emailSend => 'Send';
+
+  @override
+  String get emailTemplate => 'Skabelon';
+
+  @override
+  String get emailSent => 'E-mail sendt.';
+
+  @override
+  String get attachmentPreview => 'Forhåndsvisning af vedhæftning';
+
+  @override
+  String get noAttachment => 'Ingen vedhæftning.';
 }

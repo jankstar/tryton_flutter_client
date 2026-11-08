@@ -259,10 +259,21 @@ class ScreenView {
 
   bool get searchable => viewType == 'tree';
 
-  /// Buttons of the view (form: all `<button>` nodes, nested too).
+  /// Buttons of the view (form: all `<button>` nodes, nested too; tree:
+  /// the button columns and the `multiple` buttons, Python
+  /// `ViewTree.get_buttons`).
   late final List<ButtonNode> buttons = [
     if (formRoot != null) ..._buttonsOf(formRoot!.children),
+    if (viewType == 'tree') ..._treeButtons(),
   ];
+
+  List<ButtonNode> _treeButtons() {
+    final tree = TreeXmlParser().parse(definition.arch, definition.rawFields);
+    return [
+      for (final c in tree.columns) ?c.button,
+      ...tree.buttons,
+    ];
+  }
 
   static Iterable<ButtonNode> _buttonsOf(List<FormNode> nodes) sync* {
     for (final node in nodes) {
@@ -300,6 +311,11 @@ class TrytonScreen extends ChangeNotifier {
   final List<String> _viewToLoad;
   final List<ScreenView> views = [];
   ScreenView? currentView;
+
+  /// `pre_validate` of an x2many field (Python `Screen.pre_validate`): a
+  /// child record is checked by the server (`Record.preValidate`) before
+  /// it is taken over (popup OK, leaving a row or card, Previous/Next).
+  bool preValidate = false;
 
   /// Domain of the screen (`attributes.domain`); changed in place by
   /// [updateDomain].

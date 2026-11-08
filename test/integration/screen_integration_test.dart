@@ -43,6 +43,8 @@ class _CancelUi implements ActionUi {
   @override
   Future<void> message(String text) async {}
   @override
+  Future<void> notify(String text) async {}
+  @override
   Future<Map<String, dynamic>?> choose(
           List<Map<String, dynamic>> actions) async =>
       null;

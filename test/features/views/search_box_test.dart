@@ -127,7 +127,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('search-star')));
     await pumpFrames(tester, 5);
-    await tester.enterText(find.byKey(const ValueKey('bookmark-name')), 'Mine');
+    await tester.enterText(find.byKey(const ValueKey('dialog-ask')), 'Mine');
     await tester.tap(find.widgetWithText(FilledButton, 'OK'));
     await pumpFrames(tester, 5);
     expect(rpc.named('model.ir.ui.view_search.set').single.params,

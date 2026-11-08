@@ -18,6 +18,9 @@ class _FakeUi implements ActionUi {
   Future<void> message(String text) async => messages.add(text);
 
   @override
+  Future<void> notify(String text) async => messages.add(text);
+
+  @override
   Future<Map<String, dynamic>?> choose(
       List<Map<String, dynamic>> actions) async {
     offered = actions;

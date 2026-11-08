@@ -19,6 +19,7 @@ import 'record_widget_values.dart';
 import 'search_dialog.dart';
 import 'tree_view.dart';
 import 'wizard_widget.dart' show wizardInvalidTexts;
+import '../../shared/dialogs/tryton_dialogs.dart';
 
 /// Views of x2many relations (`fields_view_get`), loaded once per
 /// relation and view type (values, not futures: a cached future would be
@@ -317,8 +318,42 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       ),
       group,
     );
-    screen.onViewAdded = (v) => markUnsupportedFields(screen.model, v);
+    screen
+      ..onViewAdded = ((v) => markUnsupportedFields(screen.model, v))
+      ..preValidate = _preValidate;
     return screen;
+  }
+
+  /// `pre_validate` of the field (Python `screen.pre_validate`).
+  bool get _preValidate {
+    final value = _attr('pre_validate');
+    return value == true || (int.tryParse('$value') ?? 0) != 0;
+  }
+
+  /// The record of the inline form is valid (Python `One2Many._validate`:
+  /// the fields of the view, with `pre_validate` the server's check).
+  Future<bool> _validateInline() async {
+    final record = _current;
+    if (record == null || record.destroyed) return true;
+    final view = _formView;
+    if (!record.validate(fields: view?.rawFields.keys)) {
+      setState(() {});
+      if (mounted) {
+        await showWarning(
+            context, record.invalidMessage(wizardInvalidTexts(context)));
+      }
+      return false;
+    }
+    if (!_preValidate) return true;
+    try {
+      await record.preValidate();
+      return true;
+    } on HandledRpcError {
+      return false;
+    } catch (e) {
+      if (mounted) await errorHandlerOf(context, ref).show(e);
+      return false;
+    }
   }
 
   Future<void> _popupRun(Future<void> Function() action) async {
@@ -363,6 +398,12 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
           defaults = {...?defaults, 'rec_name': text};
           _addText?.clear();
         }
+        // `product`: a record per combination (Python `_new_product`)
+        if (_attr('product') case final String product
+            when product.trim().isNotEmpty) {
+          await _newProduct(product, defaults);
+          return;
+        }
         final tree = _treeScreen;
         if (!_formMode && tree != null && _table.editable) {
           if (!await _table.leaveRow(null)) return;
@@ -386,6 +427,62 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
           screen.dispose();
         }
       });
+
+  /// `product="f1,f2"` (Python `One2Many._new_product`): one search dialog
+  /// per field (multiple choice, from the last field on) with the field's
+  /// domain, context and order on a record with the defaults; then one new
+  /// record per combination of the chosen values, all with the same
+  /// defaults; `sequence` renumbers them.
+  Future<void> _newProduct(String product, Map<String, dynamic>? defaults) async {
+    final group = _group;
+    if (group == null) return;
+    final names = [
+      for (final n in product.split(',')) if (n.trim().isNotEmpty) n.trim()
+    ];
+    // (the first record is not added: only its domains and defaults count)
+    final first = group.newRecord();
+    final values = await first.defaultGet(defaults);
+    final chosen = <String, List<SearchResult>>{};
+    for (final name in names.reversed) {
+      final field = group.model.fields[name];
+      final relation = field?.description['relation'];
+      if (field == null || relation is! String || !mounted) continue;
+      final result = await showSearchDialog(
+        context,
+        model: relation,
+        session: group.model.session,
+        domain: field.getDomain(first),
+        searchContext: field.getSearchContext(first),
+        order: _asList(field.getSearchOrder(first)),
+        multi: true,
+        title: widget.fieldDef.label,
+      );
+      if (result.isNotEmpty) chosen[name] = result;
+    }
+    if (chosen.isEmpty) return;
+    var combinations = <Map<String, dynamic>>[{}];
+    for (final MapEntry(key: name, value: results) in chosen.entries) {
+      combinations = [
+        for (final c in combinations)
+          for (final r in results)
+            {
+              ...c,
+              name: r.id,
+              '$name.': {'rec_name': r.name},
+            }
+      ];
+    }
+    for (final combination in combinations) {
+      final record = group.newRecord();
+      group.add(record);
+      await record.setDefault({...values, ...combination});
+    }
+    final sequence = _treeScreen?.currentView?.attributes['sequence'];
+    if (sequence != null && sequence.isNotEmpty) {
+      await group.setSequence(
+          field: sequence, position: _treeScreen?.newPosition ?? -1);
+    }
+  }
 
   /// Domain of „Add“: `add_remove` AND field domain without the records
   /// already contained.
@@ -822,7 +919,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (group == null) return;
     if (_formMode) {
       await _flushInline();
-      if (!_hasTree) return;
+      if (!_hasTree || !await _validateInline()) return;
       final current = _current;
       setState(() {
         _formMode = false;
@@ -871,6 +968,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     final current = _current;
     if (group == null || current == null) return;
     await _flushInline();
+    if (!await _validateInline()) return;
     final records = group.toList();
     final i = records.indexOf(current) + delta;
     if (i < 0 || i >= records.length) return;
@@ -883,6 +981,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
         final group = _group;
         if (group == null || _sizeLimitReached) return;
         await _flushInline();
+        if (!await _validateInline()) return;
         final record = await group.newRecordWithDefaults();
         group.add(record);
         _current = record;
@@ -980,8 +1079,10 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       ),
       group,
     );
-    screen.onViewAdded = (v) => markUnsupportedFields(screen.model, v);
-    screen.invalidTexts = () => wizardInvalidTexts(context);
+    screen
+      ..onViewAdded = ((v) => markUnsupportedFields(screen.model, v))
+      ..invalidTexts = (() => wizardInvalidTexts(context))
+      ..preValidate = _preValidate;
     _treeScreenView = screen.currentView = screen.addView(view);
     if (current != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => current.dispose());

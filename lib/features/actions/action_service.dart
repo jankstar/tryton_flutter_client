@@ -17,6 +17,7 @@ import '../../core/serialization/tryton_serializer.dart';
 import '../../shared/utils/file_actions.dart';
 import '../../shared/utils/zip_reader.dart';
 import '../model/model_service.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 import '../shell/tab_manager.dart';
 import '../auth/session_bootstrap.dart';
 import '../views/wizard_widget.dart';
@@ -24,8 +25,11 @@ import '../views/wizard_widget.dart';
 /// Interaction of [ActionService] with the user (messages, selection,
 /// external URLs); [DialogActionUi] for the app, fakes in tests.
 abstract interface class ActionUi {
-  /// Short message (e.g. "No action defined.", report generated).
+  /// Message to confirm (e.g. "No action defined.", spec 11.3 Message).
   Future<void> message(String text);
+
+  /// Short notice that needs no answer (e.g. "Generating report…").
+  Future<void> notify(String text);
 
   /// Lets the user choose one of [actions] (names without the menu path);
   /// null = cancelled.
@@ -265,7 +269,7 @@ class ActionService {
       for (final id in (data['ids'] as List? ?? const [])) id as int
     ];
     final directPrint = action['direct_print'] == true;
-    await ui?.message(ui.generatingReport());
+    await ui?.notify(ui.generatingReport());
     final result = await _svc.executeMethod<dynamic>(
         'report.$reportName.execute', [ids, data],
         context: {...context, 'direct_print': directPrint});
@@ -353,35 +357,40 @@ final Provider<ActionService> actionServiceProvider =
       },
     ));
 
-/// [ActionUi] with snack bars and a selection dialog.
+/// [ActionUi] with the standard dialogs (spec 11.3).
 class DialogActionUi implements ActionUi {
   final BuildContext context;
   const DialogActionUi(this.context);
 
   @override
-  Future<void> message(String text) async {
+  Future<void> message(String text) => showMessage(context, text);
+
+  @override
+  Future<void> notify(String text) async {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(text)));
   }
 
+  /// „Select your action“ (Python `selection`, one action runs directly
+  /// – the caller passes several).
   @override
   Future<Map<String, dynamic>?> choose(
       List<Map<String, dynamic>> actions) async {
     if (!context.mounted) return null;
-    return showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(ctx.l10n.selectAction),
-        children: [
-          for (final a in actions)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, a),
-              child: Text('${a['name'] ?? ''}'.split(' / ').last),
-            ),
-        ],
-      ),
-    );
+    final labels = <String, Map<String, dynamic>>{};
+    for (final a in actions) {
+      var label = '${a['name'] ?? ''}'.split(' / ').last;
+      // equal names stay distinct (the map is keyed by label)
+      while (labels.containsKey(label)) {
+        label = '$label ';
+      }
+      labels[label] = a;
+    }
+    final chosen = await showSelection(
+        context, context.l10n.selectAction, labels,
+        alwaysAsk: true);
+    return chosen?.value;
   }
 
   @override

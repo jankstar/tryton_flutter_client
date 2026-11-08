@@ -15,7 +15,9 @@ import '../../shared/utils/date_format_utils.dart';
 import '../../shared/utils/file_actions.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/model_service.dart';
+import 'record_binary_widgets.dart';
 import 'screen_widget.dart';
+import '../../shared/errors/error_dialogs.dart';
 
 // Attachments, notes and logs of a record (spec 11.4–11.6, Python
 // gui/window/attachment.py, note.py, log.py): dialogs on a screen of
@@ -108,8 +110,7 @@ Future<void> _showScreenDialog(BuildContext context,
                         await onClose(s);
                       } catch (e) {
                         if (dialogContext.mounted) {
-                          ScaffoldMessenger.of(dialogContext)
-                              .showSnackBar(SnackBar(content: Text('$e')));
+                          await showErrorDialog(dialogContext, e);
                         }
                         return;
                       }
@@ -289,8 +290,16 @@ class AttachmentMenuButton extends ConsumerWidget {
   final int count;
   final VoidCallback? onChanged;
 
+  /// „Preview“: shows/hides the attachment preview beside the form (spec
+  /// 10.5); null: no entry.
+  final VoidCallback? onPreview;
+
   const AttachmentMenuButton(
-      {super.key, required this.resource, required this.count, this.onChanged});
+      {super.key,
+      required this.resource,
+      required this.count,
+      this.onChanged,
+      this.onPreview});
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final r = resource;
@@ -330,6 +339,11 @@ class AttachmentMenuButton extends ConsumerWidget {
         if (attachments.isNotEmpty) const PopupMenuDivider(),
         PopupMenuItem<Object>(
             key: const ValueKey('attachment-add'), value: 'add', child: Text(l.addFiles)),
+        if (onPreview != null)
+          PopupMenuItem<Object>(
+              key: const ValueKey('attachment-preview'),
+              value: 'preview',
+              child: Text(l.attachmentPreview)),
         PopupMenuItem<Object>(
             key: const ValueKey('attachment-manage'), value: 'manage', child: Text(l.manage)),
       ],
@@ -344,11 +358,11 @@ class AttachmentMenuButton extends ConsumerWidget {
         await showAttachments(context, r, add: files, onChanged: onChanged);
       } else if (choice == 'manage') {
         await showAttachments(context, r, onChanged: onChanged);
+      } else if (choice == 'preview') {
+        onPreview?.call();
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-      }
+      if (context.mounted) await showErrorDialog(context, e);
     }
   }
 
@@ -418,4 +432,223 @@ Future<Object?> chooseRevision(
       ],
     ),
   );
+}
+
+/// Notes button with the badge `unread/total` (the unread ones in the
+/// error colour, spec 10.3).
+class NoteIconButton extends StatelessWidget {
+  final int total;
+  final int unread;
+  final VoidCallback? onPressed;
+
+  const NoteIconButton(
+      {super.key, required this.total, required this.unread, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.sticky_note_2_outlined),
+          tooltip: context.l10n.note,
+          onPressed: onPressed,
+        ),
+        if (total > 0)
+          Positioned(
+            right: 2,
+            top: 4,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: unread > 0 ? cs.error : cs.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  unread > 0 ? '$unread/$total' : '$total',
+                  style: const TextStyle(color: Colors.white, fontSize: 9),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Attachment preview beside the form (spec 10.5, SAO sidebar): the
+/// attachments of [resource] with data (`type = data`) one at a time with
+/// Previous/Next, read only; PDF and images are shown, other files with
+/// their size. [revision] (e.g. the attachment count) reloads the list.
+class AttachmentPreviewPanel extends ConsumerStatefulWidget {
+  final ResourceRef resource;
+  final int revision;
+  final VoidCallback onClose;
+
+  const AttachmentPreviewPanel(
+      {super.key,
+      required this.resource,
+      this.revision = 0,
+      required this.onClose});
+
+  @override
+  ConsumerState<AttachmentPreviewPanel> createState() =>
+      _AttachmentPreviewPanelState();
+}
+
+class _AttachmentPreviewPanelState extends ConsumerState<AttachmentPreviewPanel> {
+  List<(int, String)> _attachments = const [];
+  int _index = 0;
+  Uint8List? _bytes;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(AttachmentPreviewPanel old) {
+    super.didUpdateWidget(old);
+    if (_resource(old.resource) != _resource(widget.resource) ||
+        old.revision != widget.revision) {
+      _index = 0;
+      _load();
+    }
+  }
+
+  ModelService get _svc => ref.read(modelServiceProvider);
+
+  /// Context of the preview (SAO `preview: true`).
+  Map<String, dynamic> get _context =>
+      {...widget.resource.context, 'preview': true};
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final rows = await _svc.execute<List>(
+          'ir.attachment',
+          'search_read',
+          [
+            [
+              ['resource', '=', _resource(widget.resource)],
+              ['type', '=', 'data'],
+            ],
+            0,
+            null,
+            null,
+            ['rec_name'],
+          ],
+          context: _context,
+          processException: false);
+      if (!mounted) return;
+      _attachments = [
+        for (final r in rows)
+          if (r is Map) ((r['id'] as num).toInt(), '${r['rec_name']}')
+      ];
+      await _show();
+    } catch (_) {
+      if (mounted) setState(() => _attachments = const []);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Reads the data of the current attachment.
+  Future<void> _show() async {
+    if (_attachments.isEmpty) {
+      setState(() => _bytes = null);
+      return;
+    }
+    final (id, _) = _attachments[_index];
+    setState(() => _bytes = null);
+    try {
+      final rows = await _svc.execute<List>('ir.attachment', 'read', [
+        [id],
+        ['data'],
+      ], context: _context, processException: false);
+      final data = rows.isEmpty ? null : (rows.first as Map)['data'];
+      if (!mounted || _attachments.isEmpty || _attachments[_index].$1 != id) {
+        return;
+      }
+      setState(() => _bytes = switch (data) {
+            TrytonBytes() => Uint8List.fromList(data.bytes),
+            Uint8List() => data,
+            _ => Uint8List(0),
+          });
+    } catch (_) {
+      if (mounted) setState(() => _bytes = Uint8List(0));
+    }
+  }
+
+  void _move(int delta) {
+    final i = _index + delta;
+    if (i < 0 || i >= _attachments.length) return;
+    _index = i;
+    _show();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final bytes = _bytes;
+    final count = _attachments.length;
+    Widget body;
+    if (_loading) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (count == 0) {
+      body = Center(child: Text(l.noAttachment));
+    } else if (bytes == null) {
+      body = const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    } else if (bytes.isEmpty) {
+      body = Center(child: Text(_attachments[_index].$2));
+    } else {
+      body = documentPreview(bytes, keyName: 'attachment-preview');
+    }
+    return Container(
+      key: const ValueKey('attachment-preview-panel'),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: cs.outlineVariant)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+          color: cs.surfaceContainerHigh,
+          padding: const EdgeInsets.fromLTRB(12, 2, 4, 2),
+          child: Row(children: [
+            Expanded(
+              child: Text(
+                count == 0 ? l.attachmentPreview : _attachments[_index].$2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            IconButton(
+              key: const ValueKey('attachment-preview-previous'),
+              icon: const Icon(Icons.chevron_left, size: 20),
+              tooltip: l.previousRecord,
+              onPressed: _index > 0 ? () => _move(-1) : null,
+            ),
+            Text(count == 0 ? '0/0' : '${_index + 1}/$count'),
+            IconButton(
+              key: const ValueKey('attachment-preview-next'),
+              icon: const Icon(Icons.chevron_right, size: 20),
+              tooltip: l.nextRecord,
+              onPressed: _index < count - 1 ? () => _move(1) : null,
+            ),
+            IconButton(
+              key: const ValueKey('attachment-preview-close'),
+              icon: const Icon(Icons.close, size: 18),
+              tooltip: l.close,
+              onPressed: widget.onClose,
+            ),
+          ]),
+        ),
+        Expanded(child: Padding(padding: const EdgeInsets.all(8), child: body)),
+      ]),
+    );
+  }
 }

@@ -833,4 +833,63 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get x2mMore => 'Meer';
+
+  @override
+  String get reportBug => 'Fout melden';
+
+  @override
+  String get selectionTitle => 'Selectie';
+
+  @override
+  String get yourSelection => 'Uw selectie:';
+
+  @override
+  String emailTitle(Object name) {
+    return 'E-mail $name';
+  }
+
+  @override
+  String get emailTo => 'Aan';
+
+  @override
+  String get emailCc => 'Cc';
+
+  @override
+  String get emailBcc => 'Bcc';
+
+  @override
+  String get emailSubject => 'Onderwerp';
+
+  @override
+  String get emailBody => 'Inhoud';
+
+  @override
+  String get emailReports => 'Rapporten';
+
+  @override
+  String get emailAttachments => 'Bijlagen';
+
+  @override
+  String get emailFiles => 'Bestanden';
+
+  @override
+  String get emailAddFile => 'Bestand selecteren';
+
+  @override
+  String get emailRemoveFile => 'Bestand verwijderen';
+
+  @override
+  String get emailSend => 'Verzenden';
+
+  @override
+  String get emailTemplate => 'Sjabloon';
+
+  @override
+  String get emailSent => 'E-mail verzonden.';
+
+  @override
+  String get attachmentPreview => 'Voorbeeld van bijlage';
+
+  @override
+  String get noAttachment => 'Geen bijlage.';
 }

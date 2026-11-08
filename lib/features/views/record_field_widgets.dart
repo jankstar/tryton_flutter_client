@@ -19,6 +19,7 @@ import '../model/model_rpc.dart';
 import '../model/model_service.dart';
 import 'record_link.dart' show parseHexColor;
 import 'search_dialog.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 
 // Form widgets that work on the record and its field (spec 9.2.4): they
 // format with `field.get`/digits/converter and hand the converted value
@@ -527,7 +528,14 @@ class RecordMultiSelection extends StatelessWidget {
   Widget build(BuildContext context) {
     final value = args.field.get(args.record);
     final selected = {for (final v in (value is List ? value : const [])) '$v'};
-    final items = args.fd.selection ?? const [];
+    final known = args.fd.selection ?? const [];
+    // a stored value without option (e.g. options not loaded yet) stays
+    // visible with its key
+    final items = [
+      ...known,
+      for (final v in (value is List ? value : const []))
+        if (!known.any((i) => '${i[0]}' == '$v')) [v, '$v'],
+    ];
     return InputDecorator(
       decoration: args.decoration(context),
       child: Wrap(spacing: 6, runSpacing: 4, children: [
@@ -1248,15 +1256,13 @@ Future<void> showTranslateDialog(
     {bool multiline = false}) async {
   final l = context.l10n;
   if (record.id < 0 || record.modified) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(l.saveBeforeTranslate)));
+    await showMessage(context, l.saveBeforeTranslate);
     return;
   }
   final languages = await translatableLanguages(record);
   if (!context.mounted) return;
   if (languages.isEmpty) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(l.noOtherLanguage)));
+    await showMessage(context, l.noOtherLanguage);
     return;
   }
   final values = <String, (String, String)>{};

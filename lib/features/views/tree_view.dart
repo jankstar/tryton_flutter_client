@@ -30,6 +30,7 @@ import 'record_form.dart';
 import 'record_link.dart' show parseHexColor;
 import 'record_widget_values.dart';
 import 'tree_context_menu.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
 
 /// A visible row: record and depth (tree views).
 typedef TreeRow = ({Record record, int depth});
@@ -830,17 +831,23 @@ class _TreeViewState extends ConsumerState<TreeView> {
     if (!previous.validate(fields: fields)) {
       if (mounted) {
         final texts = _screen.invalidTexts?.call() ?? const InvalidMessages();
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(previous.invalidMessage(texts))));
         setState(() {});
+        await showWarning(context, previous.invalidMessage(texts));
       }
       return false;
     }
-    // (Child lists – pre_validate – are the x2many widget's business.)
     if (_isRoot && (previous.modified || previous.id < 0)) {
       var saved = false;
       await _run(() async => saved = await previous.save());
       if (!saved) return false;
+    } else if (!_isRoot && _screen.preValidate) {
+      // a child row with `pre_validate` (Python `_row_selected`)
+      var valid = false;
+      await _run(() async {
+        await previous.preValidate();
+        valid = true;
+      });
+      if (!valid) return false;
     }
     return true;
   }
