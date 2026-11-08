@@ -79,7 +79,20 @@ Future<void> pumpForm(WidgetTester tester, FakeFormRpc rpc,
 
 /// Pumps a [ScreenWidget] with [attributes] on [rpc] (English texts).
 Future<void> pumpScreen(
-    WidgetTester tester, FakeFormRpc rpc, ScreenAttributes attributes,
+        WidgetTester tester, FakeFormRpc rpc, ScreenAttributes attributes,
+        {bool settle = true,
+        bool metadata = false,
+        Map<String, dynamic>? preferences,
+        Size size = const Size(1400, 1000)}) =>
+    pumpApp(tester, rpc, ScreenWidget(attributes: attributes, title: 'Form'),
+        settle: settle,
+        metadata: metadata,
+        preferences: preferences,
+        size: size);
+
+/// Pumps [home] in the app setup of the tests (providers on [rpc],
+/// English texts).
+Future<void> pumpApp(WidgetTester tester, FakeFormRpc rpc, Widget home,
     {bool settle = true,
     bool metadata = false,
     Map<String, dynamic>? preferences,
@@ -114,7 +127,7 @@ Future<void> pumpScreen(
         FlutterQuillLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: ScreenWidget(attributes: attributes, title: 'Form'),
+      home: home,
     ),
   ));
   if (settle) {

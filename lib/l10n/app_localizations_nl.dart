@@ -415,9 +415,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get globalSearch => 'Globaal zoeken';
 
   @override
-  String get boardNotSupported => 'Dashboards worden nog niet ondersteund.';
-
-  @override
   String get selectMenuEntry => 'Kies een menu-item';
 
   @override

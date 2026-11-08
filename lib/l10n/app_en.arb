@@ -588,10 +588,6 @@
   "@globalSearch": {
     "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
   },
-  "boardNotSupported": "Dashboards are not supported yet.",
-  "@boardNotSupported": {
-    "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"
-  },
   "selectMenuEntry": "Choose a menu entry",
   "@selectMenuEntry": {
     "description": "Menu, favorites, global search, tabs (spec 10.1/10.2)"

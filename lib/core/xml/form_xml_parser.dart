@@ -146,6 +146,16 @@ class FormXmlParser {
       case 'newline':
         return const NewlineNode();
 
+      case 'action':
+        // board actions take the remaining height (Python
+        // `BoardXMLViewParser._parse_action`)
+        return ActionNode(
+          name: el.getAttribute('name') ?? '',
+          string: el.getAttribute('string'),
+          colspan: _colspan(el),
+          attrs: {'yexpand': 1, 'yfill': 1, ..._attributes(el)},
+        );
+
       case 'link':
         return LinkNode(colspan: _colspan(el), attrs: _attributes(el));
 

@@ -415,9 +415,6 @@ class AppLocalizationsDa extends AppLocalizations {
   String get globalSearch => 'Global søgning';
 
   @override
-  String get boardNotSupported => 'Dashboards understøttes endnu ikke.';
-
-  @override
   String get selectMenuEntry => 'Vælg et menupunkt';
 
   @override

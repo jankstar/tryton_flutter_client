@@ -266,7 +266,8 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
       await screen.switchView();
       await loadAccess?.call(relationModels(screen.model));
       final view = screen.currentView;
-      if (view?.viewType == 'tree' && resId == null) {
+      if ((view?.viewType == 'tree' || view?.viewType == 'list-form') &&
+          resId == null) {
         await _loadDomainParser(screen);
         await screen.searchFilter();
       } else if (view?.viewType == 'form' && screen.currentRecord == null) {
@@ -330,6 +331,7 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
           onClose: widget.onClose,
           closeOnSaveNew: widget.closeOnSaveNew,
         ),
+      // tree and list-form (cards) share the list shell
       _ => ListViewScreen(
           key: ObjectKey(view),
           screen: screen,

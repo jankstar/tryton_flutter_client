@@ -417,10 +417,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get globalSearch => 'Recherche globale';
 
   @override
-  String get boardNotSupported =>
-      'Les tableaux de bord ne sont pas encore pris en charge.';
-
-  @override
   String get selectMenuEntry => 'Choisissez une entrée de menu';
 
   @override

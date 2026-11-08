@@ -863,12 +863,6 @@ abstract class AppLocalizations {
   /// Menu, favorites, global search, tabs (spec 10.1/10.2)
   ///
   /// In en, this message translates to:
-  /// **'Dashboards are not supported yet.'**
-  String get boardNotSupported;
-
-  /// Menu, favorites, global search, tabs (spec 10.1/10.2)
-  ///
-  /// In en, this message translates to:
   /// **'Choose a menu entry'**
   String get selectMenuEntry;
 

@@ -224,6 +224,19 @@ class NewlineNode extends FormNode {
   const NewlineNode();
 }
 
+/// `<action name="<ir.action.act_window id>">` of a board (spec 9.7): a
+/// screen of the action in the board's grid (yexpand/yfill by default).
+class ActionNode extends FormNode {
+  /// Id (or XML id) of the act_window – also the key in `_actions`.
+  final String name;
+
+  /// Title instead of the action's name.
+  final String? string;
+  final int colspan;
+  const ActionNode({required this.name, this.string, this.colspan = 1, Map<String, dynamic> attrs = const {}})
+      : super(attrs);
+}
+
 class GroupNode extends FormNode {
   /// Columns; ≤ 0 = horizontal box (spec 9.2.2).
   final int col;

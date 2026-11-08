@@ -257,6 +257,29 @@ void main() {
       await save(tester);
       expect(rpc.named('model.test.form.write').single.params[1], {'day': const TrytonDate(2025, 3, 1)});
     });
+
+    testWidgets('time format PYSON-encoded by the server (ir.cron '
+        'next_call) and plain in the view', (tester) async {
+      final rpc = server(
+        '<form><field name="next_call"/><field name="at" format="%H:%M"/></form>',
+        {
+          'next_call': {
+            'type': 'datetime',
+            'string': 'Next call',
+            'format': '"%H:%M:%S"',
+          },
+          'at': {'type': 'time', 'string': 'At'},
+        },
+        {
+          'next_call': DateTime.utc(2026, 1, 31, 12, 0, 5),
+          'at': const TrytonTime(8, 30, 0, 0),
+        },
+      );
+      await pumpForm(tester, rpc, model: 'test.form', recordId: 1, preferences: german);
+      expect(tester.takeException(), isNull);
+      expect(textOf(tester, 'Next call'), matches(RegExp(r'^31\.01\.2026 \d\d:\d\d:05$')));
+      expect(textOf(tester, 'At'), '08:30');
+    });
   });
 
   group('link (E10)', () {

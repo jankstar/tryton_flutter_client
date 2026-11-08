@@ -416,9 +416,6 @@ class AppLocalizationsPl extends AppLocalizations {
   String get globalSearch => 'Wyszukiwanie globalne';
 
   @override
-  String get boardNotSupported => 'Pulpity nie są jeszcze obsługiwane.';
-
-  @override
   String get selectMenuEntry => 'Wybierz pozycję menu';
 
   @override

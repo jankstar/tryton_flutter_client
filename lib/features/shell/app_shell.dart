@@ -11,6 +11,7 @@ import '../tabs/user_chip.dart';
 import '../auth/preferences_dialog.dart';
 import '../views/record_menu.dart';
 import '../../core/screen/screen.dart';
+import '../views/board_view.dart';
 import '../views/screen_widget.dart';
 import '../views/wizard_widget.dart';
 import 'tab_manager.dart';
@@ -179,7 +180,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         builder: (_) => tab.wizard != null
             ? WizardWidget(wizard: tab.wizard!)
             : tab.isBoard
-                ? _BoardPlaceholder(title: tab.title)
+                ? BoardView(
+                    attributes: tab.attributes,
+                    title: tab.title,
+                    onClose: () =>
+                        ref.read(tabsProvider.notifier).requestCloseTab(tab.id),
+                  )
             : ScreenWidget(
           tabRoot: true,
           attributes: tab.attributes,
@@ -289,26 +295,3 @@ Future<void> pushFormScreen(
 }
 
 /// Board tabs (`board` view, E33) are not supported yet.
-class _BoardPlaceholder extends StatelessWidget {
-  final String title;
-  const _BoardPlaceholder({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: cs.surfaceContainerHighest,
-        scrolledUnderElevation: 0,
-        title: Text(title),
-      ),
-      body: Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.dashboard_outlined, size: 56, color: cs.outline),
-          const SizedBox(height: 12),
-          Text(context.l10n.boardNotSupported),
-        ]),
-      ),
-    );
-  }
-}

@@ -415,9 +415,6 @@ class AppLocalizationsFi extends AppLocalizations {
   String get globalSearch => 'Yleinen haku';
 
   @override
-  String get boardNotSupported => 'Koontinäyttöjä ei vielä tueta.';
-
-  @override
   String get selectMenuEntry => 'Valitse valikon kohta';
 
   @override

@@ -415,9 +415,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get globalSearch => 'Pesquisa global';
 
   @override
-  String get boardNotSupported => 'Painéis ainda não são suportados.';
-
-  @override
   String get selectMenuEntry => 'Escolha uma entrada do menu';
 
   @override

@@ -17,6 +17,7 @@ import 'csv_dialogs.dart';
 import 'record_menu.dart';
 import 'resource_dialogs.dart';
 import 'search_box.dart';
+import 'list_form_view.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 import 'tree_view.dart';
@@ -72,6 +73,14 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   TrytonScreen get _screen => widget.screen;
   String get _model => _screen.model.name;
   List<TreeRow> get _rows => _table.rows;
+
+  /// The view shows cards (`list-form`, spec 9.4) instead of a table.
+  bool get _listForm => _view?.viewType == 'list-form';
+
+  /// The records listed (rows of the table, cards of a list-form).
+  List<Record> get _listed => _listForm
+      ? _screen.group.toList()
+      : [for (final row in _rows) row.record];
 
   @override
   void initState() {
@@ -137,6 +146,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       _view = view;
       _tree = TreeXmlParser()
           .parse(view.definition.arch, view.definition.rawFields);
+    } else if (view != null && view.viewType == 'list-form') {
+      _view = view;
     }
     _loadToolbar(ref.read(modelServiceProvider));
   }
@@ -218,7 +229,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// Previous/next row becomes the selection (Python `display_prev/next`
   /// of a list).
   void _moveSelection({required bool next}) {
-    final rows = [for (final row in _rows) row.record];
+    final rows = _listed;
     if (rows.isEmpty) return;
     final current = _screen.selectedRecords.isEmpty
         ? -1
@@ -226,7 +237,16 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final index = current < 0
         ? (next ? 0 : rows.length - 1)
         : (current + (next ? 1 : -1)).clamp(0, rows.length - 1);
-    _table.select([rows[index]]);
+    _selectRecords([rows[index]]);
+  }
+
+  /// Selects [records] in the table or among the cards.
+  void _selectRecords(List<Record> records) {
+    if (!_listForm) return _table.select(records);
+    setState(() {
+      _screen.selectedRecords = records;
+      _screen.currentRecord = records.firstOrNull;
+    });
   }
 
   /// Logs / notes of the selected record (spec 11.5, 11.6).
@@ -252,9 +272,10 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     return {
       RecordAction.switchView: hasSelection ? _switchToForm : null,
       RecordAction.previous:
-          _rows.isEmpty ? null : () => _moveSelection(next: false),
-      RecordAction.next: _rows.isEmpty ? null : () => _moveSelection(next: true),
-      RecordAction.search: _searchFocus.requestFocus,
+          _listed.isEmpty ? null : () => _moveSelection(next: false),
+      RecordAction.next:
+          _listed.isEmpty ? null : () => _moveSelection(next: true),
+      RecordAction.search: _listForm ? null : _searchFocus.requestFocus,
       RecordAction.newRecord: _screen.canCreate ? _newRecord : null,
       RecordAction.save: _screen.modified() ? _saveList : null,
       RecordAction.reload: _search,
@@ -277,7 +298,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       RecordAction.export: () => showCsvExport(context,
           screen: _screen,
           name: widget.title,
-          listed: [for (final row in _rows) row.record]),
+          listed: _listed),
       RecordAction.import: _screen.canCreate ? _importCsv : null,
       RecordAction.close: () => widget.onClose?.call(),
     };
@@ -296,9 +317,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   Future<void> _newRecord() => _run(() async {
         if (!await _table.leaveRow(null)) return;
         final record = await _screen.newRecord();
-        // editable list: the new row at new_position is edited
+        // editable list: the new row at new_position is edited; a
+        // list-form selects the new card
         if (record != null && mounted && _editableView) {
           _table.edit(record);
+        } else if (record != null && mounted && _listForm) {
+          _selectRecords([record]);
         }
       });
 
@@ -307,7 +331,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// (same group and record).
   Future<void> _openRecord(Record record) => _whileOpening(() async {
         final screen = _screen;
-        _table.select([record]);
+        _selectRecords([record]);
         if ((_tree?.keywordOpen ?? false) && record.id >= 0) {
           // Keyword action of the record (one runs, several are offered).
           await ref.read(actionServiceProvider).execKeyword(
@@ -387,7 +411,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final screen = _screen;
     final ok = await _run(() async {
       final ids = await screen.copy();
-      _table.select([for (final id in ids) ?screen.group.get(id)]);
+      _selectRecords([for (final id in ids) ?screen.group.get(id)]);
     });
     if (ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -519,7 +543,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             enabled: hasSelection,
             exports: _toolbar.exports,
             onExport: (export) => runPredefinedExport(context, _screen, export,
-                listed: [for (final row in _rows) row.record]),
+                listed: _listed),
           ),
           ToolbarDropdownButton(
             key: _emailKey,
@@ -558,12 +582,13 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       ),
     );
 
-    // Layout: [context form] → search bar → tabs → table → status
+    // Layout: [context form] → search bar → tabs → table → status; a
+    // list-form is not searchable (Python `search_active`)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ?_buildContextForm(),
-        searchBar,
+        if (!_listForm) searchBar,
         if (screen.tabDomain.isNotEmpty) _buildTabBar(screen),
         Expanded(child: _buildListBody()),
         _buildStatus(screen),
@@ -685,15 +710,24 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     return Column(
       children: [
         Expanded(
-          child: TreeView(
-            screen: _screen,
-            view: view,
-            controller: _table,
-            displayStep: _displayStep,
-            onActivate: _openRecord,
-            onSelectionChanged: () => setState(() {}),
-            onEndReached: _searchMore,
-          ),
+          child: _listForm
+              ? ListFormView(
+                  screen: _screen,
+                  view: view,
+                  displayStep: _displayStep,
+                  onActivate: _openRecord,
+                  onSelectionChanged: () => setState(() {}),
+                  onEndReached: _searchMore,
+                )
+              : TreeView(
+                  screen: _screen,
+                  view: view,
+                  controller: _table,
+                  displayStep: _displayStep,
+                  onActivate: _openRecord,
+                  onSelectionChanged: () => setState(() {}),
+                  onEndReached: _searchMore,
+                ),
         ),
         if (_loading || _opening) const LinearProgressIndicator(),
       ],

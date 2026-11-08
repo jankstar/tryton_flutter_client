@@ -377,12 +377,11 @@ class RecordDateInput extends ConsumerWidget {
   String _formatOf(String dateFormat) {
     final field = args.field;
     dynamic time = args.node.format ?? field.description['format'];
-    if (time is String && time.startsWith('"')) {
-      try {
-        time = jsonDecode(time);
-      } catch (_) {}
+    // PYSON-encoded (the server sends `'"%H:%M:%S"'`, Python
+    // `time_format` = `expr_eval`); a plain strftime string is taken as is
+    if (time is! String || time.startsWith('"') || time.startsWith('{')) {
+      time = args.record.exprEval(time);
     }
-    time = args.record.exprEval(time);
     final timeFormat = time is String && time.isNotEmpty ? time : defaultTimeFormat;
     return switch (_type) {
       'date' => dateFormat,

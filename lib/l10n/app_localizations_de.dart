@@ -417,9 +417,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get globalSearch => 'Globale Suche';
 
   @override
-  String get boardNotSupported => 'Dashboards werden noch nicht unterstützt.';
-
-  @override
   String get selectMenuEntry => 'Wähle einen Menüeintrag';
 
   @override

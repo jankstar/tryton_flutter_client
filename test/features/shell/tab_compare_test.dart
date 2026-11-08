@@ -120,4 +120,29 @@ void main() {
     expect(await tabs.requestCloseAll(), isTrue);
     expect(tabs.state.tabs, isEmpty);
   });
+
+  test('boards: the same tab by model, view ids and context (Python '
+      '`Board.compare`)', () {
+    final tabs = TabsNotifier();
+    const board = ScreenAttributes('null',
+        mode: ['board'], viewIds: [153], context: {'company': 1});
+    tabs.openTab(title: 'Dashboard', attributes: board);
+    tabs.openTab(title: 'Other', model: 'party.party');
+    tabs.openTab(
+        title: 'Dashboard',
+        attributes: const ScreenAttributes('null',
+            mode: ['board'], viewIds: [153], context: {'company': 1}));
+    expect(tabs.state.tabs, hasLength(2), reason: 'activated');
+    expect(tabs.state.activeIndex, 0);
+    expect(tabs.state.tabs.first.isBoard, isTrue);
+    tabs.openTab(
+        title: 'Dashboard',
+        attributes: const ScreenAttributes('null',
+            mode: ['board'], viewIds: [153], context: {'company': 2}));
+    tabs.openTab(
+        title: 'Dashboard',
+        attributes: const ScreenAttributes('null',
+            mode: ['board'], viewIds: [154], context: {'company': 1}));
+    expect(tabs.state.tabs, hasLength(4), reason: 'other context / view');
+  });
 }

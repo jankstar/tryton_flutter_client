@@ -25,7 +25,7 @@ import '../serialization/tryton_serializer.dart';
 import '../xml/view_definition.dart';
 
 /// View types the client can show; others in `mode` are skipped.
-const supportedViewTypes = {'tree', 'form'};
+const supportedViewTypes = {'tree', 'form', 'list-form'};
 
 /// A tab of the screen container (`tab_domain`): name, domain and whether
 /// the number of records is shown (spec 8.4).
@@ -202,7 +202,7 @@ class ScreenView {
   /// `keyword_open`, `visual`, …).
   final Map<String, String> attributes;
 
-  /// Parsed form (form views only).
+  /// Parsed form (form and list-form views: the layout of a card).
   final FormRoot? formRoot;
 
   final bool _screenReadonly;
@@ -222,7 +222,7 @@ class ScreenView {
     return ScreenView._(
       definition,
       {for (final a in root.attributes) a.localName: a.value},
-      definition.type == 'form'
+      definition.type == 'form' || definition.type == 'list-form'
           ? FormXmlParser()
               .parse(definition.arch, fields: definition.rawFields)
           : null,
@@ -241,13 +241,16 @@ class ScreenView {
 
   bool _flag(String name) => (int.tryParse(attributes[name] ?? '') ?? 0) != 0;
 
-  /// Form: always; tree: `editable="1"` and screen not readonly.
+  /// Form and list-form (Python `ViewListForm.editable`): always; tree:
+  /// `editable="1"` and screen not readonly.
   bool get editable =>
-      viewType == 'form' || (_flag('editable') && !_screenReadonly);
+      viewType == 'form' ||
+      viewType == 'list-form' ||
+      (_flag('editable') && !_screenReadonly);
 
   /// Whether records can be created in this view.
   bool get creatable {
-    if (viewType == 'form') {
+    if (viewType == 'form' || viewType == 'list-form') {
       return attributes['creatable'] == null || _flag('creatable');
     }
     if (!editable) return false;
@@ -298,7 +301,8 @@ class TrytonScreen extends ChangeNotifier {
   final List<ScreenView> views = [];
   ScreenView? currentView;
 
-  /// Domain of the screen (`attributes.domain`).
+  /// Domain of the screen (`attributes.domain`); changed in place by
+  /// [updateDomain].
   final List<dynamic> domain;
   final dynamic contextDomain;
   final int? limit;
@@ -365,7 +369,7 @@ class TrytonScreen extends ChangeNotifier {
     : model = TrytonModel(attributes.model, session: session),
       _viewIds = [...attributes.viewIds],
       _viewToLoad = [...attributes.mode],
-      domain = attributes.domain,
+      domain = [...attributes.domain],
       contextDomain = attributes.contextDomain,
       limit = attributes.limit,
       order = attributes.order,
@@ -426,6 +430,19 @@ class TrytonScreen extends ChangeNotifier {
   void _onGroupChanged() => _notify();
 
   // ── Group ─────────────────────────────────────────────────────────────────
+
+  /// Replaces the screen domain (board actions: the selection of another
+  /// action, Python `Action.update_domain`); false when it is unchanged.
+  /// The caller searches again.
+  bool updateDomain(List<dynamic> newDomain) {
+    if (inversion.domainEquals(newDomain, domain)) return false;
+    domain
+      ..clear()
+      ..addAll(newDomain);
+    group.screenDomains.removeWhere((d) => identical(d, domain));
+    if (domain.isNotEmpty) group.screenDomains.add(domain);
+    return true;
+  }
 
   void _setGroup(RecordGroup newGroup) {
     newGroup.readonly = screenReadonly;
@@ -1333,7 +1350,9 @@ class TrytonScreen extends ChangeNotifier {
   }
 
   List<Record> get _selectedOrCurrent {
-    if (currentView?.viewType == 'tree' && selectedRecords.isNotEmpty) {
+    if ((currentView?.viewType == 'tree' ||
+            currentView?.viewType == 'list-form') &&
+        selectedRecords.isNotEmpty) {
       return [...selectedRecords];
     }
     final r = currentRecord;

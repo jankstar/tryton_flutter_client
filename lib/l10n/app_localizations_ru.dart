@@ -415,9 +415,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get globalSearch => 'Глобальный поиск';
 
   @override
-  String get boardNotSupported => 'Панели пока не поддерживаются.';
-
-  @override
   String get selectMenuEntry => 'Выберите пункт меню';
 
   @override

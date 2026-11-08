@@ -131,10 +131,14 @@ class ActionService {
           data: data,
           context: ctx,
         );
-        if (attributes.model.isEmpty || attributes.model == 'null') return;
+        // a board (spec 9.7) has no model of its own
+        final board = attributes.mode.firstOrNull == 'board';
+        if (!board && (attributes.model.isEmpty || attributes.model == 'null')) {
+          return;
+        }
         // Without action name: the translated model name (MODELNAME).
         var baseName = name;
-        if (baseName.isEmpty) {
+        if (baseName.isEmpty && !board) {
           baseName = await _svc.metadata?.name(attributes.model) ?? '';
           if (baseName.isEmpty) baseName = attributes.model;
         }

@@ -414,9 +414,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get globalSearch => 'Global sökning';
 
   @override
-  String get boardNotSupported => 'Instrumentpaneler stöds inte ännu.';
-
-  @override
   String get selectMenuEntry => 'Välj en menypost';
 
   @override

@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/screen/screen.dart';
+import '../../core/serialization/tryton_serializer.dart';
 import '../../core/wizard/wizard.dart';
 
 /// One open tab in the app shell – a screen of a model (spec 8.1), opened
@@ -29,7 +32,7 @@ class AppTab {
 
   String get model => attributes.model;
 
-  /// Board views (`board`) are not supported yet (E33): placeholder.
+  /// A board tab (spec 9.7): the first view is a `board`.
   bool get isBoard =>
       wizard == null &&
       attributes.mode.isNotEmpty &&
@@ -150,7 +153,7 @@ class TabsNotifier extends StateNotifier<TabsState> {
       for (var i = 0; i < state.tabs.length; i++) {
         final tab = state.tabs[i];
         if (tab.wizard == null &&
-            tab.attributes.sameAs(attrs) &&
+            _sameTab(tab.attributes, attrs) &&
             (_firstView[tab.id]?.call() ?? true)) {
           activateTab(i);
           return;
@@ -165,6 +168,21 @@ class TabsNotifier extends StateNotifier<TabsState> {
     );
     final newTabs = [...state.tabs, tab];
     state = state.copyWith(tabs: newTabs, activeIndex: newTabs.length - 1);
+  }
+
+  /// Same tab: boards by model, view ids and context (Python
+  /// `Board.compare`), screens by all their attributes.
+  static bool _sameTab(ScreenAttributes a, ScreenAttributes b) {
+    bool board(ScreenAttributes x) => x.mode.firstOrNull == 'board';
+    if (board(a) || board(b)) {
+      String enc(dynamic v) => jsonEncode(TrytonSerializer.encode(v));
+      return board(a) &&
+          board(b) &&
+          a.model == b.model &&
+          enc(a.viewIds) == enc(b.viewIds) &&
+          enc(a.context) == enc(b.context);
+    }
+    return a.sameAs(b);
   }
 
   void closeTab(String id) {
