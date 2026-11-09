@@ -98,9 +98,18 @@ class TrytonSession {
     } catch (_) {
       // Spec 2.5.6: errors are ignored.
     } finally {
-      await _store.delete();
+      await _store.delete(_currentKey);
       _clear();
     }
+  }
+
+  /// Key of the session open now (null: none).
+  String? get _currentKey {
+    final auth = rpcClient.auth;
+    final db = database;
+    return auth == null || db == null
+        ? null
+        : sessionKey(auth.login, rpcClient.baseUrl, db);
   }
 
   // ─── Context reload (like SAO's reload_context) ──────────────────────────
@@ -171,9 +180,9 @@ class TrytonSession {
   /// Returns true when the session is valid. An expired/invalid token
   /// (HTTP 401/403) is deleted; on other errors (server unreachable) it is
   /// kept for the next start.
-  Future<bool> restore() async {
+  Future<bool> restore([String? key]) async {
     await _removeLegacySession();
-    final stored = await _store.read();
+    final stored = await _store.read(key);
     if (stored == null) return false;
 
     rpcClient.baseUrl = stored.baseUrl;
@@ -193,7 +202,9 @@ class TrytonSession {
       _mergeContext(prefs);
       return true;
     } on RpcHttpException catch (e) {
-      if (e.statusCode == 401 || e.statusCode == 403) await _store.delete();
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await _store.delete(stored.key);
+      }
       _clear();
       return false;
     } catch (_) {
@@ -203,7 +214,7 @@ class TrytonSession {
   }
 
   /// The login form pre-fill (server, database, user) of the stored session.
-  Future<StoredSession?> storedSession() => _store.read();
+  Future<StoredSession?> storedSession([String? key]) => _store.read(key);
 
   Future<void> _removeLegacySession() async {
     try {
@@ -237,10 +248,8 @@ class TrytonSession {
   /// Storage key of a device cookie, like the Python client:
   /// `login@host:port/database`, so two servers with the same database
   /// name do not share a cookie.
-  static String deviceCookieKey(String login, String baseUrl, String db) {
-    final uri = Uri.parse(baseUrl);
-    return '$login@${uri.host}:${uri.port}/$db';
-  }
+  static String deviceCookieKey(String login, String baseUrl, String db) =>
+      sessionKey(login, baseUrl, db);
 
   Future<String?> _loadDeviceCookie(String db, String username) async {
     final cookies = await _loadAllDeviceCookies();

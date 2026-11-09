@@ -794,6 +794,11 @@ class TrytonScreen extends ChangeNotifier {
 
   late List<dynamic>? _initialSearchValue = attributes.searchValue;
 
+  /// The search as domain (URL of the screen, Python `get_url`): the
+  /// action's `search_value` before the first search, else the parsed
+  /// search text.
+  List<dynamic> get searchValue => _searchPart(null);
+
   /// Domain of the search text: parsed by [domainParser] (or the action's
   /// `search_value` for the first search), without parser `rec_name ilike`.
   List<dynamic> _searchPart(String? text) {

@@ -28,12 +28,14 @@ enum RecordAction {
   revision,
   attach,
   note,
+  chat,
   action,
   relate,
   print,
   email,
   export,
   import,
+  copyUrl,
   close,
 }
 
@@ -42,9 +44,9 @@ const recordMenuGroups = [
   [RecordAction.switchView, RecordAction.previous, RecordAction.next, RecordAction.search],
   [RecordAction.newRecord, RecordAction.save, RecordAction.reload, RecordAction.copy, RecordAction.delete],
   [RecordAction.logs, RecordAction.revision],
-  [RecordAction.attach, RecordAction.note, RecordAction.action, RecordAction.relate],
+  [RecordAction.attach, RecordAction.note, RecordAction.chat, RecordAction.action, RecordAction.relate],
   [RecordAction.print, RecordAction.email],
-  [RecordAction.export, RecordAction.import],
+  [RecordAction.export, RecordAction.import, RecordAction.copyUrl],
   [RecordAction.close],
 ];
 
@@ -78,7 +80,9 @@ SingleActivator? recordShortcut(RecordAction action) => switch (action) {
       RecordAction.logs ||
       RecordAction.revision ||
       RecordAction.export ||
-      RecordAction.import =>
+      RecordAction.import ||
+      RecordAction.chat ||
+      RecordAction.copyUrl =>
         null,
     };
 
@@ -103,6 +107,8 @@ String recordActionLabel(AppLocalizations l, RecordAction action) =>
       RecordAction.email => l.menuEmail,
       RecordAction.export => l.exportData,
       RecordAction.import => l.importData,
+      RecordAction.chat => l.chat,
+      RecordAction.copyUrl => l.copyUrl,
       RecordAction.close => l.menuCloseTab,
     };
 
@@ -127,6 +133,8 @@ String recordActionLabel(AppLocalizations l, RecordAction action) =>
       RecordAction.email => ('tryton-email', Icons.email_outlined),
       RecordAction.export => ('tryton-export', Icons.file_download_outlined),
       RecordAction.import => ('tryton-import', Icons.file_upload_outlined),
+      RecordAction.chat => ('tryton-chat', Icons.forum_outlined),
+      RecordAction.copyUrl => ('tryton-public', Icons.public),
       RecordAction.close => ('tryton-close', Icons.close),
     };
 

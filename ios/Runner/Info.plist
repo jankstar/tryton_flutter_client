@@ -68,5 +68,20 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- tryton:// links (spec 12.7) handled by app_links, not by the
+	     Flutter router -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>org.tryton.url</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tryton</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 </dict>
 </plist>

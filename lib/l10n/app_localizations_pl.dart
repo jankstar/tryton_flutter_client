@@ -893,4 +893,82 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get noAttachment => 'Brak załącznika.';
+
+  @override
+  String get profile => 'Profil';
+
+  @override
+  String get editProfiles => 'Edytuj profile…';
+
+  @override
+  String get profiles => 'Profile';
+
+  @override
+  String get profileName => 'Nazwa profilu';
+
+  @override
+  String get newProfile => 'Nowy profil';
+
+  @override
+  String get deleteProfile => 'Usuń profil';
+
+  @override
+  String get renameProfile => 'Zmień nazwę';
+
+  @override
+  String get profileNameTaken => 'Ta nazwa profilu jest już używana.';
+
+  @override
+  String get incompatibleServer => 'Niezgodna wersja serwera.';
+
+  @override
+  String get couldNotConnect => 'Nie można połączyć się z serwerem.';
+
+  @override
+  String get copyUrl => 'Kopiuj URL';
+
+  @override
+  String get urlCopied => 'Skopiowano URL.';
+
+  @override
+  String get openTrytonUrl => 'Otwórz URL Tryton';
+
+  @override
+  String urlOtherProfile(Object target, Object profile) {
+    return 'URL należy do $target. Zalogować się profilem \"$profile\"?';
+  }
+
+  @override
+  String urlNoProfile(Object target) {
+    return 'URL należy do $target; brak profilu dla niego.';
+  }
+
+  @override
+  String get chat => 'Czat';
+
+  @override
+  String get chatInternal => 'Oznacz jako wiadomość wewnętrzną';
+
+  @override
+  String get chatInternalTag => 'wewnętrzna';
+
+  @override
+  String get chatFollowers => 'Pokaż obserwujących';
+
+  @override
+  String get chatSubscribe => 'Subskrybuj';
+
+  @override
+  String get chatUnsubscribe => 'Anuluj subskrypcję';
+
+  @override
+  String get chatAddFollower => 'Dodaj obserwującego';
+
+  @override
+  String chatUnsubscribeQuestion(Object name) {
+    return 'Czy na pewno wypisać \"$name\" z tego kanału?';
+  }
+
+  @override
+  String get chatEmpty => 'Brak wiadomości.';
 }

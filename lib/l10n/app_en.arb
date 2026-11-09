@@ -943,5 +943,66 @@
   "attachmentPreview": "Attachment preview",
   "@attachmentPreview": {},
   "noAttachment": "No attachment.",
-  "@noAttachment": {}
+  "@noAttachment": {},
+  "profile": "Profile",
+  "@profile": {},
+  "editProfiles": "Edit profiles…",
+  "@editProfiles": {},
+  "profiles": "Profiles",
+  "@profiles": {},
+  "profileName": "Profile name",
+  "@profileName": {},
+  "newProfile": "New profile",
+  "@newProfile": {},
+  "deleteProfile": "Delete profile",
+  "@deleteProfile": {},
+  "renameProfile": "Rename",
+  "@renameProfile": {},
+  "profileNameTaken": "This profile name is already used.",
+  "@profileNameTaken": {},
+  "incompatibleServer": "Incompatible version of the server.",
+  "@incompatibleServer": {},
+  "couldNotConnect": "Could not connect to the server.",
+  "@couldNotConnect": {},
+  "copyUrl": "Copy URL",
+  "@copyUrl": {},
+  "urlCopied": "URL copied.",
+  "@urlCopied": {},
+  "openTrytonUrl": "Open Tryton URL",
+  "@openTrytonUrl": {},
+  "urlOtherProfile": "The URL belongs to {target}. Log in with profile \"{profile}\"?",
+  "@urlOtherProfile": {
+    "placeholders": {
+      "target": {},
+      "profile": {}
+    }
+  },
+  "urlNoProfile": "The URL belongs to {target}; there is no profile for it.",
+  "@urlNoProfile": {
+    "placeholders": {
+      "target": {}
+    }
+  },
+  "chat": "Chat",
+  "@chat": {},
+  "chatInternal": "Make this an internal message",
+  "@chatInternal": {},
+  "chatInternalTag": "internal",
+  "@chatInternalTag": {},
+  "chatFollowers": "Show followers",
+  "@chatFollowers": {},
+  "chatSubscribe": "Subscribe",
+  "@chatSubscribe": {},
+  "chatUnsubscribe": "Unsubscribe",
+  "@chatUnsubscribe": {},
+  "chatAddFollower": "Add a follower",
+  "@chatAddFollower": {},
+  "chatUnsubscribeQuestion": "Are you sure to unsubscribe \"{name}\" from this channel?",
+  "@chatUnsubscribeQuestion": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "chatEmpty": "No messages yet.",
+  "@chatEmpty": {}
 }

@@ -25,6 +25,8 @@ import 'resource_dialogs.dart';
 import 'record_widget_values.dart';
 import '../../core/l10n/locale_provider.dart';
 import 'email_dialog.dart';
+import '../actions/url_opener.dart';
+import 'chat_panel.dart';
 
 /// Server-driven form – loads the view definition via
 /// `fields_view_get` and renders layout, groups and tabs dynamically.
@@ -230,6 +232,10 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
     // Translated model display name from ir.model (cached per model)
     await _loadModelDisplayName(svc);
+
+    // Chat only for the models of MODELCHAT (spec 14.2)
+    final hasChat = await svc.metadata?.hasChat(_model) ?? false;
+    if (mounted && hasChat != _hasChat) setState(() => _hasChat = hasChat);
   }
 
   /// Attachment and note counters (`resources`, without error dialog).
@@ -718,6 +724,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       if (_hasHistory) RecordAction.revision: idle && saved ? _revisions : null,
       RecordAction.attach: menu(_attachKey, _resourceRef != null),
       RecordAction.note: saved ? _openNote : null,
+      if (_hasChat) RecordAction.chat: saved ? _toggleChat : null,
       RecordAction.action: menu(_actionKey,
           saved && (_toolbar.actions.isNotEmpty || keyword('action').isNotEmpty)),
       RecordAction.relate: menu(_relateKey,
@@ -729,6 +736,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       RecordAction.email: idle && saved ? _email : null,
       RecordAction.export: idle ? _exportCsv : null,
       RecordAction.import: idle && _screen.canCreate ? _importCsv : null,
+      RecordAction.copyUrl: () =>
+          copyScreenUrl(context, ref, _screen, widget.title),
       RecordAction.close: () => widget.onClose?.call(),
     };
   }
@@ -883,6 +892,14 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             unread: (resources?['note_unread'] as num?)?.toInt() ?? 0,
             onPressed: actions[RecordAction.note],
           ),
+          if (_hasChat)
+            IconButton(
+              key: const ValueKey('chat-button'),
+              icon: const Icon(Icons.forum_outlined), // tryton-chat
+              tooltip: context.l10n.chat,
+              isSelected: _chat,
+              onPressed: actions[RecordAction.chat],
+            ),
 
           // ── Action / Relate / Print / Email ──────────────────────────
           // Always shown like in SAO original (disabled when not
@@ -1015,25 +1032,73 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// The attachment preview is shown beside the form (spec 10.5).
   bool _preview = false;
 
-  /// [body] with the attachment preview at its right side (wide windows).
+  /// The model has a chat (MODELCHAT) / the chat is shown (spec 14.2).
+  bool _hasChat = false;
+  bool _chat = false;
+
+  bool get _wide => MediaQuery.sizeOf(context).width >= 900;
+
+  /// `<model>,<id>` of the saved record (chat), else null.
+  String? get _chatResource {
+    final record = _record;
+    return record == null || record.id < 0 ? null : '$_model,${record.id}';
+  }
+
+  /// Chat (Python `Form.sig_chat`): the side panel on wide windows, a
+  /// bottom sheet on narrow ones (mobile).
+  Future<void> _toggleChat() async {
+    final resource = _chatResource;
+    if (resource == null) return;
+    if (_wide) {
+      setState(() => _chat = !_chat);
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SizedBox(
+        height: MediaQuery.sizeOf(ctx).height * 0.8,
+        child: ChatPanel(
+            resource: resource, onClose: () => Navigator.of(ctx).pop()),
+      ),
+    );
+  }
+
+  /// [body] with the side panel (spec 10.5): attachment preview and chat
+  /// at the right (wide windows), the preview below the form otherwise.
   Widget _withPreview(Widget body) {
     final resource = _resourceRef;
-    if (!_preview || resource == null) return body;
-    final wide = MediaQuery.sizeOf(context).width >= 900;
-    final panel = AttachmentPreviewPanel(
-      resource: resource,
-      revision: (_resources?['attachment_count'] as num?)?.toInt() ?? 0,
-      onClose: () => setState(() => _preview = false),
-    );
-    // narrow windows: the preview below the form
+    final chatResource = _chatResource;
+    final wide = _wide;
+    final panels = [
+      if (_preview && resource != null)
+        AttachmentPreviewPanel(
+          resource: resource,
+          revision: (_resources?['attachment_count'] as num?)?.toInt() ?? 0,
+          onClose: () => setState(() => _preview = false),
+        ),
+      if (_chat && wide && chatResource != null)
+        // a new record: another channel (the panel follows `resource`)
+        ChatPanel(
+          resource: chatResource,
+          onClose: () => setState(() => _chat = false),
+        ),
+    ];
+    if (panels.isEmpty) return body;
     return wide
         ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(child: body),
-            SizedBox(width: 380, child: panel),
+            SizedBox(
+              width: 380,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [for (final p in panels) Expanded(child: p)],
+              ),
+            ),
           ])
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(flex: 3, child: body),
-            Expanded(flex: 2, child: panel),
+            Expanded(flex: 2, child: panels.first),
           ]);
   }
 

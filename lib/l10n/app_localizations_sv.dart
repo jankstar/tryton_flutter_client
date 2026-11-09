@@ -891,4 +891,82 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get noAttachment => 'Ingen bilaga.';
+
+  @override
+  String get profile => 'Profil';
+
+  @override
+  String get editProfiles => 'Redigera profiler…';
+
+  @override
+  String get profiles => 'Profiler';
+
+  @override
+  String get profileName => 'Profilnamn';
+
+  @override
+  String get newProfile => 'Ny profil';
+
+  @override
+  String get deleteProfile => 'Ta bort profil';
+
+  @override
+  String get renameProfile => 'Byt namn';
+
+  @override
+  String get profileNameTaken => 'Profilnamnet används redan.';
+
+  @override
+  String get incompatibleServer => 'Inkompatibel serverversion.';
+
+  @override
+  String get couldNotConnect => 'Kunde inte ansluta till servern.';
+
+  @override
+  String get copyUrl => 'Kopiera URL';
+
+  @override
+  String get urlCopied => 'URL kopierad.';
+
+  @override
+  String get openTrytonUrl => 'Öppna Tryton-URL';
+
+  @override
+  String urlOtherProfile(Object target, Object profile) {
+    return 'URL:en hör till $target. Logga in med profilen \"$profile\"?';
+  }
+
+  @override
+  String urlNoProfile(Object target) {
+    return 'URL:en hör till $target; det finns ingen profil för den.';
+  }
+
+  @override
+  String get chat => 'Chatt';
+
+  @override
+  String get chatInternal => 'Gör detta till ett internt meddelande';
+
+  @override
+  String get chatInternalTag => 'intern';
+
+  @override
+  String get chatFollowers => 'Visa följare';
+
+  @override
+  String get chatSubscribe => 'Prenumerera';
+
+  @override
+  String get chatUnsubscribe => 'Avsluta prenumeration';
+
+  @override
+  String get chatAddFollower => 'Lägg till följare';
+
+  @override
+  String chatUnsubscribeQuestion(Object name) {
+    return 'Vill du verkligen avregistrera \"$name\" från den här kanalen?';
+  }
+
+  @override
+  String get chatEmpty => 'Inga meddelanden än.';
 }

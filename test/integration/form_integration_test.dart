@@ -246,8 +246,12 @@ void main() {
     final shown = texts();
     expect(shown.any(time.hasMatch), isTrue,
         reason: 'time column %H:%M:%S.%f');
-    expect(shown.any((t) => RegExp(r'^\d\d\.\d\d\.\d{4}$').hasMatch(t)),
-        isTrue, reason: 'date column in the locale date format');
+    // (the locale date format of the user: German 31.12.2026 or English
+    // 12/31/2026 – the language of admin is set on the server)
+    expect(
+        shown.any((t) => RegExp(r'^\d\d[./-]\d\d[./-]\d{4}$').hasMatch(t)),
+        isTrue,
+        reason: 'date column in the locale date format');
     expect(shown.any((t) => t.endsWith(':') && t.length > 1), isTrue,
         reason: 'reference: model label before the rec_name');
   });

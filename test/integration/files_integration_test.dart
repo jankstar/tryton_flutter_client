@@ -34,11 +34,11 @@ const _database = 'tryton';
 
 class _NoStore implements SessionStore {
   @override
-  Future<StoredSession?> read() async => null;
+  Future<StoredSession?> read([String? key]) async => null;
   @override
   Future<void> write(StoredSession session) async {}
   @override
-  Future<void> delete() async {}
+  Future<void> delete([String? key]) async {}
 }
 
 /// Records written/opened files instead of opening them on the machine.

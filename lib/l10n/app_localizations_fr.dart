@@ -895,4 +895,82 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noAttachment => 'Aucune pièce jointe.';
+
+  @override
+  String get profile => 'Profil';
+
+  @override
+  String get editProfiles => 'Modifier les profils…';
+
+  @override
+  String get profiles => 'Profils';
+
+  @override
+  String get profileName => 'Nom du profil';
+
+  @override
+  String get newProfile => 'Nouveau profil';
+
+  @override
+  String get deleteProfile => 'Supprimer le profil';
+
+  @override
+  String get renameProfile => 'Renommer';
+
+  @override
+  String get profileNameTaken => 'Ce nom de profil est déjà utilisé.';
+
+  @override
+  String get incompatibleServer => 'Version du serveur incompatible.';
+
+  @override
+  String get couldNotConnect => 'Impossible de se connecter au serveur.';
+
+  @override
+  String get copyUrl => 'Copier l\'URL';
+
+  @override
+  String get urlCopied => 'URL copiée.';
+
+  @override
+  String get openTrytonUrl => 'Ouvrir une URL Tryton';
+
+  @override
+  String urlOtherProfile(Object target, Object profile) {
+    return 'L\'URL appartient à $target. Se connecter avec le profil « $profile » ?';
+  }
+
+  @override
+  String urlNoProfile(Object target) {
+    return 'L\'URL appartient à $target ; aucun profil n\'existe pour elle.';
+  }
+
+  @override
+  String get chat => 'Discussion';
+
+  @override
+  String get chatInternal => 'En faire un message interne';
+
+  @override
+  String get chatInternalTag => 'interne';
+
+  @override
+  String get chatFollowers => 'Afficher les abonnés';
+
+  @override
+  String get chatSubscribe => 'S\'abonner';
+
+  @override
+  String get chatUnsubscribe => 'Se désabonner';
+
+  @override
+  String get chatAddFollower => 'Ajouter un abonné';
+
+  @override
+  String chatUnsubscribeQuestion(Object name) {
+    return 'Désabonner « $name » de ce canal ?';
+  }
+
+  @override
+  String get chatEmpty => 'Aucun message pour l\'instant.';
 }

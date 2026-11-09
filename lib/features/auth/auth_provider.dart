@@ -93,9 +93,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Resumes the session stored in secure storage (task A8). On success
   /// the state becomes authenticated (login screen navigates to the app);
   /// otherwise the login screen stays, pre-filled by the caller.
-  Future<bool> tryRestore() async {
+  Future<bool> tryRestore([String? key]) async {
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
-    final ok = await _session.restore();
+    final ok = await _session.restore(key);
     state = state.copyWith(
         status: ok ? AuthStatus.authenticated : AuthStatus.unauthenticated);
     return ok;

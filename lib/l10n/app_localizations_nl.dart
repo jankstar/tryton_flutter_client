@@ -892,4 +892,82 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get noAttachment => 'Geen bijlage.';
+
+  @override
+  String get profile => 'Profiel';
+
+  @override
+  String get editProfiles => 'Profielen bewerken…';
+
+  @override
+  String get profiles => 'Profielen';
+
+  @override
+  String get profileName => 'Profielnaam';
+
+  @override
+  String get newProfile => 'Nieuw profiel';
+
+  @override
+  String get deleteProfile => 'Profiel verwijderen';
+
+  @override
+  String get renameProfile => 'Hernoemen';
+
+  @override
+  String get profileNameTaken => 'Deze profielnaam wordt al gebruikt.';
+
+  @override
+  String get incompatibleServer => 'Incompatibele serverversie.';
+
+  @override
+  String get couldNotConnect => 'Kan geen verbinding maken met de server.';
+
+  @override
+  String get copyUrl => 'URL kopiëren';
+
+  @override
+  String get urlCopied => 'URL gekopieerd.';
+
+  @override
+  String get openTrytonUrl => 'Tryton-URL openen';
+
+  @override
+  String urlOtherProfile(Object target, Object profile) {
+    return 'De URL hoort bij $target. Aanmelden met profiel \"$profile\"?';
+  }
+
+  @override
+  String urlNoProfile(Object target) {
+    return 'De URL hoort bij $target; daar is geen profiel voor.';
+  }
+
+  @override
+  String get chat => 'Chat';
+
+  @override
+  String get chatInternal => 'Maak dit een intern bericht';
+
+  @override
+  String get chatInternalTag => 'intern';
+
+  @override
+  String get chatFollowers => 'Volgers tonen';
+
+  @override
+  String get chatSubscribe => 'Abonneren';
+
+  @override
+  String get chatUnsubscribe => 'Afmelden';
+
+  @override
+  String get chatAddFollower => 'Volger toevoegen';
+
+  @override
+  String chatUnsubscribeQuestion(Object name) {
+    return 'Weet u zeker dat u \"$name\" van dit kanaal wilt afmelden?';
+  }
+
+  @override
+  String get chatEmpty => 'Nog geen berichten.';
 }

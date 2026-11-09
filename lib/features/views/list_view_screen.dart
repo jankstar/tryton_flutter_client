@@ -24,6 +24,7 @@ import 'record_widget_values.dart';
 import 'tree_view.dart';
 import 'email_dialog.dart';
 import '../shell/tab_manager.dart';
+import '../actions/url_opener.dart';
 
 export 'tree_view.dart' show clearListCaches;
 
@@ -372,6 +373,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           name: widget.title,
           listed: _listed),
       RecordAction.import: _screen.canCreate ? _importCsv : null,
+      RecordAction.copyUrl: () =>
+          copyScreenUrl(context, ref, _screen, widget.title),
       RecordAction.close: () => widget.onClose?.call(),
     };
   }

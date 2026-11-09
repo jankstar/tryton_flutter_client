@@ -3,10 +3,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'auth_provider.dart';
+import 'profile_editor.dart';
+import '../../../core/session/profiles.dart';
 import '../../../core/l10n/locale_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/screen/tryton_url.dart';
+import '../actions/url_opener.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,8 +18,6 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-const _keyServerUrl = 'login_server_url';
-const _keyDatabase  = 'login_database';
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -28,32 +29,103 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _passwordObscured = true;
 
-  // Locale only for this screen – completely isolated from the app locale.
+  // Locale only for this screen – completely isolated from the app locale;
+  // kept in `shared_preferences` for the next start.
   Locale _loginLocale = const Locale('en');
+  static const _loginLanguageKey = 'tryton_login_language';
+
+  /// Connection profiles (spec 3.1, H6) and the one selected.
+  late final ProfileStore _profileStore = ProfileStore(
+      storedLogin: () async =>
+          (await ref.read(sessionProvider).storedSession())?.login);
+  List<ConnectionProfile> _profiles = const [];
+  String? _profileName;
 
   @override
   void initState() {
     super.initState();
     _loadSavedValues().then((_) {
-      if (mounted) ref.read(authProvider.notifier).tryRestore();
+      if (mounted) _restore(_profile);
     });
   }
 
+  /// The profiles (the former settings migrated on the first start) and
+  /// the one used last; then the session of that profile is resumed.
   Future<void> _loadSavedValues() async {
     final prefs = await SharedPreferences.getInstance();
-    final url = prefs.getString(_keyServerUrl);
-    final db  = prefs.getString(_keyDatabase);
-    if (url != null && url.isNotEmpty) _serverCtrl.text = url;
-    if (db  != null && db.isNotEmpty)  _dbCtrl.text  = db;
-    // Pre-fill the user of the stored session (token itself stays secret).
-    final stored = await ref.read(sessionProvider).storedSession();
-    if (stored != null && _userCtrl.text.isEmpty) _userCtrl.text = stored.login;
+    final code = prefs.getString(_loginLanguageKey);
+    if (code != null && localeNames.containsKey(code) && mounted) {
+      setState(() => _loginLocale = Locale(code));
+    }
+    final profiles = await _profileStore.load();
+    final last = await _profileStore.last();
+    if (!mounted) return;
+    setState(() => _profiles = profiles);
+    final profile = _profileForPendingUrl() ??
+        profiles.where((p) => p.name == last).firstOrNull ??
+        profiles.firstOrNull;
+    if (profile != null) _apply(profile);
   }
 
-  Future<void> _saveValues() async {
+  /// The language of the login screen, kept for the next start.
+  Future<void> _setLoginLocale(Locale locale) async {
+    setState(() => _loginLocale = locale);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyServerUrl, _serverCtrl.text.trim());
-    await prefs.setString(_keyDatabase,  _dbCtrl.text.trim());
+    await prefs.setString(_loginLanguageKey, locale.languageCode);
+  }
+
+  /// The profile of a tryton:// link waiting for the login (E7).
+  ConnectionProfile? _profileForPendingUrl() {
+    final pending = ref.read(pendingTrytonUrlProvider);
+    final url = pending == null ? null : TrytonUrl.parse(pending);
+    return url == null ? null : profileFor(url, _profiles);
+  }
+
+  /// [profile]'s server, database and user in the form.
+  void _apply(ConnectionProfile profile) {
+    setState(() => _profileName = profile.name);
+    _serverCtrl.text = profile.serverUrl;
+    _dbCtrl.text = profile.database;
+    _userCtrl.text = profile.login;
+    _passCtrl.clear();
+  }
+
+  /// The session of [profile] (`login@host:port/db`, A8) is resumed.
+  Future<void> _restore(ConnectionProfile? profile) =>
+      ref.read(authProvider.notifier).tryRestore(profile?.sessionKeyOrNull);
+
+  ConnectionProfile? get _profile =>
+      _profiles.where((p) => p.name == _profileName).firstOrNull;
+
+  /// After a login: the profile keeps the server, database and user
+  /// used, and is the one preselected at the next start.
+  Future<void> _saveValues() async {
+    final current = _profile ??
+        ConnectionProfile(
+            name: ProfileStore.uniqueName(_profiles, ProfileStore.defaultName));
+    final profile = current.copyWith(
+      serverUrl: _serverCtrl.text.trim(),
+      database: _dbCtrl.text.trim(),
+      login: _userCtrl.text.trim(),
+    );
+    _profiles = ProfileStore.put(_profiles, profile);
+    await _profileStore.save(_profiles);
+    await _profileStore.setLast(profile.name);
+  }
+
+  Future<void> _editProfiles() async {
+    final result = await showProfileEditor(context,
+        profiles: _profiles, selected: _profileName);
+    if (result == null || !mounted) return;
+    await _profileStore.save(result.profiles);
+    if (!mounted) return;
+    setState(() => _profiles = result.profiles);
+    final selected =
+        result.profiles.where((p) => p.name == result.selected).firstOrNull;
+    if (selected != null) {
+      _apply(selected);
+      await _profileStore.setLast(selected.name);
+    }
   }
 
   @override
@@ -69,6 +141,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+
+    // a tryton:// link arriving at the login screen: its profile
+    ref.listen<String?>(pendingTrytonUrlProvider, (_, url) {
+      final profile = _profileForPendingUrl();
+      if (url != null && profile != null && profile.name != _profileName) {
+        _apply(profile);
+        _restore(profile);
+      }
+    });
 
     ref.listen(authProvider, (_, next) {
       if (next.status == AuthStatus.authenticated) {
@@ -106,7 +187,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _LanguageSelector(
                         current: _loginLocale,
                         onChanged: (locale) =>
-                            setState(() => _loginLocale = locale),
+                            _setLoginLocale(locale),
+                      ),
+                      const SizedBox(height: 12),
+                      _ProfileField(
+                        profiles: _profiles,
+                        selected: _profileName,
+                        onChanged: (profile) {
+                          _apply(profile);
+                          _profileStore.setLast(profile.name);
+                          _restore(profile);
+                        },
+                        onEdit: _editProfiles,
                       ),
                       const SizedBox(height: 12),
                       _ServerField(ctrl: _serverCtrl, auth: auth),
@@ -272,6 +364,56 @@ class _LanguageSelector extends StatelessWidget {
         if (code != null) onChanged(Locale(code));
       },
     );
+  }
+}
+
+// ─── Profile field ────────────────────────────────────────────────────────────
+
+/// Profile selection (spec 3.1, H6) with „Edit profiles…“.
+class _ProfileField extends StatelessWidget {
+  final List<ConnectionProfile> profiles;
+  final String? selected;
+  final ValueChanged<ConnectionProfile> onChanged;
+  final VoidCallback onEdit;
+
+  const _ProfileField({
+    required this.profiles,
+    required this.selected,
+    required this.onChanged,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Row(children: [
+      Expanded(
+        child: DropdownButtonFormField<String>(
+          key: ValueKey('login-profile-$selected-${profiles.length}'),
+          isExpanded: true,
+          initialValue:
+              profiles.any((p) => p.name == selected) ? selected : null,
+          decoration: InputDecoration(
+            labelText: l.profile,
+            prefixIcon: const Icon(Icons.bookmarks_outlined),
+          ),
+          items: [
+            for (final p in profiles)
+              DropdownMenuItem(value: p.name, child: Text(p.name)),
+          ],
+          onChanged: (name) {
+            final p = profiles.where((p) => p.name == name).firstOrNull;
+            if (p != null) onChanged(p);
+          },
+        ),
+      ),
+      IconButton(
+        key: const ValueKey('login-edit-profiles'),
+        icon: const Icon(Icons.edit_note),
+        tooltip: l.editProfiles,
+        onPressed: onEdit,
+      ),
+    ]);
   }
 }
 

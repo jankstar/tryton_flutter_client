@@ -892,4 +892,82 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get noAttachment => 'Ei liitettä.';
+
+  @override
+  String get profile => 'Profiili';
+
+  @override
+  String get editProfiles => 'Muokkaa profiileja…';
+
+  @override
+  String get profiles => 'Profiilit';
+
+  @override
+  String get profileName => 'Profiilin nimi';
+
+  @override
+  String get newProfile => 'Uusi profiili';
+
+  @override
+  String get deleteProfile => 'Poista profiili';
+
+  @override
+  String get renameProfile => 'Nimeä uudelleen';
+
+  @override
+  String get profileNameTaken => 'Tämä profiilin nimi on jo käytössä.';
+
+  @override
+  String get incompatibleServer => 'Palvelimen versio ei ole yhteensopiva.';
+
+  @override
+  String get couldNotConnect => 'Palvelimeen ei saatu yhteyttä.';
+
+  @override
+  String get copyUrl => 'Kopioi URL';
+
+  @override
+  String get urlCopied => 'URL kopioitu.';
+
+  @override
+  String get openTrytonUrl => 'Avaa Tryton-URL';
+
+  @override
+  String urlOtherProfile(Object target, Object profile) {
+    return 'URL kuuluu kohteeseen $target. Kirjaudutaanko profiililla \"$profile\"?';
+  }
+
+  @override
+  String urlNoProfile(Object target) {
+    return 'URL kuuluu kohteeseen $target; sille ei ole profiilia.';
+  }
+
+  @override
+  String get chat => 'Keskustelu';
+
+  @override
+  String get chatInternal => 'Tee tästä sisäinen viesti';
+
+  @override
+  String get chatInternalTag => 'sisäinen';
+
+  @override
+  String get chatFollowers => 'Näytä seuraajat';
+
+  @override
+  String get chatSubscribe => 'Tilaa';
+
+  @override
+  String get chatUnsubscribe => 'Peru tilaus';
+
+  @override
+  String get chatAddFollower => 'Lisää seuraaja';
+
+  @override
+  String chatUnsubscribeQuestion(Object name) {
+    return 'Haluatko varmasti poistaa käyttäjän \"$name\" tältä kanavalta?';
+  }
+
+  @override
+  String get chatEmpty => 'Ei vielä viestejä.';
 }

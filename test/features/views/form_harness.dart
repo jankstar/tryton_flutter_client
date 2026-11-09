@@ -96,7 +96,8 @@ Future<void> pumpApp(WidgetTester tester, FakeFormRpc rpc, Widget home,
     {bool settle = true,
     bool metadata = false,
     Map<String, dynamic>? preferences,
-    Size size = const Size(1400, 1000)}) async {
+    Size size = const Size(1400, 1000),
+    List<Override> overrides = const []}) async {
   // digits/symbols are cached per session
   FloatField.clearCaches();
   clearMany2OneSelectionCache();
@@ -119,6 +120,7 @@ Future<void> pumpApp(WidgetTester tester, FakeFormRpc rpc, Widget home,
       modelServiceProvider.overrideWithValue(svc),
       if (preferences != null)
         preferencesProvider.overrideWith((ref) => preferences),
+      ...overrides,
     ],
     child: MaterialApp(
       locale: const Locale('en'),

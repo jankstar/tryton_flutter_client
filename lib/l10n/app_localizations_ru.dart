@@ -892,4 +892,82 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noAttachment => 'Нет вложений.';
+
+  @override
+  String get profile => 'Профиль';
+
+  @override
+  String get editProfiles => 'Изменить профили…';
+
+  @override
+  String get profiles => 'Профили';
+
+  @override
+  String get profileName => 'Имя профиля';
+
+  @override
+  String get newProfile => 'Новый профиль';
+
+  @override
+  String get deleteProfile => 'Удалить профиль';
+
+  @override
+  String get renameProfile => 'Переименовать';
+
+  @override
+  String get profileNameTaken => 'Это имя профиля уже используется.';
+
+  @override
+  String get incompatibleServer => 'Несовместимая версия сервера.';
+
+  @override
+  String get couldNotConnect => 'Не удалось подключиться к серверу.';
+
+  @override
+  String get copyUrl => 'Копировать URL';
+
+  @override
+  String get urlCopied => 'URL скопирован.';
+
+  @override
+  String get openTrytonUrl => 'Открыть URL Tryton';
+
+  @override
+  String urlOtherProfile(Object target, Object profile) {
+    return 'URL относится к $target. Войти с профилем «$profile»?';
+  }
+
+  @override
+  String urlNoProfile(Object target) {
+    return 'URL относится к $target; для него нет профиля.';
+  }
+
+  @override
+  String get chat => 'Чат';
+
+  @override
+  String get chatInternal => 'Сделать это внутренним сообщением';
+
+  @override
+  String get chatInternalTag => 'внутреннее';
+
+  @override
+  String get chatFollowers => 'Показать подписчиков';
+
+  @override
+  String get chatSubscribe => 'Подписаться';
+
+  @override
+  String get chatUnsubscribe => 'Отписаться';
+
+  @override
+  String get chatAddFollower => 'Добавить подписчика';
+
+  @override
+  String chatUnsubscribeQuestion(Object name) {
+    return 'Отписать «$name» от этого канала?';
+  }
+
+  @override
+  String get chatEmpty => 'Сообщений пока нет.';
 }

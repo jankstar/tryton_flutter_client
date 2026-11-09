@@ -18,6 +18,8 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
 import 'features/shell/app_shell.dart';
 import 'l10n/app_localizations.dart';
+import 'features/actions/deep_links.dart';
+import 'features/actions/url_opener.dart';
 
 final _router = GoRouter(
   initialLocation: '/login',
@@ -39,9 +41,15 @@ class TrytonFlutterClientApp extends ConsumerStatefulWidget {
 class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp> {
   StreamSubscription<Completer<void>>? _reAuthSub;
 
+  /// tryton:// links of the operating system (E7): kept as pending URL,
+  /// opened by the AppShell (after the login when needed).
+  final _deepLinks = DeepLinks();
+
   @override
   void initState() {
     super.initState();
+    _deepLinks.start(
+        (url) => ref.read(pendingTrytonUrlProvider.notifier).state = url);
     _reAuthSub = ReAuthService.reAuthRequests.listen((completer) {
       if (mounted) {
         showReLoginDialog(context);
@@ -65,6 +73,7 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
   @override
   void dispose() {
     _reAuthSub?.cancel();
+    _deepLinks.dispose();
     super.dispose();
   }
 

@@ -891,4 +891,82 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get noAttachment => 'Ingen vedhæftning.';
+
+  @override
+  String get profile => 'Profil';
+
+  @override
+  String get editProfiles => 'Rediger profiler…';
+
+  @override
+  String get profiles => 'Profiler';
+
+  @override
+  String get profileName => 'Profilnavn';
+
+  @override
+  String get newProfile => 'Ny profil';
+
+  @override
+  String get deleteProfile => 'Slet profil';
+
+  @override
+  String get renameProfile => 'Omdøb';
+
+  @override
+  String get profileNameTaken => 'Dette profilnavn er allerede i brug.';
+
+  @override
+  String get incompatibleServer => 'Inkompatibel serverversion.';
+
+  @override
+  String get couldNotConnect => 'Kunne ikke forbinde til serveren.';
+
+  @override
+  String get copyUrl => 'Kopiér URL';
+
+  @override
+  String get urlCopied => 'URL kopieret.';
+
+  @override
+  String get openTrytonUrl => 'Åbn Tryton-URL';
+
+  @override
+  String urlOtherProfile(Object target, Object profile) {
+    return 'URL\'en hører til $target. Log ind med profilen \"$profile\"?';
+  }
+
+  @override
+  String urlNoProfile(Object target) {
+    return 'URL\'en hører til $target; der findes ingen profil til den.';
+  }
+
+  @override
+  String get chat => 'Chat';
+
+  @override
+  String get chatInternal => 'Gør dette til en intern besked';
+
+  @override
+  String get chatInternalTag => 'intern';
+
+  @override
+  String get chatFollowers => 'Vis følgere';
+
+  @override
+  String get chatSubscribe => 'Abonnér';
+
+  @override
+  String get chatUnsubscribe => 'Afmeld';
+
+  @override
+  String get chatAddFollower => 'Tilføj en følger';
+
+  @override
+  String chatUnsubscribeQuestion(Object name) {
+    return 'Er du sikker på at afmelde \"$name\" fra denne kanal?';
+  }
+
+  @override
+  String get chatEmpty => 'Ingen beskeder endnu.';
 }

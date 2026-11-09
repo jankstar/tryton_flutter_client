@@ -14,6 +14,7 @@ import '../../core/screen/screen.dart';
 import '../views/board_view.dart';
 import '../views/screen_widget.dart';
 import '../views/wizard_widget.dart';
+import '../actions/url_opener.dart';
 import 'menu_width.dart';
 import 'tab_manager.dart';
 
@@ -27,6 +28,18 @@ class AppShell extends ConsumerStatefulWidget {
 class _AppShellState extends ConsumerState<AppShell> {
   bool _sidebarOpen = true;
 
+  @override
+  void initState() {
+    super.initState();
+    // a tryton:// URL waiting for this login (profile switched, E7)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final url = ref.read(pendingTrytonUrlProvider);
+      if (url == null || !mounted) return;
+      ref.read(pendingTrytonUrlProvider.notifier).state = null;
+      openTrytonUrl(context, ref, url);
+    });
+  }
+
   /// The divider is dragged: the menu follows without animation.
   bool _resizing = false;
 
@@ -34,6 +47,12 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final tabsState = ref.watch(tabsProvider);
     final cs = Theme.of(context).colorScheme;
+    // a tryton:// link of the operating system while logged in (E7)
+    ref.listen<String?>(pendingTrytonUrlProvider, (_, url) {
+      if (url == null) return;
+      ref.read(pendingTrytonUrlProvider.notifier).state = null;
+      openTrytonUrl(context, ref, url);
+    });
     // the menu at most so wide that the tabs keep 360 px
     final maxMenu = (MediaQuery.sizeOf(context).width - 360)
         .clamp(MenuWidthNotifier.minWidth, MenuWidthNotifier.maxWidth);

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.tryton_flutter_client"
+    namespace = "de.jankstar.tryton_flutter_client"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.tryton_flutter_client"
+        applicationId = "de.jankstar.tryton_flutter_client"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

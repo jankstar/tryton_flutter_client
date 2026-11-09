@@ -58,15 +58,7 @@ class UserChip extends ConsumerWidget {
               );
             }
           case _UserMenuItem.logout:
-            // All tabs close first, each with its save prompt (10.4).
-            if (!await ref.read(tabsProvider.notifier).requestCloseAll()) {
-              return;
-            }
-            // the bus ends before the session (spec 2.5.6)
-            ref.read(notificationCenterProvider).stop();
-            await ref.read(authProvider.notifier).logout();
-            ref.read(tabsProvider.notifier).clearAll();
-            if (context.mounted) context.go('/login');
+            await signOut(context, ref);
         }
       },
       itemBuilder: (ctx) => [
@@ -321,4 +313,16 @@ class _ThemePickerDialog extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Logout (user menu, switching the profile for a URL): all tabs close
+/// first, each with its save prompt (10.4); the bus ends before the
+/// session (spec 2.5.6); then the login screen. False when a tab stayed.
+Future<bool> signOut(BuildContext context, WidgetRef ref) async {
+  if (!await ref.read(tabsProvider.notifier).requestCloseAll()) return false;
+  ref.read(notificationCenterProvider).stop();
+  await ref.read(authProvider.notifier).logout();
+  ref.read(tabsProvider.notifier).clearAll();
+  if (context.mounted) context.go('/login');
+  return true;
 }

@@ -13,11 +13,11 @@ import 'package:tryton_flutter_client/core/session/session_store.dart';
 class _MemoryStore implements SessionStore {
   StoredSession? value;
   @override
-  Future<StoredSession?> read() async => value;
+  Future<StoredSession?> read([String? key]) async => value;
   @override
   Future<void> write(StoredSession session) async => value = session;
   @override
-  Future<void> delete() async => value = null;
+  Future<void> delete([String? key]) async => value = null;
 }
 
 /// Recorded request: path, method, params, Authorization header.

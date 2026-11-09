@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
+            VALUE "CompanyName", "de.jankstar" "\0"
             VALUE "FileDescription", "Tryton Flutter Client" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "Tryton Flutter Client" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 de.jankstar. All rights reserved." "\0"
             VALUE "OriginalFilename", "tryton_flutter_client.exe" "\0"
             VALUE "ProductName", "Tryton Flutter Client" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

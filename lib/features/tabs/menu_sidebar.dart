@@ -17,6 +17,8 @@ import '../model/model_rpc.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
 import '../../shared/errors/error_dialogs.dart';
+import '../../core/screen/tryton_url.dart';
+import '../actions/url_opener.dart';
 
 // ─── Menu screen (spec 10.1) ──────────────────────────────────────────────────
 
@@ -464,6 +466,11 @@ Future<void> showGlobalSearch(BuildContext context, WidgetRef ref) async {
     builder: (_) => _GlobalSearchDialog(menuModel: menuModel),
   );
   if (chosen == null || !context.mounted) return;
+  // a pasted tryton:// URL (spec 12.7, E7)
+  if (chosen.first == _openUrl) {
+    await openTrytonUrl(context, ref, '${chosen[1]}');
+    return;
+  }
   final model = '${chosen[1]}';
   final id = chosen[3] as int;
   if (model == menuModel) {
@@ -476,6 +483,9 @@ Future<void> showGlobalSearch(BuildContext context, WidgetRef ref) async {
         );
   }
 }
+
+/// Marker of the result „open this tryton:// URL“.
+const _openUrl = '__tryton_url__';
 
 class _GlobalSearchDialog extends ConsumerStatefulWidget {
   final String menuModel;
@@ -500,8 +510,21 @@ class _GlobalSearchDialogState extends ConsumerState<_GlobalSearchDialog> {
     super.dispose();
   }
 
+  /// The text is a tryton:// URL: it is opened instead of searched.
+  bool _isUrl = false;
+  String _text = '';
+
   void _changed(String text) {
     _debounce?.cancel();
+    final isUrl = TrytonUrl.parse(text) != null;
+    if (isUrl != _isUrl || isUrl) {
+      setState(() {
+        _isUrl = isUrl;
+        _text = text;
+        if (isUrl) _results = const [];
+      });
+    }
+    if (isUrl) return;
     _debounce = Timer(const Duration(milliseconds: 300), () => _search(text));
   }
 
@@ -548,12 +571,25 @@ class _GlobalSearchDialogState extends ConsumerState<_GlobalSearchDialog> {
             ),
             onChanged: _changed,
             onSubmitted: (_) {
-              if (_results.isNotEmpty) Navigator.pop(context, _results.first);
+              if (_isUrl) {
+                Navigator.pop(context, [_openUrl, _text]);
+              } else if (_results.isNotEmpty) {
+                Navigator.pop(context, _results.first);
+              }
             },
           ),
           if (_busy) const LinearProgressIndicator(),
           Expanded(
             child: ListView(children: [
+              if (_isUrl)
+                ListTile(
+                  key: const ValueKey('global-search-open-url'),
+                  dense: true,
+                  leading: const Icon(Icons.link),
+                  title: Text(l.openTrytonUrl),
+                  subtitle: Text(_text, overflow: TextOverflow.ellipsis),
+                  onTap: () => Navigator.pop(context, [_openUrl, _text]),
+                ),
               for (final r in _results)
                 ListTile(
                   dense: true,

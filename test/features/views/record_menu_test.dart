@@ -60,12 +60,17 @@ void main() {
       for (final e in tester.widgetList<MenuItemButton>(find.byType(MenuItemButton)))
         (e.key as ValueKey<String>).value
     ];
-    expect(keys, [for (final a in RecordAction.values) 'record-menu-${a.name}']);
+    // chat only for models of MODELCHAT (Python `menu_def`)
+    final shown = [
+      for (final a in RecordAction.values)
+        if (a != RecordAction.chat) a
+    ];
+    expect(keys, [for (final a in shown) 'record-menu-${a.name}']);
     expect(find.byType(Divider), findsNWidgets(recordMenuGroups.length - 1),
         reason: 'separators between the groups');
 
     final enabled = {
-      for (final a in RecordAction.values) a: entry(tester, a).onPressed != null
+      for (final a in shown) a: entry(tester, a).onPressed != null
     };
     expect(enabled, {
       RecordAction.switchView: false, // only the form view
@@ -87,6 +92,7 @@ void main() {
       RecordAction.email: true, // record saved (spec 10.3, 11.10)
       RecordAction.export: true,
       RecordAction.import: false, // no create right
+      RecordAction.copyUrl: true,
       RecordAction.close: true,
     });
     // shortcut (GTK; Ctrl outside macOS) and label

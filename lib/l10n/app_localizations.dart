@@ -1753,6 +1753,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No attachment.'**
   String get noAttachment;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @editProfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit profiles…'**
+  String get editProfiles;
+
+  /// No description provided for @profiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles'**
+  String get profiles;
+
+  /// No description provided for @profileName.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile name'**
+  String get profileName;
+
+  /// No description provided for @newProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'New profile'**
+  String get newProfile;
+
+  /// No description provided for @deleteProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile'**
+  String get deleteProfile;
+
+  /// No description provided for @renameProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get renameProfile;
+
+  /// No description provided for @profileNameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'This profile name is already used.'**
+  String get profileNameTaken;
+
+  /// No description provided for @incompatibleServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Incompatible version of the server.'**
+  String get incompatibleServer;
+
+  /// No description provided for @couldNotConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to the server.'**
+  String get couldNotConnect;
+
+  /// No description provided for @copyUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy URL'**
+  String get copyUrl;
+
+  /// No description provided for @urlCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'URL copied.'**
+  String get urlCopied;
+
+  /// No description provided for @openTrytonUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Tryton URL'**
+  String get openTrytonUrl;
+
+  /// No description provided for @urlOtherProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'The URL belongs to {target}. Log in with profile \"{profile}\"?'**
+  String urlOtherProfile(Object target, Object profile);
+
+  /// No description provided for @urlNoProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'The URL belongs to {target}; there is no profile for it.'**
+  String urlNoProfile(Object target);
+
+  /// No description provided for @chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get chat;
+
+  /// No description provided for @chatInternal.
+  ///
+  /// In en, this message translates to:
+  /// **'Make this an internal message'**
+  String get chatInternal;
+
+  /// No description provided for @chatInternalTag.
+  ///
+  /// In en, this message translates to:
+  /// **'internal'**
+  String get chatInternalTag;
+
+  /// No description provided for @chatFollowers.
+  ///
+  /// In en, this message translates to:
+  /// **'Show followers'**
+  String get chatFollowers;
+
+  /// No description provided for @chatSubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscribe'**
+  String get chatSubscribe;
+
+  /// No description provided for @chatUnsubscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsubscribe'**
+  String get chatUnsubscribe;
+
+  /// No description provided for @chatAddFollower.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a follower'**
+  String get chatAddFollower;
+
+  /// No description provided for @chatUnsubscribeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure to unsubscribe \"{name}\" from this channel?'**
+  String chatUnsubscribeQuestion(Object name);
+
+  /// No description provided for @chatEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet.'**
+  String get chatEmpty;
 }
 
 class _AppLocalizationsDelegate
