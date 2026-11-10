@@ -1004,4 +1004,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get allTabs => 'Все вкладки';
+
+  @override
+  String get connectionSecure => 'Зашифрованное соединение (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Незашифрованное соединение (HTTP) — пароль передаётся открытым текстом';
 }

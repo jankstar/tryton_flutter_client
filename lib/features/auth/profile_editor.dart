@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/l10n/locale_provider.dart';
 import '../../core/rpc/rpc_client.dart';
+import '../../core/rpc/server_address.dart';
 import '../../core/session/profiles.dart';
 import '../../core/session/session.dart';
 
@@ -12,13 +13,21 @@ typedef ServerProbe = Future<({String? version, List<String>? databases})>
     Function(String serverUrl);
 
 /// `common.server.version` and `common.db.list` against [serverUrl].
+/// An address without scheme (`localhost:8000`) is tried with HTTPS,
+/// then HTTP, like at the login.
 Future<({String? version, List<String>? databases})> probeServer(
     String serverUrl) async {
   final rpc = RpcClient(baseUrl: serverUrl);
   String? version;
   List<String>? databases;
   try {
-    version = await rpc.serverVersion();
+    final url = await ServerResolver().resolve(serverUrl, (url) async {
+      rpc.baseUrl = url;
+      version = await rpc.serverVersion();
+    });
+    rpc.baseUrl = url;
+    // an address with scheme is not probed by resolve
+    version ??= await rpc.serverVersion();
   } catch (_) {}
   try {
     databases = await rpc.listDatabases();

@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../rpc/server_address.dart';
+
 /// Data needed to resume a session on app start (spec 2.5, task A8).
 class StoredSession {
   final String baseUrl;
@@ -54,6 +56,9 @@ class StoredSession {
 
 /// `login@host:port/database` (the key of sessions and device cookies).
 String sessionKey(String login, String baseUrl, String database) {
+  // also an address without scheme (`localhost:8000`, default port 8000)
+  final address = ServerAddress.parse(baseUrl);
+  if (address != null) return '$login@${address.hostPort}/$database';
   final uri = Uri.parse(baseUrl);
   return '$login@${uri.host}:${uri.port}/$database';
 }

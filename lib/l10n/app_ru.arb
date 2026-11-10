@@ -561,5 +561,7 @@
   "scanCodeSound": "Звук",
   "scanCodeCamera": "Камера",
   "scanCodeNoCamera": "Камера недоступна — введите код или считайте его ручным сканером.",
-  "allTabs": "Все вкладки"
+  "allTabs": "Все вкладки",
+  "connectionSecure": "Зашифрованное соединение (HTTPS)",
+  "connectionInsecure": "Незашифрованное соединение (HTTP) — пароль передаётся открытым текстом"
 }

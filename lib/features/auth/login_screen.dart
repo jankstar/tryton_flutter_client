@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/rpc/server_address.dart';
 import 'auth_provider.dart';
 import 'profile_editor.dart';
 import '../../../core/session/profiles.dart';
@@ -21,7 +22,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _serverCtrl = TextEditingController(text: 'http://localhost:8000');
+  final _serverCtrl = TextEditingController(text: 'localhost:8000');
   final _dbCtrl = TextEditingController();
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -426,17 +427,44 @@ class _ServerField extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final refresh = IconButton(
+      icon: const Icon(Icons.refresh),
+      tooltip: context.l10n.loadDatabases,
+      onPressed: () =>
+          ref.read(authProvider.notifier).loadDatabases(ctrl.text.trim()),
+    );
     return TextFormField(
       controller: ctrl,
       decoration: InputDecoration(
         labelText: context.l10n.serverUrl,
+        hintText: 'localhost:8000',
         prefixIcon: const Icon(Icons.dns_outlined),
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.refresh),
-          tooltip: context.l10n.loadDatabases,
-          onPressed: () => ref
-              .read(authProvider.notifier)
-              .loadDatabases(ctrl.text.trim()),
+        // the server reached for this address: HTTPS or plain HTTP
+        suffixIcon: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: ctrl,
+          builder: (context, value, _) {
+            final reached = auth.serverUrl;
+            final same = reached != null &&
+                ServerAddress.parse(value.text)?.hostPort ==
+                    ServerAddress.parse(reached)?.hostPort;
+            if (!same) return refresh;
+            final secure = reached.startsWith('https://');
+            final cs = Theme.of(context).colorScheme;
+            return Row(mainAxisSize: MainAxisSize.min, children: [
+              Tooltip(
+                message: secure
+                    ? context.l10n.connectionSecure
+                    : context.l10n.connectionInsecure,
+                child: Icon(
+                  secure ? Icons.lock_outline : Icons.lock_open_outlined,
+                  key: ValueKey(secure ? 'server-https' : 'server-http'),
+                  size: 18,
+                  color: secure ? cs.primary : cs.error,
+                ),
+              ),
+              refresh,
+            ]);
+          },
         ),
       ),
       validator: (v) => v!.isEmpty ? context.l10n.required : null,

@@ -1005,4 +1005,11 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get allTabs => 'Wszystkie karty';
+
+  @override
+  String get connectionSecure => 'Połączenie szyfrowane (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Połączenie nieszyfrowane (HTTP) – hasło jest przesyłane jawnym tekstem';
 }

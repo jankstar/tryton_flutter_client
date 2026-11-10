@@ -1004,4 +1004,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get allTabs => 'Todas las pestañas';
+
+  @override
+  String get connectionSecure => 'Conexión cifrada (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Conexión sin cifrar (HTTP): la contraseña se envía en texto plano';
 }

@@ -1003,4 +1003,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get allTabs => 'All tabs';
+
+  @override
+  String get connectionSecure => 'Encrypted connection (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Unencrypted connection (HTTP) – the password is sent in plain text';
 }

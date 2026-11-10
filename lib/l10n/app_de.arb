@@ -561,5 +561,7 @@
   "scanCodeSound": "Ton",
   "scanCodeCamera": "Kamera",
   "scanCodeNoCamera": "Keine Kamera verfügbar – Code eingeben oder mit dem Hand-Scanner erfassen.",
-  "allTabs": "Alle Tabs"
+  "allTabs": "Alle Tabs",
+  "connectionSecure": "Verschlüsselte Verbindung (HTTPS)",
+  "connectionInsecure": "Unverschlüsselte Verbindung (HTTP) – das Passwort wird im Klartext übertragen"
 }

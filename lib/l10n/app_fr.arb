@@ -561,5 +561,7 @@
   "scanCodeSound": "Son",
   "scanCodeCamera": "Caméra",
   "scanCodeNoCamera": "Aucune caméra disponible – saisissez le code ou lisez-le avec un lecteur manuel.",
-  "allTabs": "Tous les onglets"
+  "allTabs": "Tous les onglets",
+  "connectionSecure": "Connexion chiffrée (HTTPS)",
+  "connectionInsecure": "Connexion non chiffrée (HTTP) – le mot de passe est transmis en clair"
 }

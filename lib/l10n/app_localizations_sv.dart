@@ -1003,4 +1003,11 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get allTabs => 'Alla flikar';
+
+  @override
+  String get connectionSecure => 'Krypterad anslutning (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Okrypterad anslutning (HTTP) – lösenordet skickas i klartext';
 }

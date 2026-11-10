@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/rpc/rpc_client.dart';
+import '../../core/rpc/server_address.dart';
 import '../../core/rpc/rpc_exceptions.dart';
 import '../../core/session/session.dart';
 import '../views/embedded_tree_widget.dart' show clearEmbeddedViewCache;
@@ -26,6 +27,10 @@ class AuthState {
   final String? pendingMfaMessage;
   final String? pendingMfaType;
 
+  /// URL of the server reached last (with the scheme found for an
+  /// address without one): HTTPS or plain HTTP in the login screen.
+  final String? serverUrl;
+
   const AuthState({
     this.status = AuthStatus.unauthenticated,
     this.errorMessage,
@@ -33,6 +38,7 @@ class AuthState {
     this.pendingMfaField,
     this.pendingMfaMessage,
     this.pendingMfaType,
+    this.serverUrl,
   });
 
   bool get needsMfa => pendingMfaField != null;
@@ -44,6 +50,7 @@ class AuthState {
     String? pendingMfaField,
     String? pendingMfaMessage,
     String? pendingMfaType,
+    String? serverUrl,
   }) =>
       AuthState(
         status: status ?? this.status,
@@ -52,6 +59,7 @@ class AuthState {
         pendingMfaField: pendingMfaField,
         pendingMfaMessage: pendingMfaMessage,
         pendingMfaType: pendingMfaType,
+        serverUrl: serverUrl ?? this.serverUrl,
       );
 }
 
@@ -59,18 +67,36 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final TrytonSession _session;
   final RpcClient _rpc;
 
+  /// Address of the next login, resolved in [_doLogin] (errors shown).
+  String? _pendingServer;
   String? _pendingDb;
   String? _pendingUsername;
   Map<String, dynamic> _pendingParams = {};
 
-  AuthNotifier(this._session, this._rpc) : super(const AuthState());
+  AuthNotifier(this._session, this._rpc, {ServerResolver? resolver})
+      : _resolver = resolver ?? ServerResolver(),
+        super(const AuthState());
+
+  final ServerResolver _resolver;
+
+  /// The URL of the address [input] (`host[:port]` without scheme: HTTPS,
+  /// else HTTP, like the Python client) set on the RPC client.
+  Future<String> _useServer(String input) async {
+    final url = await _resolver.resolve(input, (url) async {
+      _rpc.baseUrl = url;
+      await _rpc.serverVersion();
+    });
+    _rpc.baseUrl = url;
+    state = state.copyWith(status: state.status, serverUrl: url);
+    return url;
+  }
 
   /// Loads the database list. An empty list (disabled on the server, 403)
   /// makes the login screen show a free-text database field.
   Future<void> loadDatabases(String serverUrl) async {
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
     try {
-      _rpc.baseUrl = serverUrl;
+      await _useServer(serverUrl);
       // Version check first – like SAO does before showing the login dialog.
       await _session.checkCompatibility();
       final dbs = await _session.listDatabases();
@@ -107,7 +133,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String username,
     String password,
   ) async {
-    _rpc.baseUrl = serverUrl;
+    _pendingServer = serverUrl;
     _pendingDb = db;
     _pendingUsername = username;
     _pendingParams = {'password': password};
@@ -122,6 +148,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _doLogin() async {
     state = state.copyWith(status: AuthStatus.loading, errorMessage: null);
     try {
+      final server = _pendingServer;
+      if (server != null) {
+        await _useServer(server);
+        _pendingServer = null;
+      }
       // Always re-check version before login in case loadDatabases was skipped.
       await _session.checkCompatibility();
       await _session.loginWithParams(_pendingDb!, _pendingUsername!, _pendingParams);

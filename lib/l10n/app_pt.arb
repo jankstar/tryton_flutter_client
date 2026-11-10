@@ -561,5 +561,7 @@
   "scanCodeSound": "Som",
   "scanCodeCamera": "Câmera",
   "scanCodeNoCamera": "Nenhuma câmera disponível – digite o código ou leia-o com um leitor manual.",
-  "allTabs": "Todas as abas"
+  "allTabs": "Todas as abas",
+  "connectionSecure": "Conexão criptografada (HTTPS)",
+  "connectionInsecure": "Conexão não criptografada (HTTP) – a senha é enviada em texto simples"
 }

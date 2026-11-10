@@ -561,5 +561,7 @@
   "scanCodeSound": "Ljud",
   "scanCodeCamera": "Kamera",
   "scanCodeNoCamera": "Ingen kamera tillgänglig – ange koden eller skanna den med en handskanner.",
-  "allTabs": "Alla flikar"
+  "allTabs": "Alla flikar",
+  "connectionSecure": "Krypterad anslutning (HTTPS)",
+  "connectionInsecure": "Okrypterad anslutning (HTTP) – lösenordet skickas i klartext"
 }

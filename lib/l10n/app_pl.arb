@@ -561,5 +561,7 @@
   "scanCodeSound": "Dźwięk",
   "scanCodeCamera": "Kamera",
   "scanCodeNoCamera": "Brak kamery – wpisz kod lub zeskanuj go skanerem ręcznym.",
-  "allTabs": "Wszystkie karty"
+  "allTabs": "Wszystkie karty",
+  "connectionSecure": "Połączenie szyfrowane (HTTPS)",
+  "connectionInsecure": "Połączenie nieszyfrowane (HTTP) – hasło jest przesyłane jawnym tekstem"
 }

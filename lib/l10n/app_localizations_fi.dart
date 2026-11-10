@@ -1004,4 +1004,11 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get allTabs => 'Kaikki välilehdet';
+
+  @override
+  String get connectionSecure => 'Salattu yhteys (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Salaamaton yhteys (HTTP) – salasana lähetetään selväkielisenä';
 }

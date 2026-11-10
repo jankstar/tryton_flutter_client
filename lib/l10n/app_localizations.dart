@@ -1963,6 +1963,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All tabs'**
   String get allTabs;
+
+  /// No description provided for @connectionSecure.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted connection (HTTPS)'**
+  String get connectionSecure;
+
+  /// No description provided for @connectionInsecure.
+  ///
+  /// In en, this message translates to:
+  /// **'Unencrypted connection (HTTP) – the password is sent in plain text'**
+  String get connectionInsecure;
 }
 
 class _AppLocalizationsDelegate

@@ -107,7 +107,7 @@ class ProfileStore {
     final profiles = [
       ConnectionProfile(
         name: defaultName,
-        serverUrl: prefs.getString(legacyServerKey) ?? 'http://localhost:8000',
+        serverUrl: prefs.getString(legacyServerKey) ?? 'localhost:8000',
         database: prefs.getString(legacyDatabaseKey) ?? '',
         login: await storedLogin?.call() ?? '',
       ),

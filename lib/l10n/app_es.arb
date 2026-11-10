@@ -561,5 +561,7 @@
   "scanCodeSound": "Sonido",
   "scanCodeCamera": "Cámara",
   "scanCodeNoCamera": "No hay cámara disponible: introduzca el código o escanéelo con un lector de mano.",
-  "allTabs": "Todas las pestañas"
+  "allTabs": "Todas las pestañas",
+  "connectionSecure": "Conexión cifrada (HTTPS)",
+  "connectionInsecure": "Conexión sin cifrar (HTTP): la contraseña se envía en texto plano"
 }

@@ -11,6 +11,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 import 'package:tryton_flutter_client/core/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:tryton_flutter_client/features/auth/auth_provider.dart';
+import 'package:tryton_flutter_client/features/auth/login_screen.dart';
 import 'package:tryton_flutter_client/features/auth/user_preferences_provider.dart';
 import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 import 'package:tryton_flutter_client/features/shell/tab_strip.dart';
@@ -138,4 +142,67 @@ void main() {
       });
     });
   }
+
+  // the login screen with the connection reached (lock icon)
+  for (final (name, url) in [
+    ('login-http', 'http://localhost:8000'),
+    ('login-https', 'https://erp.example.com:8000'),
+  ]) {
+    testWidgets('screenshot $name', (tester) async {
+      if (out == null) {
+        markTestSkipped('SCREENSHOT_DIR not set');
+        return;
+      }
+      SharedPreferences.setMockInitialValues({});
+      FlutterSecureStorage.setMockInitialValues({});
+      await tester.runAsync(_loadFonts);
+      const size = Size(700, 820);
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final boundary = GlobalKey();
+      final theme = AppTheme.polarFox.buildThemeData();
+      await tester.pumpWidget(RepaintBoundary(
+        key: boundary,
+        child: ProviderScope(
+          overrides: [
+            authProvider.overrideWith((ref) => _ReachedAuth(ref, url)),
+          ],
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: theme.copyWith(
+                textTheme: theme.textTheme.apply(fontFamily: 'Roboto')),
+            locale: const Locale('de'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const LoginScreen(),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'localhost:8000').first,
+          url.startsWith('https') ? 'erp.example.com' : 'localhost:8000');
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        final render = boundary.currentContext!.findRenderObject()!
+            as RenderRepaintBoundary;
+        final image = await render.toImage();
+        final png = await image.toByteData(format: ui.ImageByteFormat.png);
+        Directory(out).createSync(recursive: true);
+        File('$out/flutter-$name.png').writeAsBytesSync(png!.buffer.asUint8List());
+      });
+    });
+  }
+}
+
+/// Auth state after reaching [url] (no server needed).
+class _ReachedAuth extends AuthNotifier {
+  _ReachedAuth(Ref ref, String url)
+      : super(ref.read(sessionProvider), ref.read(rpcClientProvider)) {
+    state = AuthState(serverUrl: url);
+  }
+
+  @override
+  Future<void> loadDatabases(String serverUrl) async {}
 }

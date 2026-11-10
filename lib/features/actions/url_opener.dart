@@ -12,6 +12,7 @@ import '../auth/auth_provider.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
 import '../tabs/user_chip.dart';
+import '../../core/rpc/server_address.dart';
 import 'action_service.dart';
 
 /// A `tryton://` URL to open after the next login (the profile was
@@ -30,11 +31,12 @@ bool urlMatchesSession(TrytonUrl url, String baseUrl, String? database) {
 /// The profile serving [url] (host, port when given, database).
 ConnectionProfile? profileFor(TrytonUrl url, List<ConnectionProfile> profiles) {
   for (final p in profiles) {
-    final uri = Uri.tryParse(p.serverUrl);
-    if (uri == null) continue;
+    // also an address without scheme (`localhost:8000`)
+    final address = ServerAddress.parse(p.serverUrl);
+    if (address == null) continue;
     if (p.database == url.database &&
-        uri.host == url.host &&
-        (url.port == null || uri.port == url.port)) {
+        address.host == url.host &&
+        (url.port == null || address.port == url.port)) {
       return p;
     }
   }

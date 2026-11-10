@@ -561,5 +561,7 @@
   "scanCodeSound": "Lyd",
   "scanCodeCamera": "Kamera",
   "scanCodeNoCamera": "Intet kamera tilgængeligt – indtast koden eller scan den med en håndscanner.",
-  "allTabs": "Alle faner"
+  "allTabs": "Alle faner",
+  "connectionSecure": "Krypteret forbindelse (HTTPS)",
+  "connectionInsecure": "Ukrypteret forbindelse (HTTP) – adgangskoden sendes i klartekst"
 }

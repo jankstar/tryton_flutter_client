@@ -561,5 +561,7 @@
   "scanCodeSound": "Geluid",
   "scanCodeCamera": "Camera",
   "scanCodeNoCamera": "Geen camera beschikbaar – voer de code in of scan hem met een handscanner.",
-  "allTabs": "Alle tabbladen"
+  "allTabs": "Alle tabbladen",
+  "connectionSecure": "Versleutelde verbinding (HTTPS)",
+  "connectionInsecure": "Onversleutelde verbinding (HTTP) – het wachtwoord wordt onversleuteld verzonden"
 }

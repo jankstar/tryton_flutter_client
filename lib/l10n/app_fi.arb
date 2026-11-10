@@ -561,5 +561,7 @@
   "scanCodeSound": "Ääni",
   "scanCodeCamera": "Kamera",
   "scanCodeNoCamera": "Kameraa ei ole – syötä koodi tai lue se käsilukijalla.",
-  "allTabs": "Kaikki välilehdet"
+  "allTabs": "Kaikki välilehdet",
+  "connectionSecure": "Salattu yhteys (HTTPS)",
+  "connectionInsecure": "Salaamaton yhteys (HTTP) – salasana lähetetään selväkielisenä"
 }

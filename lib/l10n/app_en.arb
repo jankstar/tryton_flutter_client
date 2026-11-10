@@ -1026,5 +1026,9 @@
   "scanCodeNoCamera": "No camera available – enter or scan the code with a hand scanner.",
   "@scanCodeNoCamera": {},
   "allTabs": "All tabs",
-  "@allTabs": {}
+  "@allTabs": {},
+  "connectionSecure": "Encrypted connection (HTTPS)",
+  "@connectionSecure": {},
+  "connectionInsecure": "Unencrypted connection (HTTP) – the password is sent in plain text",
+  "@connectionInsecure": {}
 }

@@ -1003,4 +1003,11 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get allTabs => 'Alle faner';
+
+  @override
+  String get connectionSecure => 'Krypteret forbindelse (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Ukrypteret forbindelse (HTTP) – adgangskoden sendes i klartekst';
 }

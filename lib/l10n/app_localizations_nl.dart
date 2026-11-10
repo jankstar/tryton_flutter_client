@@ -1004,4 +1004,11 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get allTabs => 'Alle tabbladen';
+
+  @override
+  String get connectionSecure => 'Versleutelde verbinding (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Onversleutelde verbinding (HTTP) – het wachtwoord wordt onversleuteld verzonden';
 }

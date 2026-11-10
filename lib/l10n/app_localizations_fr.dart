@@ -1007,4 +1007,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get allTabs => 'Tous les onglets';
+
+  @override
+  String get connectionSecure => 'Connexion chiffrée (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Connexion non chiffrée (HTTP) – le mot de passe est transmis en clair';
 }

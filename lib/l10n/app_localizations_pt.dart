@@ -1004,4 +1004,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get allTabs => 'Todas as abas';
+
+  @override
+  String get connectionSecure => 'Conexão criptografada (HTTPS)';
+
+  @override
+  String get connectionInsecure =>
+      'Conexão não criptografada (HTTP) – a senha é enviada em texto simples';
 }
