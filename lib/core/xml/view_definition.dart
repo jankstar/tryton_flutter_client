@@ -123,6 +123,12 @@ class FormRoot extends FormNode {
 
   /// `scan_code` (`one`, `submit`, `loop`) or null.
   String? get scanCode => _string('scan_code');
+
+  /// `scan_code_states` (PYSON) of the scan button.
+  dynamic get scanCodeStates => attrs['scan_code_states'];
+
+  /// `scan_code_depends`: PYSON list of the fields sent with a code.
+  dynamic get scanCodeDepends => attrs['scan_code_depends'] ?? const [];
 }
 
 class FieldNode extends FormNode {

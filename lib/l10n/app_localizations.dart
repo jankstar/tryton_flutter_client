@@ -1897,6 +1897,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No messages yet.'**
   String get chatEmpty;
+
+  /// No description provided for @calendarToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get calendarToday;
+
+  /// No description provided for @calendarMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get calendarMonth;
+
+  /// No description provided for @calendarWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get calendarWeek;
+
+  /// No description provided for @calendarDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get calendarDay;
+
+  /// No description provided for @scanCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan'**
+  String get scanCode;
+
+  /// No description provided for @codeScanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Scanner'**
+  String get codeScanner;
+
+  /// No description provided for @scanCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get scanCodeHint;
+
+  /// No description provided for @scanCodeSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get scanCodeSound;
+
+  /// No description provided for @scanCodeCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get scanCodeCamera;
+
+  /// No description provided for @scanCodeNoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'No camera available – enter or scan the code with a hand scanner.'**
+  String get scanCodeNoCamera;
+
+  /// No description provided for @allTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'All tabs'**
+  String get allTabs;
 }
 
 class _AppLocalizationsDelegate

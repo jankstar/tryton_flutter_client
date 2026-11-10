@@ -13,6 +13,7 @@ import '../../core/l10n/locale_provider.dart';
 import '../utils/date_format_utils.dart';
 import '../utils/number_format_utils.dart';
 import '../utils/symbol_cache.dart' as sym_cache;
+import '../../features/views/form_label_style.dart';
 
 /// Renders a Tryton field as the appropriate Flutter widget.
 class FieldWidget extends ConsumerWidget {
@@ -136,7 +137,8 @@ class FieldWidget extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Checkbox(value: value as bool? ?? false, onChanged: effective ? null : (v) => onChanged?.call(v)),
-              Flexible(child: label),
+              // (labels before the fields: the label cell shows the text)
+              if (formLabel(context, true) ?? false) Flexible(child: label),
             ],
           ),
         );
@@ -273,9 +275,9 @@ class FieldWidget extends ConsumerWidget {
         : null;
 
     return InputDecoration(
-      label: labelWidget,
-      labelText: labelWidget == null ? field.label : null,
-      border: const OutlineInputBorder(),
+      label: formLabel(context, labelWidget),
+      labelText: formLabel(context, labelWidget == null ? field.label : null),
+      border: formBorder(context, readOnly: readOnly && !invalid),
       suffixIcon: clearBtn,
       // has-error: red border without text (the message comes on save)
       errorText: invalid ? '' : null,
@@ -389,8 +391,8 @@ class _DateField extends StatelessWidget {
       readOnly: true,
       controller: TextEditingController(text: formatted),
       decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
+        labelText: formLabel(context, field.label),
+        border: formBorder(context, readOnly: readOnly),
         suffixIcon: readOnly
             ? null
             : IconButton(
@@ -481,8 +483,8 @@ class _UnsupportedField extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return InputDecorator(
       decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
+        labelText: formLabel(context, field.label),
+        border: formBorder(context),
         enabled: false,
         prefixIcon: const Icon(Icons.block, size: 18),
       ),
@@ -514,8 +516,8 @@ class _DateTimeField extends StatelessWidget {
       readOnly: true,
       controller: TextEditingController(text: formatted),
       decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
+        labelText: formLabel(context, field.label),
+        border: formBorder(context, readOnly: readOnly),
         suffixIcon: readOnly
             ? null
             : IconButton(
@@ -630,8 +632,8 @@ class _NumericFieldState extends ConsumerState<_NumericField> {
     return _TextInputField(
       initialValue: displayValue,
       decoration: InputDecoration(
-        labelText: widget.field.label,
-        border: const OutlineInputBorder(),
+        labelText: formLabel(context, widget.field.label),
+        border: formBorder(context, readOnly: widget.readOnly),
         prefixText: hasPrefix ? '$_symbol ' : null,
         suffixText: hasSuffix ? ' $_symbol' : null,
       ),
@@ -656,7 +658,7 @@ class _X2ManyField extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = value is List ? (value as List).length : 0;
     return InputDecorator(
-      decoration: InputDecoration(labelText: field.label, border: const OutlineInputBorder()),
+      decoration: InputDecoration(labelText: formLabel(context, field.label), border: formBorder(context)),
       child: Text('$count entries', style: Theme.of(context).textTheme.bodySmall),
     );
   }
@@ -798,8 +800,8 @@ class _ProgressBarField extends StatelessWidget {
     if (value is num) progress = (value as num).toDouble().clamp(0.0, 1.0);
     return InputDecorator(
       decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
+        labelText: formLabel(context, field.label),
+        border: formBorder(context),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
       child: Column(

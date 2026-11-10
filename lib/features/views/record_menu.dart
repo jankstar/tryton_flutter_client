@@ -212,9 +212,11 @@ class RecordTitleMenu extends StatelessWidget {
             controller.isOpen ? controller.close() : controller.open(),
         child: Tooltip(
           message: l.recordMenu,
+          // (a very narrow title: also the arrow shrinks instead of
+          // overflowing)
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Flexible(child: title),
-            const Icon(Icons.arrow_drop_down, size: 20),
+            const Flexible(child: Icon(Icons.arrow_drop_down, size: 20)),
           ]),
         ),
       ),
@@ -413,4 +415,58 @@ bool pressButtonOf(GlobalKey key) {
     return true;
   }
   return false;
+}
+
+/// A toolbar button of form or list with its [level]: narrow tabs hide
+/// the highest levels first (SAO tab.js `hidden-xs`/`hidden-sm`), their
+/// functions stay in the record menu at the title. [slots] is the number
+/// of buttons [child] shows.
+class ToolbarSlot {
+  final int level;
+  final Widget child;
+  final int slots;
+  const ToolbarSlot(this.level, this.child, {this.slots = 1});
+}
+
+/// Width of one toolbar button (Material `IconButton`).
+const toolbarButtonWidth = 48.0;
+
+/// Width the title keeps before toolbar buttons are hidden.
+const toolbarTitleWidth = 220.0;
+
+/// The highest level of [items] shown in a tab [width] wide: the title
+/// keeps [toolbarTitleWidth]; level 0 is always shown.
+int toolbarLevel(double width, List<ToolbarSlot> items) {
+  final levels = {for (final i in items) i.level}.toList()..sort();
+  var shown = 0;
+  for (final level in levels) {
+    final slots = [
+      for (final i in items)
+        if (i.level <= level) i.slots
+    ].fold(0, (a, b) => a + b);
+    if (level > 0 && slots * toolbarButtonWidth > width - toolbarTitleWidth) {
+      break;
+    }
+    shown = level;
+  }
+  return shown;
+}
+
+/// The visible buttons of [items] for a tab [width] wide, then the hidden
+/// ones offstage: they stay in the tree so that [pressButtonOf] opens
+/// them from the record menu (their menus open at the end of the bar).
+List<Widget> adaptiveToolbar(double width, List<ToolbarSlot> items) {
+  final level = toolbarLevel(width, items);
+  final hidden = [
+    for (final i in items)
+      if (i.level > level) i.child
+  ];
+  return [
+    for (final i in items)
+      if (i.level <= level) i.child,
+    if (hidden.isNotEmpty)
+      Offstage(
+          key: const ValueKey('toolbar-hidden'),
+          child: Row(mainAxisSize: MainAxisSize.min, children: hidden)),
+  ];
 }

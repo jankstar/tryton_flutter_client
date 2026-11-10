@@ -188,7 +188,16 @@ class _RenderFormGrid extends RenderBox
       if (natural > current) widths[d.column + d.colspan - 1] += natural - current;
     }
     if (!bounded) return widths;
-    final expanding = expand.where((e) => e).length;
+    // minimum of an expanding column: its widest non-expanding cell of
+    // one column (e.g. a label beside a field over several columns; spec
+    // 9.2.2 `minmax(min-content, fr)`)
+    final minimum = List.filled(n, 0.0);
+    for (final child in _cells) {
+      final d = _data(child);
+      if (d.colspan != 1 || d.expand || !expand[d.column]) continue;
+      child.layout(BoxConstraints(maxWidth: maxNatural), parentUsesSize: true);
+      minimum[d.column] = math.max(minimum[d.column], child.size.width);
+    }
     var used = widths.fold(0.0, (a, b) => a + b);
     if (used > width) {
       // more fixed width than there is: shrink all fixed columns
@@ -198,11 +207,25 @@ class _RenderFormGrid extends RenderBox
       }
       used = width;
     }
-    if (expanding > 0) {
-      final share = (width - used) / expanding;
-      for (var c = 0; c < n; c++) {
-        if (expand[c]) widths[c] = share;
+    // the expanding columns share the rest equally; a column whose minimum
+    // is larger keeps its minimum and leaves the others the remainder
+    final pool = {for (var c = 0; c < n; c++) if (expand[c]) c};
+    var rest = width - used;
+    while (pool.isNotEmpty) {
+      final share = rest / pool.length;
+      final wider = [for (final c in pool) if (minimum[c] > share) c];
+      if (wider.isEmpty) {
+        for (final c in pool) {
+          widths[c] = share;
+        }
+        break;
       }
+      for (final c in wider) {
+        widths[c] = minimum[c];
+        rest -= minimum[c];
+        pool.remove(c);
+      }
+      if (rest < 0) rest = 0;
     }
     return widths;
   }

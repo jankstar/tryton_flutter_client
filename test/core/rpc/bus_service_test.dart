@@ -159,4 +159,19 @@ void main() {
     final next = await server.next();
     expect(next.options.uri.toString(), 'http://other/db/bus');
   });
+
+  test('a new token after a re-login: the poll continues with it; not '
+      'running → nothing', () async {
+    bus.updateAuth(const SessionAuth('admin', 1, 'other'));
+    await idle();
+    expect(server.polls, isEmpty, reason: 'not started');
+
+    bus.register('notification:1', (_) {});
+    bus.start(host: 'http://127.0.0.1:8000/', database: 'tryton', auth: auth);
+    await server.next();
+    const renewed = SessionAuth('admin', 1, 'tok2');
+    bus.updateAuth(renewed);
+    final poll = await server.next();
+    expect(poll.options.headers['Authorization'], renewed.header);
+  });
 }

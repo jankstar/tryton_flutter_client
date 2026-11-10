@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Avsluta prenumeration",
   "chatAddFollower": "Lägg till följare",
   "chatUnsubscribeQuestion": "Vill du verkligen avregistrera \"{name}\" från den här kanalen?",
-  "chatEmpty": "Inga meddelanden än."
+  "chatEmpty": "Inga meddelanden än.",
+  "calendarToday": "Idag",
+  "calendarMonth": "Månad",
+  "calendarWeek": "Vecka",
+  "calendarDay": "Dag",
+  "scanCode": "Skanna",
+  "codeScanner": "Kodläsare",
+  "scanCodeHint": "Kod",
+  "scanCodeSound": "Ljud",
+  "scanCodeCamera": "Kamera",
+  "scanCodeNoCamera": "Ingen kamera tillgänglig – ange koden eller skanna den med en handskanner.",
+  "allTabs": "Alla flikar"
 }

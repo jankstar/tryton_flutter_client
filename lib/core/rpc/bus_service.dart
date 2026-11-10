@@ -82,6 +82,14 @@ class BusService {
     _restart();
   }
 
+  /// A new token of the same session (re-login after HTTP 401): a
+  /// running poll continues with it.
+  void updateAuth(SessionAuth auth) {
+    if (_url == null) return;
+    _auth = auth;
+    _restart();
+  }
+
   /// Stops polling (logout, session change); the channels stay
   /// registered.
   void stop() {

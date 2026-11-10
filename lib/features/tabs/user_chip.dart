@@ -25,9 +25,10 @@ class UserChip extends ConsumerWidget {
     // The user chip of get_preferences(false) (spec 3.2 step 6).
     final prefs = ref.watch(userPreferencesProvider);
     // notification bell next to the user menu (spec 14.1)
+    // narrow: the name is shortened instead of overflowing the tab bar
     return Row(mainAxisSize: MainAxisSize.min, children: [
       const NotificationButton(),
-      _buildMenu(context, ref, prefs, context.l10n),
+      Flexible(child: _buildMenu(context, ref, prefs, context.l10n)),
     ]);
   }
 
@@ -122,25 +123,29 @@ class UserChip extends ConsumerWidget {
         ),
       ],
       // ── Chip button showing avatar + name + currency ──────────────────
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          _Avatar(prefs: prefs, size: 28),
-          const SizedBox(width: 8),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                prefs?.statusBar ?? (userId != null ? '#$userId' : '…'),
-                style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(width: 4),
-          const Icon(Icons.arrow_drop_down, size: 16),
-        ]),
+      // very narrow: only the avatar (name and arrow need more room)
+      child: LayoutBuilder(
+        builder: (context, box) => Padding(
+          padding: EdgeInsets.symmetric(horizontal: box.maxWidth < 76 ? 0 : 8),
+          child: box.maxWidth < 76
+              ? Center(widthFactor: 1, child: _Avatar(prefs: prefs, size: 28))
+              : Row(mainAxisSize: MainAxisSize.min, children: [
+                  _Avatar(prefs: prefs, size: 28),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      prefs?.statusBar ?? (userId != null ? '#$userId' : '…'),
+                      key: const ValueKey('user-chip-name'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_drop_down, size: 16),
+                ]),
+        ),
       ),
     );
   }

@@ -228,10 +228,18 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
         screen.load([resId]);
         screen.currentRecord = screen.group.get(resId);
       }
+      // first day of the calendar weeks from the language (0 = Sunday)
+      if (mounted) {
+        final first = MaterialLocalizations.of(context).firstDayOfWeekIndex;
+        ScreenView.firstWeekday = first == 0 ? DateTime.sunday : first;
+      }
       await screen.switchView();
       await loadAccess?.call(relationModels(screen.model));
       final view = screen.currentView;
-      if ((view?.viewType == 'tree' || view?.viewType == 'list-form') &&
+      if ((view?.viewType == 'tree' ||
+              view?.viewType == 'list-form' ||
+              view?.viewType == 'graph' ||
+              view?.viewType == 'calendar') &&
           resId == null) {
         await _loadDomainParser(screen);
         await screen.searchFilter();

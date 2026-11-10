@@ -21,7 +21,13 @@ import 'l10n/app_localizations.dart';
 import 'features/actions/deep_links.dart';
 import 'features/actions/url_opener.dart';
 
+/// Navigator of the router: dialogs of the app root (re-login) open on
+/// it – the context of [TrytonFlutterClientApp] is above the router and
+/// has no Navigator.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final _router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
@@ -50,12 +56,19 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
     super.initState();
     _deepLinks.start(
         (url) => ref.read(pendingTrytonUrlProvider.notifier).state = url);
+    // HTTP 401 (session expired, or `fresh_session` methods like
+    // set_preferences after the session timeout): ask for the password
+    // on the router's navigator; without one the request fails at once
+    // instead of waiting forever.
     _reAuthSub = ReAuthService.reAuthRequests.listen((completer) {
-      if (mounted) {
-        showReLoginDialog(context);
-      } else {
+      final navigatorContext = rootNavigatorKey.currentContext;
+      if (navigatorContext == null || !navigatorContext.mounted) {
         ReAuthService.fail();
+        return;
       }
+      showReLoginDialog(navigatorContext).catchError((Object _) {
+        ReAuthService.fail();
+      });
     });
   }
 

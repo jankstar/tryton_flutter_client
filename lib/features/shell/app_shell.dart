@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'dart:ui' show AppExitType;
 
 import 'package:flutter/foundation.dart';
@@ -17,6 +19,7 @@ import '../views/wizard_widget.dart';
 import '../actions/url_opener.dart';
 import 'menu_width.dart';
 import 'tab_manager.dart';
+import 'tab_strip.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -39,9 +42,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       openTrytonUrl(context, ref, url);
     });
   }
-
-  /// The divider is dragged: the menu follows without animation.
-  bool _resizing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -96,30 +96,17 @@ class _AppShellState extends ConsumerState<AppShell> {
         child: Scaffold(
       body: Row(
         children: [
-          // ── Sidebar (animated) ─────────────────────────────────────────
-          ClipRect(
-            child: AnimatedContainer(
-              duration: _resizing
-                  ? Duration.zero
-                  : const Duration(milliseconds: 180),
-              curve: Curves.easeInOut,
-              width: _sidebarOpen ? sidebarWidth : 0,
-              child: OverflowBox(
-                alignment: Alignment.topLeft,
-                maxWidth: sidebarWidth,
-                child: SizedBox(
-                  width: sidebarWidth,
-                  child: const MenuSidebar(),
-                ),
-              ),
-            ),
+          // ── Sidebar (opening/closing animated) ─────────────────────────
+          MenuSlot(
+            open: _sidebarOpen,
+            width: sidebarWidth,
+            child: const MenuSidebar(),
           ),
           // the divider: drag for the width of the menu (kept like the
           // language), double click for the default
           if (_sidebarOpen)
             MenuResizeHandle(
               maxWidth: maxMenu,
-              onDragging: (on) => setState(() => _resizing = on),
             ),
           // ── Main content area ──────────────────────────────────────────
           Expanded(
@@ -158,6 +145,13 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   Widget _buildTabBar(TabsState state) {
     final cs = Theme.of(context).colorScheme;
+    return LayoutBuilder(builder: (context, box) {
+      // the user chip takes at most half of the bar
+      return _tabBar(state, cs, math.max(0, (box.maxWidth - 44) / 2));
+    });
+  }
+
+  Widget _tabBar(TabsState state, ColorScheme cs, double chipMaxWidth) {
     return Container(
       height: 40,
       color: cs.surfaceContainerHighest,
@@ -176,29 +170,23 @@ class _AppShellState extends ConsumerState<AppShell> {
               onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
             ),
           ),
-          // Tab chips
+          // Tab chips: wheel scrolling, active tab in view, "all tabs"
           Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  for (int i = 0; i < state.tabs.length; i++)
-                    _TabChip(
-                      tab: state.tabs[i],
-                      isActive: i == state.activeIndex,
-                      onTap: () =>
-                          ref.read(tabsProvider.notifier).activateTab(i),
-                      // A modified form in the tab asks first (10.4).
-                      onClose: () => ref
-                          .read(tabsProvider.notifier)
-                          .requestCloseTab(state.tabs[i].id),
-                    ),
-                ],
-              ),
+            child: TabStrip(
+              tabs: state.tabs,
+              activeIndex: state.activeIndex,
+              onActivate: (i) => ref.read(tabsProvider.notifier).activateTab(i),
+              // A modified form in the tab asks first (10.4).
+              onClose: (i) => ref
+                  .read(tabsProvider.notifier)
+                  .requestCloseTab(state.tabs[i].id),
             ),
           ),
-          const UserChip(),
+          // at the right edge; at most half of the bar, else shortened
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: chipMaxWidth),
+            child: const UserChip(),
+          ),
           const SizedBox(width: 4),
         ],
       ),
@@ -252,54 +240,6 @@ class _AppShellState extends ConsumerState<AppShell> {
 }
 
 // ─── Tab chip ─────────────────────────────────────────────────────────────────
-
-class _TabChip extends StatelessWidget {
-  final AppTab tab;
-  final bool isActive;
-  final VoidCallback onTap;
-  final VoidCallback onClose;
-
-  const _TabChip({
-    required this.tab,
-    required this.isActive,
-    required this.onTap,
-    required this.onClose,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: InputChip(
-        // Keyword actions of the menu carry the menu path ("A / B / C"):
-        // the chip shows the last part, the tooltip the full name.
-        tooltip: tab.title,
-        label: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 180),
-          child: Text(
-            tab.title.split(' / ').last,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-        selected: isActive,
-        onSelected: (_) => onTap(),
-        onDeleted: onClose,
-        deleteIcon: const Icon(Icons.close, size: 13),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        visualDensity: VisualDensity.compact,
-        selectedColor: cs.primaryContainer,
-        checkmarkColor: cs.onPrimaryContainer,
-        showCheckmark: false,
-      ),
-    );
-  }
-}
 
 // ─── Formular öffnen (z. B. Many2One „Öffnen“, „Anhang hinzufügen“) ─────────
 // Eigener Screen mit nur der Form-View in einer neuen Route des Tabs;

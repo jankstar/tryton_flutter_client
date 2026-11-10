@@ -5,6 +5,7 @@ import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart' hide TextField;
 import '../../core/rpc/error_processing.dart';
+import '../../core/screen/calendar.dart';
 import '../../core/screen/screen.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
@@ -22,6 +23,8 @@ import 'list_form_view.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 import 'tree_view.dart';
+import 'calendar_view.dart';
+import 'graph_view.dart';
 import 'email_dialog.dart';
 import '../shell/tab_manager.dart';
 import '../actions/url_opener.dart';
@@ -80,6 +83,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   /// The view shows cards (`list-form`, spec 9.4) instead of a table.
   bool get _listForm => _view?.viewType == 'list-form';
+
+  /// Graph or calendar instead of a table (spec 9.5, 9.6).
+  bool get _chart => _view?.graph != null || _view?.calendar != null;
 
   /// The records listed (rows of the table, cards of a list-form).
   List<Record> get _listed => _listForm
@@ -168,7 +174,10 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       _view = view;
       _tree = TreeXmlParser()
           .parse(view.definition.arch, view.definition.rawFields);
-    } else if (view != null && view.viewType == 'list-form') {
+    } else if (view != null &&
+        (view.viewType == 'list-form' ||
+            view.viewType == 'graph' ||
+            view.viewType == 'calendar')) {
       _view = view;
     }
     _loadToolbar(ref.read(modelServiceProvider));
@@ -503,7 +512,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final actions = _recordActions();
     return RecordShortcuts(
       actions: actions,
-      child: Scaffold(
+      // the toolbar follows the width of the tab (SAO hidden-xs/-sm)
+      child: LayoutBuilder(builder: (context, box) => Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         scrolledUnderElevation: 0,
@@ -515,68 +525,69 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
               : '${widget.title} @ ${revisionText(_screen.group.revision!)}'),
         ),
         actions: [
+          ...adaptiveToolbar(box.maxWidth, [
           // ── Navigation ────────────────────────────────────────────────
           // Switch: like SAO's tryton-switch – jump to form view
-          IconButton(
+          ToolbarSlot(0, IconButton(
             icon: TrytonIcon(
               iconName: 'tryton-switch',
               size: 20,
-              color: hasSelection
+              color: hasSelection || _chart
                   ? Theme.of(context).colorScheme.primary
                   : Theme.of(context).disabledColor,
               fallback: Icons.compare_arrows,
             ),
             tooltip: context.l10n.switchToForm,
-            onPressed: hasSelection ? _switchToForm : null,
-          ),
+            onPressed: hasSelection || _chart ? _switchToForm : null,
+          )),
 
           // ── CRUD ──────────────────────────────────────────────────────
           // Rights and revision view (spec 10.3, MODELACCESS)
-          IconButton(
+          ToolbarSlot(0, IconButton(
             icon: const Icon(Icons.add),
             tooltip: l.createNew,
             onPressed: _screen.canCreate ? _newRecord : null,
-          ),
+          )),
           // Save: changes of editable rows and of drag and drop
-          IconButton(
+          ToolbarSlot(0, IconButton(
             key: const ValueKey('list-save'),
             icon: const Icon(Icons.save),
             tooltip: l.save,
             onPressed: _screen.modified() ? _saveList : null,
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(0, IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l.reload,
             onPressed: _reload,
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(3, IconButton(
             icon: Icon(Icons.copy_outlined,
                 color: hasSelection && _screen.canCreate
                     ? null
                     : Theme.of(context).disabledColor),
             tooltip: l.duplicate,
             onPressed: hasSelection && _screen.canCreate ? _copySelected : null,
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(1, IconButton(
             icon: Icon(Icons.delete_outline,
                 color: hasSelection && _screen.canDelete
                     ? Theme.of(context).colorScheme.error
                     : Theme.of(context).disabledColor),
             tooltip: l.delete,
             onPressed: hasSelection && _screen.canDelete ? _deleteSelected : null,
-          ),
+          )),
 
           // ── Attachment (requires selection) ───────────────────────────
-          _ResourceButtons(
+          ToolbarSlot(1, _ResourceButtons(
             attachKey: _attachKey,
             record: singleSelection ? _screen.selectedRecords.first : null,
             onNote: actions[RecordAction.note] == null
                 ? null
                 : () => _resourceDialog(notes: true),
-          ),
+          ), slots: 2),
 
           // ── Action / Relate / Print / Email (require selection) ───────
-          ToolbarDropdownButton(
+          ToolbarSlot(2, ToolbarDropdownButton(
             key: _actionKey,
             screen: _screen,
             icon: Icons.rocket_launch_outlined,
@@ -588,8 +599,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             beforeExecute: _confirmSave,
             buttons: _keywordButtons('action'),
             onButton: _runButton,
-          ),
-          ToolbarDropdownButton(
+          )),
+          ToolbarSlot(2, ToolbarDropdownButton(
             key: _relateKey,
             screen: _screen,
             icon: Icons.link,
@@ -601,8 +612,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             beforeExecute: _confirmSave,
             buttons: _keywordButtons('relate'),
             onButton: _runButton,
-          ),
-          ToolbarDropdownButton(
+          )),
+          ToolbarSlot(2, ToolbarDropdownButton(
             key: _printKey,
             screen: _screen,
             icon: Icons.print_outlined,
@@ -617,25 +628,26 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             exports: _toolbar.exports,
             onExport: (export) => runPredefinedExport(context, _screen, export,
                 listed: _listed),
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(2, IconButton(
             key: _emailKey,
             icon: const Icon(Icons.email_outlined),
             tooltip: l.email,
             onPressed: actions[RecordAction.email],
-          ),
+          )),
 
           // ── Close ─────────────────────────────────────────────────────
-          IconButton(
+          ToolbarSlot(0, IconButton(
             icon: const Icon(Icons.close),
             tooltip: context.l10n.close,
             onPressed: () => widget.onClose?.call(),
-          ),
+          )),
+          ]),
           const SizedBox(width: 4),
         ],
       ),
       body: _buildBody(),
-    ), // Scaffold
+    )), // Scaffold
     ); // RecordShortcuts
   }
 
@@ -752,6 +764,13 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
 
   Widget _buildListBody() {
     final view = _view;
+    // graph and calendar show their axes/days also without records
+    if (view?.graph != null || view?.calendar != null) {
+      return Column(children: [
+        Expanded(child: _buildChartBody(view!)),
+        if (_loading || _opening) const LinearProgressIndicator(),
+      ]);
+    }
     if (_screen.group.isEmpty && _loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -802,6 +821,74 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       ],
     );
   }
+}
+
+// ─── Graph and calendar (spec 9.5, 9.6) ──────────────────────────────────────
+
+extension on _ListViewScreenState {
+  Widget _buildChartBody(ScreenView view) {
+    final graph = view.graph;
+    if (graph != null) {
+      return GraphView(
+        key: ObjectKey(view),
+        screen: _screen,
+        definition: graph,
+        onOpen: _graphOpen,
+      );
+    }
+    final calendar = view.calendar!;
+    final canCreate = calendar.editable && _screen.model.access.create;
+    return CalendarView(
+      key: ObjectKey(view),
+      calendar: calendar,
+      events: calendar.events(
+          [for (final r in _screen.group) if (_calendarLoaded(calendar, r)) r],
+          canWrite: _screen.model.access.write && !_screen.screenReadonly),
+      onPeriodChanged: () {
+        if (calendar.updateDomain()) _search();
+      },
+      onOpen: (record) => _whileOpening(() => _run(() async {
+            _screen.currentRecord = record;
+            await _screen.switchView(viewType: 'form');
+          })),
+      onNew: canCreate
+          ? () {
+              _screen.currentRecord = null;
+              _newRecord();
+            }
+          : null,
+      onMove: (event, start, end) => _run(() async {
+        await calendar.move(event.record, start, end);
+        await event.record.save();
+        calendar.select(start);
+      }),
+    );
+  }
+
+  /// The fields of the calendar are loaded for [record] (else loaded in
+  /// the background, the event appears afterwards).
+  bool _calendarLoaded(CalendarState calendar, Record record) {
+    if (record.isLoaded(calendar.dtstart)) return true;
+    record
+        .load(calendar.dtstart, processException: false)
+        .then((_) => _onScreenChanged())
+        .catchError((Object _) {});
+    return false;
+  }
+
+  /// Keyword `graph_open` with the ids of a point (Python
+  /// `action_keyword`; the context without active_id(s)).
+  Future<void> _graphOpen(List<int> ids) => _run(() async {
+        final context = {..._screen.localContext}
+          ..remove('active_id')
+          ..remove('active_ids');
+        await ref.read(actionServiceProvider).execKeyword(
+            'graph_open',
+            {'model': _model, 'id': ids.first, 'ids': ids},
+            context: context,
+            warning: false,
+            ui: DialogActionUi(this.context));
+      });
 }
 
 // ─── Attachment and note buttons ─────────────────────────────────────────────

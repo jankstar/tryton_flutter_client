@@ -16,6 +16,7 @@ import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
 import 'form_dialog.dart';
 import 'search_dialog.dart';
+import 'form_label_style.dart';
 
 /// Many2One / One2One / Reference widget on the data layer (spec 9.2.6,
 /// SAO `Sao.View.Form.Many2One`):
@@ -492,8 +493,8 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
         focusNode: _focus,
         readOnly: widget.readOnly || _relation == null,
         decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
+          labelText: formLabel(context, label),
+          border: formBorder(context, readOnly: widget.readOnly),
           prefixIcon: Tooltip(
             message: _relation ?? '',
             child: const Icon(Icons.account_tree_outlined, size: 16),
@@ -553,9 +554,12 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
             key: ValueKey('m2o-search-$_name')));
       }
     }
+    // a very narrow field: the buttons shrink instead of overflowing
     return buttons.isEmpty
         ? null
-        : Row(mainAxisSize: MainAxisSize.min, children: buttons);
+        : FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(mainAxisSize: MainAxisSize.min, children: buttons));
   }
 
   Widget _completionList(AppLocalizations l) {
@@ -619,8 +623,8 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
       initialValue: models.any((m) => m[0] == current) ? current : null,
       isExpanded: true,
       decoration: InputDecoration(
-        labelText: _title,
-        border: const OutlineInputBorder(),
+        labelText: formLabel(context, _title),
+        border: formBorder(context, readOnly: widget.readOnly),
         isDense: true,
       ),
       items: [

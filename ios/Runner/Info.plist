@@ -70,6 +70,8 @@
 	</array>
 	<!-- tryton:// links (spec 12.7) handled by app_links, not by the
 	     Flutter router -->
+	<key>NSCameraUsageDescription</key>
+	<string>The camera scans bar codes and QR codes into Tryton forms.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

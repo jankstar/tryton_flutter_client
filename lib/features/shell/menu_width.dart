@@ -104,3 +104,35 @@ class _MenuResizeHandleState extends ConsumerState<MenuResizeHandle> {
     );
   }
 }
+
+/// The place of the menu left of the tabs: [width] wide when [open], 0
+/// when closed. Only opening/closing is animated; a new [width] (window
+/// resized, divider dragged) applies at once – an animated width lagged
+/// behind a shrinking window and overflowed the row.
+class MenuSlot extends StatelessWidget {
+  final bool open;
+  final double width;
+  final Widget child;
+
+  const MenuSlot(
+      {super.key, required this.open, required this.width, required this.child});
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(end: open ? 1 : 0),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeInOut,
+        builder: (context, t, child) => ClipRect(
+          child: SizedBox(
+            width: width * t,
+            child: OverflowBox(
+              alignment: Alignment.topLeft,
+              minWidth: 0,
+              maxWidth: width,
+              child: child,
+            ),
+          ),
+        ),
+        child: SizedBox(width: width, child: child),
+      );
+}

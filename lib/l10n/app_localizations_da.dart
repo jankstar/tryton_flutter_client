@@ -969,4 +969,38 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Ingen beskeder endnu.';
+
+  @override
+  String get calendarToday => 'I dag';
+
+  @override
+  String get calendarMonth => 'Måned';
+
+  @override
+  String get calendarWeek => 'Uge';
+
+  @override
+  String get calendarDay => 'Dag';
+
+  @override
+  String get scanCode => 'Scan';
+
+  @override
+  String get codeScanner => 'Kodescanner';
+
+  @override
+  String get scanCodeHint => 'Kode';
+
+  @override
+  String get scanCodeSound => 'Lyd';
+
+  @override
+  String get scanCodeCamera => 'Kamera';
+
+  @override
+  String get scanCodeNoCamera =>
+      'Intet kamera tilgængeligt – indtast koden eller scan den med en håndscanner.';
+
+  @override
+  String get allTabs => 'Alle faner';
 }

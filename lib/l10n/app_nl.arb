@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Afmelden",
   "chatAddFollower": "Volger toevoegen",
   "chatUnsubscribeQuestion": "Weet u zeker dat u \"{name}\" van dit kanaal wilt afmelden?",
-  "chatEmpty": "Nog geen berichten."
+  "chatEmpty": "Nog geen berichten.",
+  "calendarToday": "Vandaag",
+  "calendarMonth": "Maand",
+  "calendarWeek": "Week",
+  "calendarDay": "Dag",
+  "scanCode": "Scannen",
+  "codeScanner": "Codescanner",
+  "scanCodeHint": "Code",
+  "scanCodeSound": "Geluid",
+  "scanCodeCamera": "Camera",
+  "scanCodeNoCamera": "Geen camera beschikbaar – voer de code in of scan hem met een handscanner.",
+  "allTabs": "Alle tabbladen"
 }

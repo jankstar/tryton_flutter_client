@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Abbestellen",
   "chatAddFollower": "Follower hinzufügen",
   "chatUnsubscribeQuestion": "„{name}“ wirklich von diesem Kanal abmelden?",
-  "chatEmpty": "Noch keine Nachrichten."
+  "chatEmpty": "Noch keine Nachrichten.",
+  "calendarToday": "Heute",
+  "calendarMonth": "Monat",
+  "calendarWeek": "Woche",
+  "calendarDay": "Tag",
+  "scanCode": "Scannen",
+  "codeScanner": "Code-Scanner",
+  "scanCodeHint": "Code",
+  "scanCodeSound": "Ton",
+  "scanCodeCamera": "Kamera",
+  "scanCodeNoCamera": "Keine Kamera verfügbar – Code eingeben oder mit dem Hand-Scanner erfassen.",
+  "allTabs": "Alle Tabs"
 }

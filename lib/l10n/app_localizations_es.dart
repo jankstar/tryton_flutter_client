@@ -970,4 +970,38 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Aún no hay mensajes.';
+
+  @override
+  String get calendarToday => 'Hoy';
+
+  @override
+  String get calendarMonth => 'Mes';
+
+  @override
+  String get calendarWeek => 'Semana';
+
+  @override
+  String get calendarDay => 'Día';
+
+  @override
+  String get scanCode => 'Escanear';
+
+  @override
+  String get codeScanner => 'Escáner de códigos';
+
+  @override
+  String get scanCodeHint => 'Código';
+
+  @override
+  String get scanCodeSound => 'Sonido';
+
+  @override
+  String get scanCodeCamera => 'Cámara';
+
+  @override
+  String get scanCodeNoCamera =>
+      'No hay cámara disponible: introduzca el código o escanéelo con un lector de mano.';
+
+  @override
+  String get allTabs => 'Todas las pestañas';
 }

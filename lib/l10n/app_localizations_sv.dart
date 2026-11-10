@@ -969,4 +969,38 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Inga meddelanden än.';
+
+  @override
+  String get calendarToday => 'Idag';
+
+  @override
+  String get calendarMonth => 'Månad';
+
+  @override
+  String get calendarWeek => 'Vecka';
+
+  @override
+  String get calendarDay => 'Dag';
+
+  @override
+  String get scanCode => 'Skanna';
+
+  @override
+  String get codeScanner => 'Kodläsare';
+
+  @override
+  String get scanCodeHint => 'Kod';
+
+  @override
+  String get scanCodeSound => 'Ljud';
+
+  @override
+  String get scanCodeCamera => 'Kamera';
+
+  @override
+  String get scanCodeNoCamera =>
+      'Ingen kamera tillgänglig – ange koden eller skanna den med en handskanner.';
+
+  @override
+  String get allTabs => 'Alla flikar';
 }

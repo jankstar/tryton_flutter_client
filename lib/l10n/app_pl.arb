@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Anuluj subskrypcję",
   "chatAddFollower": "Dodaj obserwującego",
   "chatUnsubscribeQuestion": "Czy na pewno wypisać \"{name}\" z tego kanału?",
-  "chatEmpty": "Brak wiadomości."
+  "chatEmpty": "Brak wiadomości.",
+  "calendarToday": "Dziś",
+  "calendarMonth": "Miesiąc",
+  "calendarWeek": "Tydzień",
+  "calendarDay": "Dzień",
+  "scanCode": "Skanuj",
+  "codeScanner": "Skaner kodów",
+  "scanCodeHint": "Kod",
+  "scanCodeSound": "Dźwięk",
+  "scanCodeCamera": "Kamera",
+  "scanCodeNoCamera": "Brak kamery – wpisz kod lub zeskanuj go skanerem ręcznym.",
+  "allTabs": "Wszystkie karty"
 }

@@ -23,9 +23,11 @@ import '../pyson/pyson_evaluator.dart';
 import '../xml/form_xml_parser.dart';
 import '../serialization/tryton_serializer.dart';
 import '../xml/view_definition.dart';
+import 'calendar.dart';
+import 'graph.dart';
 
 /// View types the client can show; others in `mode` are skipped.
-const supportedViewTypes = {'tree', 'form', 'list-form'};
+const supportedViewTypes = {'tree', 'form', 'list-form', 'graph', 'calendar'};
 
 /// A tab of the screen container (`tab_domain`): name, domain and whether
 /// the number of records is shown (spec 8.4).
@@ -257,7 +259,23 @@ class ScreenView {
     return attributes['creatable'] == null || _flag('creatable');
   }
 
-  bool get searchable => viewType == 'tree';
+  /// Tree, graph and calendar show the search (Python `search_active`).
+  bool get searchable =>
+      viewType == 'tree' || viewType == 'graph' || viewType == 'calendar';
+
+  /// Definition of a graph view (spec 9.5).
+  late final GraphDefinition? graph = viewType == 'graph'
+      ? GraphDefinition.parse(definition.arch, definition.rawFields)
+      : null;
+
+  /// Definition and shown period of a calendar view (spec 9.6).
+  late final CalendarState? calendar = viewType == 'calendar'
+      ? CalendarState.parse(definition.arch, firstWeekday: firstWeekday)
+      : null;
+
+  /// First day of the week of the calendar (set by the UI from the
+  /// locale before the view is shown).
+  static int firstWeekday = DateTime.monday;
 
   /// Buttons of the view (form: all `<button>` nodes, nested too; tree:
   /// the button columns and the `multiple` buttons, Python
@@ -777,6 +795,12 @@ class TrytonScreen extends ChangeNotifier {
               ['active', '=', false],
             ];
     }
+    // calendar: only the shown period (Python `current_domain`)
+    final calendar = currentView?.calendar;
+    if (calendar != null) {
+      final period = calendar.currentDomain(model.fields);
+      result = result.isNotEmpty ? ['AND', result, period] : period;
+    }
     final cd = contextDomain;
     if (cd != null) {
       final env = context;
@@ -1250,6 +1274,10 @@ class TrytonScreen extends ChangeNotifier {
     bool defaults = true,
     Map<String, dynamic>? values,
   }) async {
+    // calendar: the start of the new record is the chosen day/time
+    // (Python `new` with `set_default_date`)
+    final calendar = currentView?.calendar;
+    final moment = calendar?.selectedMoment;
     if (currentView != null && !currentView!.creatable) {
       if (!await switchView(viewType: 'form', creatable: true)) return null;
     }
@@ -1258,6 +1286,9 @@ class TrytonScreen extends ChangeNotifier {
     final record = target.newRecord();
     if (defaults) await record.defaultGet(values);
     target.add(record, position: _positionIn(target));
+    if (calendar != null && moment != null) {
+      await calendar.setDefaultDate(record, moment);
+    }
     _currentRecord = record;
     _notify();
     return record;

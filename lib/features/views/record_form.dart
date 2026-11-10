@@ -16,6 +16,7 @@ import 'record_richtext.dart';
 import 'record_link.dart';
 import 'record_many2one.dart';
 import 'record_widget_values.dart';
+import 'form_label_style.dart';
 
 /// Form layout of one [Record] (spec 9.2): fields, labels, groups,
 /// notebooks and buttons of a form view. States come from the record
@@ -73,9 +74,14 @@ class _RecordFormState extends State<RecordForm> {
   @override
   Widget build(BuildContext context) {
     _values = recordWidgetValues(_record);
+    final side = _sideLabels;
     return Theme(
       data: compactFormTheme(Theme.of(context)),
-      child: _renderNodes(widget.root.children, _safeCol(widget.root.col)),
+      child: FormLabelScope(
+        side: side,
+        underline: true,
+        child: _renderNodes(widget.root.children, _safeCol(widget.root.col)),
+      ),
     );
   }
 
@@ -109,8 +115,29 @@ class _RecordFormState extends State<RecordForm> {
   /// a new row. `col ≤ 0` puts all cells in one row (horizontal box),
   /// `col = 1` one below the other. Cells keep their position when they
   /// are invisible; columns without a visible cell collapse.
+  /// Fields with a `<label>` anywhere in the form (the label may stand in
+  /// another container than its field).
+  late final Set<String> _labelledFields = _labelsOf(widget.root.children);
+
+  static Set<String> _labelsOf(List<FormNode> nodes) => {
+        for (final node in nodes)
+          ...switch (node) {
+            LabelNode(:final fieldName?) => {fieldName},
+            GroupNode() => _labelsOf(node.children),
+            NotebookNode() => _labelsOf(node.pages),
+            PageNode() => _labelsOf(node.children),
+            _ => const <String>{},
+          },
+      };
+
+  /// On wide windows the labels stand in their own cells before the
+  /// fields (GTK/SAO, spec 9.2.2); narrow ones float in the field.
+  bool get _sideLabels =>
+      MediaQuery.sizeOf(context).width >= _Grid.narrowWidth;
+
   Widget _renderNodes(List<FormNode> nodes, int col) {
     final hbox = col <= 0;
+    final side = _sideLabels;
     // Labels with fieldName are skipped. Their column width is transferred to
     // the immediately following Field-Node with the same name, so that no
     // gaps appear in the grid and the field uses the full available space.
@@ -137,7 +164,8 @@ class _RecordFormState extends State<RecordForm> {
     for (final node in nodes) {
       // LabelNode with field name → skip (field shows label internally)
       // (`string=""` shows the field value instead, spec 9.2.1.)
-      if (node is LabelNode &&
+      if (!side &&
+          node is LabelNode &&
           node.fieldName != null &&
           node.string != '' &&
           _hasField(nodes, node.fieldName!)) {
@@ -159,9 +187,11 @@ class _RecordFormState extends State<RecordForm> {
       }
 
       final cell = _cellOf(node, hbox ? 1 : col,
-          extraColspan:
-              node is FieldNode ? labelColspanMap[node.name] ?? 0 : 0,
-          hbox: hbox);
+          extraColspan: node is FieldNode && !side
+              ? labelColspanMap[node.name] ?? 0
+              : 0,
+          hbox: hbox,
+          labelled: node is FieldNode && _labelledFields.contains(node.name));
       if (cell == null) continue;
       if (hbox) {
         currentRow.add(cell.at(currentRow.length, 1));
@@ -186,8 +216,9 @@ class _RecordFormState extends State<RecordForm> {
       (n is GroupNode && _hasField(n.children, name)));
 
   /// The cell of [node] in a container of [col] columns (null: no cell).
+  /// [labelled]: a `<label>` of the field stands in the same container.
   _Cell? _cellOf(FormNode node, int col, {int extraColspan = 0,
-    bool hbox = false,}) {
+    bool hbox = false, bool labelled = false}) {
     final maxCol = col < 1 ? 1 : col;
     var colspan = switch (node) {
       FieldNode() => node.colspan,
@@ -205,6 +236,11 @@ class _RecordFormState extends State<RecordForm> {
     final visible = !_isInvisible(node);
     var child = visible ? _buildNode(node) : const SizedBox.shrink();
     if (child == null) return null;
+    // a field without label cell keeps its label in the field (wide
+    // windows; nothing is lost when the XML has no `<label>`)
+    if (node is FieldNode && !labelled && _sideLabels) {
+      child = FormLabelScope(side: false, underline: true, child: child);
+    }
     // In a horizontal box an input gets a natural width instead of the
     // whole line (spec 9.2.2); checkboxes keep their own width.
     if (hbox && visible && node is FieldNode) {
@@ -228,7 +264,8 @@ class _RecordFormState extends State<RecordForm> {
           child: child,
         );
       } else {
-        naturalWidth = _naturalWidth(node);
+        naturalWidth =
+            _naturalWidth(node, labelInField: !(labelled && _sideLabels));
       }
     }
     // Labels and separator texts do not expand (xexpand 0), everything
@@ -255,6 +292,9 @@ class _RecordFormState extends State<RecordForm> {
       xalign: node.xalign ?? (node is LabelNode ? 1.0 : null),
       fill: fill,
       naturalWidth: naturalWidth,
+      labelFor: node is LabelNode ? node.fieldName : null,
+      field: node is FieldNode ? node.name : null,
+      shrinks: hbox && node is FieldNode && _hboxWidth(node) != null,
     );
   }
 
@@ -283,7 +323,9 @@ class _RecordFormState extends State<RecordForm> {
   /// the cell), spec 9.2.2 „Natürliche Breite je Widget“: numbers 8
   /// characters, dates their format, char with `size` min(120, size)
   /// characters; never narrower than the floating label.
-  double? _naturalWidth(FieldNode node) {
+  /// [labelInField]: the floating label is in the field, so the field is
+  /// not narrower than its label.
+  double? _naturalWidth(FieldNode node, {bool labelInField = true}) {
     final fd = widget.viewDef.fields[node.name];
     if (fd == null) return null;
     const charWidth = 8.5, padding = 40.0;
@@ -303,6 +345,7 @@ class _RecordFormState extends State<RecordForm> {
       width = (size < 120 ? size : 120) * charWidth + padding;
     }
     if (width == null) return null;
+    if (!labelInField) return width;
     final label = fd.label.length * charWidth + padding;
     return width > label ? width : label;
   }
@@ -332,6 +375,8 @@ class _RecordFormState extends State<RecordForm> {
       case LabelNode():
         if (_nodeStates(node.states).invisible) return true;
         final name = node.fieldName;
+        // the label of the excluded parent field (x2many form) too
+        if (name != null && name == widget.excludeField) return true;
         final field = name == null ? null : _record.model.fields[name];
         return field != null &&
             PYSONEvaluator.truthy(_stateAttrs(field)['invisible']);
@@ -612,13 +657,18 @@ class _RecordFormState extends State<RecordForm> {
     final required = PYSONEvaluator.truthy(fieldStates['required']);
     final cs = Theme.of(context).colorScheme;
     final xalign = node.xalign ?? 1.0;
+    // labels before the fields: as high as the text of an input
+    final side = _sideLabels && name != null;
     return Padding(
-      padding: const EdgeInsets.only(top: 8, right: 4),
+      padding: EdgeInsets.only(top: side ? 13 : 8, right: 4),
       child: Text(
         text,
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        style: (side
+                ? Theme.of(context).textTheme.bodyMedium
+                : Theme.of(context).textTheme.bodySmall)
+            ?.copyWith(
               color: states.readonly ? cs.outline : cs.onSurfaceVariant,
               fontWeight: required ? FontWeight.w600 : null,
             ),
@@ -962,6 +1012,15 @@ class _Cell {
   /// A full-width row (notebook, separator).
   final bool full;
 
+  /// The field a label cell belongs to / the field of a field cell (a
+  /// label stays beside its field in a horizontal box).
+  final String? labelFor;
+  final String? field;
+
+  /// In a horizontal box the input may shrink to the line (not a
+  /// checkbox).
+  final bool shrinks;
+
   const _Cell({
     required this.child,
     required this.colspan,
@@ -972,6 +1031,9 @@ class _Cell {
     this.fill = false,
     this.naturalWidth,
     this.full = false,
+    this.labelFor,
+    this.field,
+    this.shrinks = false,
   });
 
   _Cell at(int column, int colspan, {bool full = false}) => _Cell(
@@ -983,7 +1045,10 @@ class _Cell {
       xalign: xalign,
       fill: fill,
       naturalWidth: naturalWidth,
-      full: full);
+      full: full,
+      labelFor: labelFor,
+      field: field,
+      shrinks: shrinks);
 }
 
 /// Grid of a container (spec 9.2.2): rows of cells at fixed columns or
@@ -1124,18 +1189,38 @@ class _Grid extends StatelessWidget {
   /// A horizontal box (`col ≤ 0`, spec 9.2.2): the cells side by side in
   /// their natural width, wrapping only when the line is full – also in
   /// the narrow layout.
-  Widget _line(List<_Cell> cells) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
+  Widget _line(List<_Cell> cells) {
+    // a label and its field stay together when the line wraps
+    final children = <Widget>[];
+    final visible = [for (final c in cells) if (c.visible) c];
+    for (var i = 0; i < visible.length; i++) {
+      final cell = visible[i];
+      final next = i + 1 < visible.length ? visible[i + 1] : null;
+      if (cell.labelFor != null && next != null && next.field == cell.labelFor) {
+        // (the field takes at most the rest of the line)
+        children.add(Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final cell in cells)
-              if (cell.visible) cell.child,
+            Flexible(child: cell.child),
+            if (next.shrinks) Flexible(child: next.child) else next.child,
           ],
-        ),
-      );
+        ));
+        i++;
+      } else {
+        children.add(cell.child);
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: children,
+      ),
+    );
+  }
 
   /// One cell per line (narrow screens); labels left aligned above.
   Widget _column(List<_Cell> cells) {

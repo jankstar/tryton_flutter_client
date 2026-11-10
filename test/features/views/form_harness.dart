@@ -147,12 +147,44 @@ Future<void> pumpFrames(WidgetTester tester, [int count = 30]) async {
   }
 }
 
-/// The TextField of the form field labelled [label] (also the RichText
-/// label `label *` of a required field).
-Finder textFieldOf(String label) => find
-    .ancestor(
-        of: find.byWidgetPredicate((w) =>
-            (w is Text && w.data == label) ||
-            (w is RichText && w.text.toPlainText() == '$label *')),
-        matching: find.byType(TextField))
-    .first;
+/// The TextField of the form field labelled [label]: the floating label
+/// in the field (also `label *` of a required field, narrow windows) or
+/// the label cell `label:` before it (wide windows, spec 9.2.2) – then
+/// the nearest TextField right of the label on its line.
+Finder textFieldOf(String label) {
+  final inField = find.ancestor(
+      of: find.byWidgetPredicate((w) =>
+          (w is Text && w.data == label) ||
+          (w is RichText && w.text.toPlainText() == '$label *')),
+      matching: find.byType(TextField));
+  Rect rectOf(Element e) {
+    final box = e.renderObject! as RenderBox;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  Element? beside() {
+    final labels =
+        find.byWidgetPredicate((w) => w is Text && w.data == '$label:').evaluate();
+    if (labels.isEmpty) return null;
+    final l = rectOf(labels.first);
+    Element? best;
+    var distance = double.infinity;
+    for (final e in find.byType(TextField).evaluate()) {
+      final r = rectOf(e);
+      final sameLine = r.top < l.bottom + 8 && r.bottom > l.top - 8;
+      if (!sameLine || r.left < l.right - 2) continue;
+      final d = r.left - l.right;
+      if (d < distance) {
+        distance = d;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  return find
+      .byElementPredicate((e) =>
+          e.widget is TextField &&
+          (inField.evaluate().contains(e) || identical(beside(), e)))
+      .first;
+}

@@ -971,4 +971,38 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Brak wiadomości.';
+
+  @override
+  String get calendarToday => 'Dziś';
+
+  @override
+  String get calendarMonth => 'Miesiąc';
+
+  @override
+  String get calendarWeek => 'Tydzień';
+
+  @override
+  String get calendarDay => 'Dzień';
+
+  @override
+  String get scanCode => 'Skanuj';
+
+  @override
+  String get codeScanner => 'Skaner kodów';
+
+  @override
+  String get scanCodeHint => 'Kod';
+
+  @override
+  String get scanCodeSound => 'Dźwięk';
+
+  @override
+  String get scanCodeCamera => 'Kamera';
+
+  @override
+  String get scanCodeNoCamera =>
+      'Brak kamery – wpisz kod lub zeskanuj go skanerem ręcznym.';
+
+  @override
+  String get allTabs => 'Wszystkie karty';
 }

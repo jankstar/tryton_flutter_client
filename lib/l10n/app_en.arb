@@ -1004,5 +1004,27 @@
     }
   },
   "chatEmpty": "No messages yet.",
-  "@chatEmpty": {}
+  "@chatEmpty": {},
+  "calendarToday": "Today",
+  "@calendarToday": {},
+  "calendarMonth": "Month",
+  "@calendarMonth": {},
+  "calendarWeek": "Week",
+  "@calendarWeek": {},
+  "calendarDay": "Day",
+  "@calendarDay": {},
+  "scanCode": "Scan",
+  "@scanCode": {},
+  "codeScanner": "Code Scanner",
+  "@codeScanner": {},
+  "scanCodeHint": "Code",
+  "@scanCodeHint": {},
+  "scanCodeSound": "Sound",
+  "@scanCodeSound": {},
+  "scanCodeCamera": "Camera",
+  "@scanCodeCamera": {},
+  "scanCodeNoCamera": "No camera available – enter or scan the code with a hand scanner.",
+  "@scanCodeNoCamera": {},
+  "allTabs": "All tabs",
+  "@allTabs": {}
 }

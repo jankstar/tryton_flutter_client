@@ -138,7 +138,8 @@ void main() {
         (e.renderObject as RenderBox).size.width
     ]..sort();
     expect(widths, hasLength(2));
-    expect(widths.last, greaterThan(dialog.width * 0.8),
+    // (the label cell `Company:` stands before the field, spec 9.2.2)
+    expect(widths.last, greaterThan(dialog.width * 0.6),
         reason: 'char: not 1/10 of the width');
     // the date keeps its natural width (spec 9.2.2), not a tenth either
     expect(widths.first, inInclusiveRange(120, 250));

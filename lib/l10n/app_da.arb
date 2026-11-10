@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Afmeld",
   "chatAddFollower": "Tilføj en følger",
   "chatUnsubscribeQuestion": "Er du sikker på at afmelde \"{name}\" fra denne kanal?",
-  "chatEmpty": "Ingen beskeder endnu."
+  "chatEmpty": "Ingen beskeder endnu.",
+  "calendarToday": "I dag",
+  "calendarMonth": "Måned",
+  "calendarWeek": "Uge",
+  "calendarDay": "Dag",
+  "scanCode": "Scan",
+  "codeScanner": "Kodescanner",
+  "scanCodeHint": "Kode",
+  "scanCodeSound": "Lyd",
+  "scanCodeCamera": "Kamera",
+  "scanCodeNoCamera": "Intet kamera tilgængeligt – indtast koden eller scan den med en håndscanner.",
+  "allTabs": "Alle faner"
 }

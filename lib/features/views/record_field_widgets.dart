@@ -20,6 +20,7 @@ import '../model/model_service.dart';
 import 'record_link.dart' show parseHexColor;
 import 'search_dialog.dart';
 import '../../shared/dialogs/tryton_dialogs.dart';
+import 'form_label_style.dart';
 
 // Form widgets that work on the record and its field (spec 9.2.4): they
 // format with `field.get`/digits/converter and hand the converted value
@@ -30,6 +31,7 @@ import '../../shared/dialogs/tryton_dialogs.dart';
 InputDecoration recordDecoration(BuildContext context, FieldDefinition fd,
     {bool required = false,
     bool invalid = false,
+    bool readOnly = false,
     String? prefixText,
     String? suffixText,
     Widget? prefixIcon,
@@ -48,9 +50,9 @@ InputDecoration recordDecoration(BuildContext context, FieldDefinition fd,
         )
       : null;
   return InputDecoration(
-    label: label,
-    labelText: label == null ? fd.label : null,
-    border: const OutlineInputBorder(),
+    label: formLabel(context, label),
+    labelText: formLabel(context, label == null ? fd.label : null),
+    border: formBorder(context, readOnly: readOnly && !invalid),
     prefixText: prefixText,
     suffixText: suffixText,
     prefixIcon: prefixIcon,
@@ -215,6 +217,7 @@ class RecordFieldArgs {
       recordDecoration(context, fd,
           required: required,
           invalid: invalid,
+          readOnly: readOnly,
           prefixText: prefixText,
           suffixText: suffixText,
           prefixIcon: prefixIcon,
@@ -1145,7 +1148,7 @@ class _DictEntryState extends ConsumerState<_DictEntry> {
           : TextAlign.start,
       decoration: InputDecoration(
         isDense: true,
-        border: const OutlineInputBorder(),
+        border: formBorder(context, readOnly: widget.readOnly),
         prefixIcon: _type == 'color'
             ? Padding(
                 padding: const EdgeInsets.all(8),

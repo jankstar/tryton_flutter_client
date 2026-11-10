@@ -18,6 +18,7 @@ import '../../shared/dialogs/tryton_dialogs.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/errors/error_handler.dart';
 import '../model/selection_loader.dart';
+import 'code_scanner.dart';
 import 'record_form.dart';
 import 'csv_dialogs.dart';
 import 'record_menu.dart';
@@ -767,7 +768,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       },
       child: RecordShortcuts(
       actions: actions,
-      child: Scaffold(
+      // the toolbar follows the width of the tab (SAO hidden-xs/-sm)
+      child: LayoutBuilder(builder: (context, box) => Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         scrolledUnderElevation: 0,
@@ -793,30 +795,33 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               ),
           ],
         )),
-        // Narrow screens: the actions scroll instead of overflowing.
+        // Narrow tabs hide buttons by level (adaptiveToolbar); should the
+        // rest still not fit, the actions scroll instead of overflowing
+        // and the title keeps a part of the bar.
         actions: [
           // Flexible: also bounded by the space the AppBar really has
           Flexible(child: ConstrainedBox(
             constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.7),
+                maxWidth: (box.maxWidth - toolbarTitleWidth / 2)
+                    .clamp(0, double.infinity)),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
+              child: Row(mainAxisSize: MainAxisSize.min, children: adaptiveToolbar(box.maxWidth, [
           // ── Navigation ────────────────────────────────────────────────
-          IconButton(
+          ToolbarSlot(1, IconButton(
             icon: const Icon(Icons.arrow_back_ios, size: 16),
             tooltip: context.l10n.previousRecord,
             onPressed: hasPrev ? () => _navigate(next: false) : null,
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(1, IconButton(
             icon: const Icon(Icons.arrow_forward_ios, size: 16),
             tooltip: context.l10n.nextRecord,
             onPressed: hasNext ? () => _navigate(next: true) : null,
-          ),
+          )),
           // Switch: like SAO's tryton-switch – the list of the screen.
           // All buttons are always shown; their activation is the one of
           // the record menu (spec 10.3, Python `_update_sensitive`).
-          IconButton(
+          ToolbarSlot(0, IconButton(
             icon: TrytonIcon(
               iconName: 'tryton-switch',
               size: 20,
@@ -827,16 +832,16 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             ),
             tooltip: context.l10n.switchView,
             onPressed: actions[RecordAction.switchView],
-          ),
+          )),
 
           // ── CRUD ──────────────────────────────────────────────────────
           // Rights and revision view (spec 10.3, MODELACCESS)
-          IconButton(
+          ToolbarSlot(0, IconButton(
             icon: const Icon(Icons.add),
             tooltip: l.createNew,
             onPressed: _saving || !_screen.canCreate ? null : _newRecord,
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(0, IconButton(
             icon: _saving
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.save),
@@ -846,66 +851,66 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
                     (_record?.readonly ?? true)
                 ? null
                 : _save,
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(0, IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l.reload,
             onPressed: _saving ? null : _reload,
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(3, IconButton(
             icon: const Icon(Icons.copy_outlined),
             tooltip: l.duplicate,
             onPressed: actions[RecordAction.copy],
-          ),
-          IconButton(
+          )),
+          ToolbarSlot(1, IconButton(
             icon: Icon(Icons.delete_outline,
                 color: actions[RecordAction.delete] == null
                     ? Theme.of(context).disabledColor
                     : Theme.of(context).colorScheme.error),
             tooltip: l.delete,
             onPressed: actions[RecordAction.delete],
-          ),
+          )),
 
           // ── Logs / Attachment / Note ──────────────────────────────────
-          IconButton(
+          ToolbarSlot(3, IconButton(
             icon: const Icon(Icons.history),
             tooltip: context.l10n.viewLogs,
             onPressed: actions[RecordAction.logs],
-          ),
+          )),
           // Revisions only for models with history (MODELHISTORY):
           // otherwise the server answers "No history table".
           if (_hasHistory)
-            IconButton(
+            ToolbarSlot(3, IconButton(
               icon: const Icon(Icons.manage_history),
               tooltip: context.l10n.revisions,
               onPressed: actions[RecordAction.revision],
-            ),
-          AttachmentMenuButton(
+            )),
+          ToolbarSlot(1, AttachmentMenuButton(
             key: _attachKey,
             resource: _resourceRef,
             count: (resources?['attachment_count'] as num?)?.toInt() ?? 0,
             onChanged: _loadResources,
             onPreview: () => setState(() => _preview = !_preview),
-          ),
-          NoteIconButton(
+          )),
+          ToolbarSlot(1, NoteIconButton(
             total: (resources?['note_count'] as num?)?.toInt() ?? 0,
             unread: (resources?['note_unread'] as num?)?.toInt() ?? 0,
             onPressed: actions[RecordAction.note],
-          ),
+          )),
           if (_hasChat)
-            IconButton(
+            ToolbarSlot(1, IconButton(
               key: const ValueKey('chat-button'),
               icon: const Icon(Icons.forum_outlined), // tryton-chat
               tooltip: context.l10n.chat,
               isSelected: _chat,
               onPressed: actions[RecordAction.chat],
-            ),
+            )),
 
           // ── Action / Relate / Print / Email ──────────────────────────
           // Always shown like in SAO original (disabled when not
           // available).
           ...[
-            ToolbarDropdownButton(
+            ToolbarSlot(2, ToolbarDropdownButton(
               key: _actionKey,
               screen: _screen,
               icon: Icons.rocket_launch_outlined, // tryton-launch
@@ -920,8 +925,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
                   if ((b.keyword ?? 'action') == 'action') b
               ],
               onButton: _executeButton,
-            ),
-            ToolbarDropdownButton(
+            )),
+            ToolbarSlot(2, ToolbarDropdownButton(
               key: _relateKey,
               screen: _screen,
               icon: Icons.link,                   // tryton-link
@@ -936,8 +941,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
                   if ((b.keyword ?? 'action') == 'relate') b
               ],
               onButton: _executeButton,
-            ),
-            ToolbarDropdownButton(
+            )),
+            ToolbarSlot(2, ToolbarDropdownButton(
               key: _printKey,
               screen: _screen,
               icon: Icons.print_outlined,         // tryton-print
@@ -954,29 +959,29 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onButton: _executeButton,
               exports: _toolbar.exports,
               onExport: _predefinedExport,
-            ),
-            IconButton(
+            )),
+            ToolbarSlot(2, IconButton(
               key: _emailKey,
               icon: const Icon(Icons.email_outlined), // tryton-email
               tooltip: l.email,
               onPressed: actions[RecordAction.email],
-            ),
+            )),
           ],
 
           // ── Close – back to menu ──────────────────────────────────────
-          IconButton(
+          ToolbarSlot(0, IconButton(
             icon: const Icon(Icons.close),  // tryton-close
             tooltip: context.l10n.close,
             // Tab: asks via the tab's close guard; route: via PopScope.
             onPressed: () => widget.onClose?.call(),
-          ),
-              ]),
+          )),
+              ])),
             ),
           )),
         ],
       ),
       body: _withPreview(_buildBody()),
-    ), // Scaffold
+    )), // Scaffold
     ), // RecordShortcuts
     ); // PopScope
   }
@@ -1164,6 +1169,13 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       children: [
         _buildNotifications(),
         Expanded(child: scrollBody),
+        // `scan_code` (spec 11.11): submit saves the record
+        ScanCodeButton(
+          root: _formRoot!,
+          record: record,
+          readOnly: record.readonly || _saving,
+          onSubmit: _save,
+        ),
         if (split.buttons.isNotEmpty)
           FormButtonFooter(
             nodes: split.buttons,

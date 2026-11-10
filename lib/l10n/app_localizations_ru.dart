@@ -970,4 +970,38 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Сообщений пока нет.';
+
+  @override
+  String get calendarToday => 'Сегодня';
+
+  @override
+  String get calendarMonth => 'Месяц';
+
+  @override
+  String get calendarWeek => 'Неделя';
+
+  @override
+  String get calendarDay => 'День';
+
+  @override
+  String get scanCode => 'Сканировать';
+
+  @override
+  String get codeScanner => 'Сканер кодов';
+
+  @override
+  String get scanCodeHint => 'Код';
+
+  @override
+  String get scanCodeSound => 'Звук';
+
+  @override
+  String get scanCodeCamera => 'Камера';
+
+  @override
+  String get scanCodeNoCamera =>
+      'Камера недоступна — введите код или считайте его ручным сканером.';
+
+  @override
+  String get allTabs => 'Все вкладки';
 }

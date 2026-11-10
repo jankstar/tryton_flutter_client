@@ -11,6 +11,7 @@ import '../../core/xml/view_definition.dart';
 import '../model/model_service.dart';
 import '../model/selection_loader.dart';
 import '../shell/tab_manager.dart';
+import 'code_scanner.dart';
 import 'record_form.dart';
 import 'record_widget_values.dart';
 
@@ -300,6 +301,14 @@ class _WizardWidgetState extends ConsumerState<WizardWidget> {
           Flexible(child: form)
         else
           Expanded(child: form),
+        // `scan_code` (spec 11.11): submit runs the default button
+        if (view?.formRoot != null && record != null)
+          ScanCodeButton(
+            root: view!.formRoot!,
+            record: record,
+            readOnly: _wizard.processing,
+            onSubmit: _pressDefault,
+          ),
         _buildButtons(),
       ],
     );

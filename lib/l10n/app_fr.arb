@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Se désabonner",
   "chatAddFollower": "Ajouter un abonné",
   "chatUnsubscribeQuestion": "Désabonner « {name} » de ce canal ?",
-  "chatEmpty": "Aucun message pour l'instant."
+  "chatEmpty": "Aucun message pour l'instant.",
+  "calendarToday": "Aujourd'hui",
+  "calendarMonth": "Mois",
+  "calendarWeek": "Semaine",
+  "calendarDay": "Jour",
+  "scanCode": "Scanner",
+  "codeScanner": "Lecteur de codes",
+  "scanCodeHint": "Code",
+  "scanCodeSound": "Son",
+  "scanCodeCamera": "Caméra",
+  "scanCodeNoCamera": "Aucune caméra disponible – saisissez le code ou lisez-le avec un lecteur manuel.",
+  "allTabs": "Tous les onglets"
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/rpc/reauth_service.dart';
 import '../../core/l10n/locale_provider.dart';
+import '../notifications/notifications.dart' show busServiceProvider;
 import 'auth_provider.dart';
 
 /// Compact re-login dialog – shown when the session expires (401).
@@ -44,6 +45,9 @@ class _ReLoginDialogState extends ConsumerState<ReLoginDialog> {
       await ref.read(authProvider.notifier).reAuthenticate(
         _passCtrl.text,
       );
+      // the bus (notifications, chat) polls with the new token
+      final auth = ref.read(rpcClientProvider).auth;
+      if (auth != null) ref.read(busServiceProvider).updateAuth(auth);
       ReAuthService.complete();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

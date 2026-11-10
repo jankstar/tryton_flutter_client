@@ -18,6 +18,14 @@ const _views = {
       'name': {'type': 'char', 'string': 'Name'},
     },
   },
+  'graph': {
+    'type': 'graph',
+    'view_id': 8,
+    'arch': '<graph><x><field name="name"/></x><y><field name="#"/></y></graph>',
+    'fields': {
+      'name': {'type': 'char', 'string': 'Name'},
+    },
+  },
   'form': {
     'type': 'form',
     'view_id': 2,
@@ -305,7 +313,11 @@ void main() {
       expect(call.context['screen_size'], [800, 600]);
       expect(call.context['view_tree_width'], isTrue);
       await screen.switchView();
-      expect(screen.currentView!.viewType, 'form', reason: 'graph skipped');
+      expect(screen.currentView!.viewType, 'graph', reason: 'graph supported');
+      expect(rpc.named('party.party.fields_view_get').last.params,
+          [8, 'graph']);
+      await screen.switchView();
+      expect(screen.currentView!.viewType, 'form');
       expect(rpc.named('party.party.fields_view_get').last.params,
           [null, 'form']);
     });

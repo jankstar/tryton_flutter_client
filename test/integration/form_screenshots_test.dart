@@ -36,8 +36,18 @@ const _forms = [
   ('party', 'party.party', 44, <String, dynamic>{}, Size(1040, 1400)),
   ('party-narrow', 'party.party', 44, <String, dynamic>{}, Size(420, 1800)),
   ('invoice', 'account.invoice', 1920, {'type': 'out'}, Size(1040, 1400)),
+  ('invoice-medium', 'account.invoice', 1920, {'type': 'out'}, Size(760, 1400)),
+  ('parties-list-narrow', 'party.party', null, <String, dynamic>{}, Size(420, 900)),
   ('billing-unit', 'real_estate.billing_unit', 1, <String, dynamic>{}, Size(1040, 1400)),
+  ('graph-cron-log', 'ir.cron.log', null, <String, dynamic>{}, Size(1040, 800)),
+  ('calendar-tasks', 'real_estate.task', null, <String, dynamic>{}, Size(1040, 900)),
 ];
+
+/// Views of the screenshots other than list (no id) or form.
+const _modes = {
+  'graph-cron-log': ['graph'],
+  'calendar-tasks': ['calendar'],
+};
 
 Future<void> _loadFonts() async {
   final sdk = Platform.environment['FLUTTER_ROOT'] ??
@@ -132,16 +142,31 @@ void main() {
             supportedLocales: AppLocalizations.supportedLocales,
             home: ScreenWidget(
                 attributes: ScreenAttributes(model,
-                    mode: id == null ? const ['tree'] : const ['form'],
+                    mode: _modes[name] ?? (id == null ? const ['tree'] : const ['form']),
                     resId: id,
                     context: context),
                 title: name),
           ),
         ),
       ));
-      for (var i = 0; i < 60; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        await tester.pump();
+      Future<void> settle(int frames) async {
+        for (var i = 0; i < frames; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          await tester.pump();
+        }
+      }
+
+      await settle(60);
+      // the tasks of the test server are in January 2026
+      if (name.startsWith('calendar-')) {
+        final previous = find.byKey(const ValueKey('calendar-previous'));
+        final now = DateTime.now();
+        final months = (now.year - 2026) * 12 + now.month - 1;
+        for (var i = 0; i < months; i++) {
+          await tester.tap(previous);
+          await tester.pump();
+        }
+        await settle(40);
       }
       await tester.runAsync(() async {
         final render =

@@ -50,14 +50,28 @@ void main() {
   Map<String, dynamic> lines(String label) =>
       {'type': 'one2many', 'string': label, 'relation': 'test.line'};
 
-  /// The input box (InputDecorator) of the field labelled [label].
-  Rect box(WidgetTester tester, String label) => tester.getRect(find
-      .ancestor(
-          of: find.byWidgetPredicate((w) =>
-              (w is Text && w.data == label) ||
-              (w is RichText && w.text.toPlainText() == label)),
-          matching: find.byType(InputDecorator))
-      .first);
+  /// The input box (InputDecorator) of the field labelled [label]: the
+  /// label in the field, or the label cell `label:` before it (wide
+  /// windows, spec 9.2.2) – then the nearest box right of it on its line.
+  Rect box(WidgetTester tester, String label) {
+    final inField = find.ancestor(
+        of: find.byWidgetPredicate((w) =>
+            (w is Text && w.data == label) ||
+            (w is RichText && w.text.toPlainText() == label)),
+        matching: find.byType(InputDecorator));
+    if (inField.evaluate().isNotEmpty) return tester.getRect(inField.first);
+    final l = tester.getRect(find.text('$label:').first);
+    Rect? best;
+    for (final e in find.byType(InputDecorator).evaluate()) {
+      final box = e.renderObject! as RenderBox;
+      final r = box.localToGlobal(Offset.zero) & box.size;
+      if (r.top > l.bottom + 8 || r.bottom < l.top - 8 || r.left < l.right - 2) {
+        continue;
+      }
+      if (best == null || r.left < best.left) best = r;
+    }
+    return best!;
+  }
 
   /// The table of the x2many field titled [title].
   Rect list(WidgetTester tester, String title) => tester.getRect(find
@@ -93,7 +107,8 @@ void main() {
     }
     expect(box(tester, 'Reference').left, box(tester, 'Code').left);
     expect(box(tester, 'Reference').width, box(tester, 'Code').width);
-    expect(tester.getRect(find.text('Active')).left, greaterThan(box(tester, 'Code').right));
+    // (the label cell of the checkbox, spec 9.2.2)
+    expect(tester.getRect(find.text('Active:')).left, greaterThan(box(tester, 'Code').right));
   });
 
   testWidgets('natural widths: numbers and dates do not fill their cell; the '
@@ -121,7 +136,9 @@ void main() {
     // the cells are half of the form (1400 px), the inputs narrower
     expect(planned.width, lessThan(400));
     expect(box(tester, 'Date').width, lessThan(400));
-    expect(box(tester, 'Note').width, greaterThan(600), reason: 'char fills');
+    // (the label columns take their part of the width)
+    expect(box(tester, 'Note').width, greaterThan(planned.width * 2),
+        reason: 'char fills its column');
   });
 
   testWidgets('one height per row: char, selection and many2one inputs line '

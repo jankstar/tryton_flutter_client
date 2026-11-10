@@ -970,4 +970,38 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Ei vielä viestejä.';
+
+  @override
+  String get calendarToday => 'Tänään';
+
+  @override
+  String get calendarMonth => 'Kuukausi';
+
+  @override
+  String get calendarWeek => 'Viikko';
+
+  @override
+  String get calendarDay => 'Päivä';
+
+  @override
+  String get scanCode => 'Skannaa';
+
+  @override
+  String get codeScanner => 'Koodinlukija';
+
+  @override
+  String get scanCodeHint => 'Koodi';
+
+  @override
+  String get scanCodeSound => 'Ääni';
+
+  @override
+  String get scanCodeCamera => 'Kamera';
+
+  @override
+  String get scanCodeNoCamera =>
+      'Kameraa ei ole – syötä koodi tai lue se käsilukijalla.';
+
+  @override
+  String get allTabs => 'Kaikki välilehdet';
 }

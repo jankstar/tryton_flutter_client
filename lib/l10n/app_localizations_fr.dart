@@ -973,4 +973,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Aucun message pour l\'instant.';
+
+  @override
+  String get calendarToday => 'Aujourd\'hui';
+
+  @override
+  String get calendarMonth => 'Mois';
+
+  @override
+  String get calendarWeek => 'Semaine';
+
+  @override
+  String get calendarDay => 'Jour';
+
+  @override
+  String get scanCode => 'Scanner';
+
+  @override
+  String get codeScanner => 'Lecteur de codes';
+
+  @override
+  String get scanCodeHint => 'Code';
+
+  @override
+  String get scanCodeSound => 'Son';
+
+  @override
+  String get scanCodeCamera => 'Caméra';
+
+  @override
+  String get scanCodeNoCamera =>
+      'Aucune caméra disponible – saisissez le code ou lisez-le avec un lecteur manuel.';
+
+  @override
+  String get allTabs => 'Tous les onglets';
 }

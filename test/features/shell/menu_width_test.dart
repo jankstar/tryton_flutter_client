@@ -64,4 +64,43 @@ void main() {
     expect(container.read(menuWidthProvider), MenuWidthNotifier.defaultWidth);
     expect(prefs.getDouble(MenuWidthNotifier.prefKey), MenuWidthNotifier.defaultWidth);
   });
+
+  testWidgets('a shrinking window: the menu follows at once without '
+      'overflow; opening and closing are animated', (tester) async {
+    var open = true;
+    late StateSetter update;
+    Widget app(double window) => MaterialApp(
+          home: Scaffold(
+            body: StatefulBuilder(builder: (context, set) {
+              update = set;
+              // like the AppShell: the menu at most window − 360
+              final width = (window - 360).clamp(200.0, 600.0);
+              return Row(children: [
+                MenuSlot(
+                    open: open,
+                    width: width,
+                    child: const ColoredBox(
+                        key: ValueKey('menu'), color: Colors.blue)),
+                const Expanded(child: SizedBox()),
+              ]);
+            }),
+          ),
+        );
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    for (var window = 1000.0; window >= 560; window -= 7) {
+      tester.view.physicalSize = Size(window, 600);
+      await tester.pumpWidget(app(window));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.takeException(), isNull, reason: 'window $window');
+      expect(tester.getSize(find.byType(MenuSlot)).width,
+          (window - 360).clamp(200.0, 600.0));
+    }
+    update(() => open = false);
+    await tester.pump(const Duration(milliseconds: 90));
+    final half = tester.getSize(find.byType(MenuSlot)).width;
+    expect(half, greaterThan(0), reason: 'animated');
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(MenuSlot)).width, 0);
+  });
 }

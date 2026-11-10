@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Peru tilaus",
   "chatAddFollower": "Lisää seuraaja",
   "chatUnsubscribeQuestion": "Haluatko varmasti poistaa käyttäjän \"{name}\" tältä kanavalta?",
-  "chatEmpty": "Ei vielä viestejä."
+  "chatEmpty": "Ei vielä viestejä.",
+  "calendarToday": "Tänään",
+  "calendarMonth": "Kuukausi",
+  "calendarWeek": "Viikko",
+  "calendarDay": "Päivä",
+  "scanCode": "Skannaa",
+  "codeScanner": "Koodinlukija",
+  "scanCodeHint": "Koodi",
+  "scanCodeSound": "Ääni",
+  "scanCodeCamera": "Kamera",
+  "scanCodeNoCamera": "Kameraa ei ole – syötä koodi tai lue se käsilukijalla.",
+  "allTabs": "Kaikki välilehdet"
 }

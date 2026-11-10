@@ -550,5 +550,16 @@
   "chatUnsubscribe": "Отписаться",
   "chatAddFollower": "Добавить подписчика",
   "chatUnsubscribeQuestion": "Отписать «{name}» от этого канала?",
-  "chatEmpty": "Сообщений пока нет."
+  "chatEmpty": "Сообщений пока нет.",
+  "calendarToday": "Сегодня",
+  "calendarMonth": "Месяц",
+  "calendarWeek": "Неделя",
+  "calendarDay": "День",
+  "scanCode": "Сканировать",
+  "codeScanner": "Сканер кодов",
+  "scanCodeHint": "Код",
+  "scanCodeSound": "Звук",
+  "scanCodeCamera": "Камера",
+  "scanCodeNoCamera": "Камера недоступна — введите код или считайте его ручным сканером.",
+  "allTabs": "Все вкладки"
 }

@@ -970,4 +970,38 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get chatEmpty => 'Nog geen berichten.';
+
+  @override
+  String get calendarToday => 'Vandaag';
+
+  @override
+  String get calendarMonth => 'Maand';
+
+  @override
+  String get calendarWeek => 'Week';
+
+  @override
+  String get calendarDay => 'Dag';
+
+  @override
+  String get scanCode => 'Scannen';
+
+  @override
+  String get codeScanner => 'Codescanner';
+
+  @override
+  String get scanCodeHint => 'Code';
+
+  @override
+  String get scanCodeSound => 'Geluid';
+
+  @override
+  String get scanCodeCamera => 'Camera';
+
+  @override
+  String get scanCodeNoCamera =>
+      'Geen camera beschikbaar – voer de code in of scan hem met een handscanner.';
+
+  @override
+  String get allTabs => 'Alle tabbladen';
 }
