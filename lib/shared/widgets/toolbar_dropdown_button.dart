@@ -28,8 +28,13 @@ class ToolbarDropdownButton extends ConsumerWidget {
   /// with [onButton] (without [beforeExecute]: the button saves itself).
   final List<ButtonNode> buttons;
 
-  /// The calling screen (reloaded after a wizard, spec 13).
+  /// The calling screen (reloaded after a wizard, spec 13); its context
+  /// (with the values of the context form) goes to the action.
   final TrytonScreen? screen;
+
+  /// Ids of the listed records for actions with `records = listed`
+  /// (Python `Form._action`); null: the selected ones.
+  final List<int> Function()? listedIds;
   final Future<void> Function(ButtonNode)? onButton;
 
   /// Predefined CSV exports at the end of the print menu (spec 10.3,
@@ -48,6 +53,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
     this.beforeExecute,
     this.buttons = const [],
     this.onButton,
+    this.listedIds,
     this.screen,
     this.exports = const [],
     this.onExport,
@@ -58,15 +64,24 @@ class ToolbarDropdownButton extends ConsumerWidget {
     final before = beforeExecute;
     if (before != null && !await before()) return;
     if (!context.mounted) return;
-    // Like SAO's toolbar: Action.execute with keyword (name suffix).
+    // Like Python `Form._action`: the ids (selected or, with
+    // `records = listed`, listed), `model_context` and the screen's local
+    // context – it holds the values of the context form (e.g. the fiscal
+    // year of the general ledger, which its reports need).
+    final listed = listedIds;
+    final ids = action.raw['records'] == 'listed' && listed != null
+        ? listed()
+        : selectedIds;
     try {
       await ref.read(actionServiceProvider).execute(
             {'res_model': action.resModel, ...action.raw},
             data: {
               'model': model,
+              'model_context': screen?.contextScreen?.model.name,
               'id': selectedIds.isEmpty ? null : selectedIds.first,
-              'ids': selectedIds,
+              'ids': ids,
             },
+            context: screen?.localContext ?? const {},
             keyword: true,
             ui: DialogActionUi(context),
             screen: screen,
