@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 import 'package:tryton_flutter_client/shared/utils/file_actions.dart';
@@ -161,6 +161,35 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('csv-close')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('csv-export-dialog')), findsNothing);
+  });
+
+  testWidgets('export: Copy URL puts the data URL of the export into the '
+      'clipboard (spec 11.9)', (tester) async {
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = (call.arguments as Map)['text'] as String;
+      }
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+    final rpc = server({'model.ir.export.get': (_) => <dynamic>[]});
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    await openMenu(tester, 'record-menu-export');
+    await tester.tap(find.byKey(const ValueKey('csv-header')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('csv-copy-url')));
+    await tester.pumpAndSettle();
+    // the form's record (selected), the fields of the view, no header
+    // http on port 80: without port like the Python client
+    expect(copied, startsWith('http://localhost/'));
+    expect(
+        copied,
+        endsWith('/data/test.form?d=%5B1%5D&f=name&f=state.translated'
+            '&enc=utf_8_sig&dl=%2C&qc=%22&h=0&loc=1'));
+    expect(find.text('URL copied.'), findsOneWidget);
   });
 
   testWidgets('export: a predefined export sets fields and options',

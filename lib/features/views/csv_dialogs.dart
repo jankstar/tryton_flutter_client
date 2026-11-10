@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/locale_provider.dart';
@@ -11,6 +12,8 @@ import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/utils/csv_format.dart';
+import '../../shared/utils/export_url.dart';
+import '../auth/auth_provider.dart' show rpcClientProvider, sessionProvider;
 import '../../shared/utils/file_actions.dart';
 import '../model/model_service.dart';
 import '../../shared/dialogs/tryton_dialogs.dart';
@@ -865,6 +868,40 @@ class _CsvExportDialogState extends State<_CsvExportDialog> {
     }
   }
 
+  /// The export as URL of the server's `/<db>/data/<model>` route in the
+  /// clipboard (spec 11.9, Python `WinExport.get_url`): the ids of the
+  /// selected records, else the search domain with limit/page (unless
+  /// the search limit is ignored) and order; the screen's local context.
+  Future<void> _copyUrl() async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final screen = _screen;
+    final selected = _selectedRecords;
+    final limit = screen.limit;
+    final withLimit = !selected && !_ignoreSearchLimit && limit != null;
+    final url = exportUrl(
+      baseUrl: container.read(rpcClientProvider).baseUrl,
+      database: container.read(sessionProvider).database ?? '',
+      model: screen.model.name,
+      domain: selected
+          ? _exportRecords(screen, selected: true).ids
+          : screen.searchDomain(text: screen.searchText),
+      limit: withLimit ? limit : null,
+      page: withLimit ? screen.offset ~/ limit : null,
+      order: selected ? const [] : screen.order ?? const [],
+      context: screen.localContext,
+      fields: [for (final f in widget.selected) f.path],
+      encoding: _encoding,
+      delimiter: _delimiter.text.isEmpty ? ',' : _delimiter.text,
+      quote: _quote.text.isEmpty ? '"' : _quote.text,
+      header: _header,
+      localeFormat: _localeFormat,
+    );
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(SnackBar(content: Text(context.l10n.urlCopied)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -960,6 +997,12 @@ class _CsvExportDialogState extends State<_CsvExportDialog> {
         ),
       ],
       actions: [
+        TextButton.icon(
+          key: const ValueKey('csv-copy-url'),
+          icon: const Icon(Icons.link, size: 18),
+          label: Text(l.copyUrl),
+          onPressed: widget.selected.isEmpty ? null : _copyUrl,
+        ),
         TextButton(
           key: const ValueKey('csv-close'),
           onPressed: () => Navigator.pop(context),
