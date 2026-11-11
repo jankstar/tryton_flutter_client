@@ -55,9 +55,9 @@ lib/generated_plugin_registrant.dart
 # iOS / macOS
 **/ios/Runner/GeneratedPluginRegistrant.*
 **/macos/Flutter/GeneratedPluginRegistrant.swift
-**/macos/Flutter/Flutter-Release.xcconfig
-**/macos/Flutter/Flutter-Debug.xcconfig
-**/macos/Flutter/Flutter-Profile.xcconfig
+# (macos/Flutter/Flutter-{Debug,Release}.xcconfig belong into the
+# repository – the release build needs them; ephemeral/ and Pods/ are
+# ignored in macos/.gitignore)
 **/Pods/
 
 # Windows

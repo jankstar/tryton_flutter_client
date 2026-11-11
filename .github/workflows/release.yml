@@ -145,6 +145,9 @@ jobs:
     runs-on: windows-latest
     env:
       LABEL: ${{ needs.version.outputs.label }}
+      # Git Bash (MSYS) would turn /options (ISCC /D…, signtool /f …) into
+      # Windows paths
+      MSYS_NO_PATHCONV: '1'
     defaults:
       run:
         shell: bash
@@ -196,8 +199,8 @@ jobs:
       - name: Installer (Inno Setup)
         run: >
           "/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          "/DAppVersion=${{ needs.version.outputs.build_name }}"
-          "/DAppLabel=$LABEL"
+          "-DAppVersion=${{ needs.version.outputs.build_name }}"
+          "-DAppLabel=$LABEL"
           installer/windows/setup.iss
       - name: Sign the installer
         if: env.WINDOWS_SIGN == '1'

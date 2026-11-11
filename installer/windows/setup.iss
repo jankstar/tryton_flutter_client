@@ -1,6 +1,6 @@
 ; Inno Setup script of the Windows installer (specs/RELEASE.md).
 ; Built by the release workflow:
-;   iscc /DAppVersion=8.0.0 /DAppLabel=v8.0.0-beta.1 installer\windows\setup.iss
+;   iscc -DAppVersion=8.0.0 -DAppLabel=v8.0.0-beta.1 installer\windows\setup.iss
 ; Per-user installation without admin rights; Start menu entry, optional
 ; desktop icon, uninstaller; LICENSE as licence page, COPYRIGHT installed.
 
