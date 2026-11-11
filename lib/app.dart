@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import 'features/notifications/notifications.dart' show rootMessengerKey;
 import 'features/model/metadata_service.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
+import 'features/shell/about_dialog.dart';
 import 'features/shell/app_shell.dart';
 import 'l10n/app_localizations.dart';
 import 'features/actions/deep_links.dart';
@@ -25,6 +27,9 @@ import 'features/actions/url_opener.dart';
 /// it – the context of [TrytonFlutterClientApp] is above the router and
 /// has no Navigator.
 final rootNavigatorKey = GlobalKey<NavigatorState>();
+
+/// Calls of the native app menu (macOS: "About …").
+const appMenuChannel = MethodChannel('tryton/app_menu');
 
 final _router = GoRouter(
   navigatorKey: rootNavigatorKey,
@@ -60,6 +65,15 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
     // set_preferences after the session timeout): ask for the password
     // on the router's navigator; without one the request fails at once
     // instead of waiting forever.
+    // macOS app menu "About …" (MainMenu.xib → AppDelegate.showAboutPanel)
+    appMenuChannel.setMethodCallHandler((call) async {
+      final navigatorContext = rootNavigatorKey.currentContext;
+      if (call.method == 'about' &&
+          navigatorContext != null &&
+          navigatorContext.mounted) {
+        await showAboutTryton(navigatorContext);
+      }
+    });
     _reAuthSub = ReAuthService.reAuthRequests.listen((completer) {
       final navigatorContext = rootNavigatorKey.currentContext;
       if (navigatorContext == null || !navigatorContext.mounted) {
@@ -87,6 +101,7 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
   void dispose() {
     _reAuthSub?.cancel();
     _deepLinks.dispose();
+    appMenuChannel.setMethodCallHandler(null);
     super.dispose();
   }
 

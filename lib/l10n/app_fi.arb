@@ -301,7 +301,7 @@
   "@wizard": {
     "description": "Action type label shown when a wizard is not yet supported"
   },
-  "versionMismatch": "Yhteensopimaton palvelinversio {server} (asiakas odottaa {client}).",
+  "versionMismatch": "Palvelimen versio ei ole yhteensopiva. Palvelin {server}, asiakas {client}.",
   "@versionMismatch": {
     "description": "Error shown when server major.minor version doesn't match the client",
     "placeholders": {
@@ -563,5 +563,22 @@
   "scanCodeNoCamera": "Kameraa ei ole – syötä koodi tai lue se käsilukijalla.",
   "allTabs": "Kaikki välilehdet",
   "connectionSecure": "Salattu yhteys (HTTPS)",
-  "connectionInsecure": "Salaamaton yhteys (HTTP) – salasana lähetetään selväkielisenä"
+  "connectionInsecure": "Salaamaton yhteys (HTTP) – salasana lähetetään selväkielisenä",
+  "documentation": "Dokumentaatio…",
+  "aboutMenu": "Tietoja…",
+  "aboutVersion": "Versio",
+  "aboutBasedOn": "Perustuu Trytonin työpöytäasiakkaaseen ja SAO:hon – Copyright (C) 2004-2026 Tryton",
+  "aboutProjectPage": "Projektisivu",
+  "aboutCredits": "Tekijät",
+  "aboutLicense": "Lisenssi",
+  "aboutCopyright": "Tekijänoikeus",
+  "aboutThirdParty": "Kolmansien osapuolten lisenssit",
+  "aboutAuthors": "Tämän asiakkaan tekijät",
+  "aboutOriginalAuthors": "Tryton-asiakkaan tekijät (alkuperäinen)",
+  "aboutTranslations": "Käännökset",
+  "aboutNoWarranty": "Tällä ohjelmalla ei ole minkäänlaista takuuta.",
+  "aboutSeeLicense": "Katso lisätietoja: {license}.",
+  "aboutGplName": "GNU General Public License, versio 3 tai uudempi",
+  "appDevelopment": "kehitys",
+  "appPrerelease": "Testiversio"
 }

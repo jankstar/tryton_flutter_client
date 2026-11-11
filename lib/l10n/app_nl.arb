@@ -301,7 +301,7 @@
   "@wizard": {
     "description": "Action type label shown when a wizard is not yet supported"
   },
-  "versionMismatch": "Incompatibele serverversie {server} (client verwacht {client}).",
+  "versionMismatch": "Onjuiste versie van de server. Server {server}, client {client}.",
   "@versionMismatch": {
     "description": "Error shown when server major.minor version doesn't match the client",
     "placeholders": {
@@ -563,5 +563,22 @@
   "scanCodeNoCamera": "Geen camera beschikbaar – voer de code in of scan hem met een handscanner.",
   "allTabs": "Alle tabbladen",
   "connectionSecure": "Versleutelde verbinding (HTTPS)",
-  "connectionInsecure": "Onversleutelde verbinding (HTTP) – het wachtwoord wordt onversleuteld verzonden"
+  "connectionInsecure": "Onversleutelde verbinding (HTTP) – het wachtwoord wordt onversleuteld verzonden",
+  "documentation": "Documentatie…",
+  "aboutMenu": "Over…",
+  "aboutVersion": "Versie",
+  "aboutBasedOn": "Gebaseerd op de Tryton-desktopclient en SAO – Copyright (C) 2004-2026 Tryton",
+  "aboutProjectPage": "Projectpagina",
+  "aboutCredits": "Credits",
+  "aboutLicense": "Licentie",
+  "aboutCopyright": "Copyright",
+  "aboutThirdParty": "Licenties van derden",
+  "aboutAuthors": "Auteurs van deze client",
+  "aboutOriginalAuthors": "Auteurs van de Tryton-client (origineel)",
+  "aboutTranslations": "Vertalingen",
+  "aboutNoWarranty": "Dit programma wordt geleverd zonder enige garantie.",
+  "aboutSeeLicense": "Zie de {license} voor details.",
+  "aboutGplName": "GNU General Public License, versie 3 of later",
+  "appDevelopment": "ontwikkeling",
+  "appPrerelease": "Testversie"
 }

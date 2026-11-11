@@ -223,7 +223,7 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String versionMismatch(String server, String client) {
-    return 'Yhteensopimaton palvelinversio $server (asiakas odottaa $client).';
+    return 'Palvelimen versio ei ole yhteensopiva. Palvelin $server, asiakas $client.';
   }
 
   @override
@@ -1011,4 +1011,59 @@ class AppLocalizationsFi extends AppLocalizations {
   @override
   String get connectionInsecure =>
       'Salaamaton yhteys (HTTP) – salasana lähetetään selväkielisenä';
+
+  @override
+  String get documentation => 'Dokumentaatio…';
+
+  @override
+  String get aboutMenu => 'Tietoja…';
+
+  @override
+  String get aboutVersion => 'Versio';
+
+  @override
+  String get aboutBasedOn =>
+      'Perustuu Trytonin työpöytäasiakkaaseen ja SAO:hon – Copyright (C) 2004-2026 Tryton';
+
+  @override
+  String get aboutProjectPage => 'Projektisivu';
+
+  @override
+  String get aboutCredits => 'Tekijät';
+
+  @override
+  String get aboutLicense => 'Lisenssi';
+
+  @override
+  String get aboutCopyright => 'Tekijänoikeus';
+
+  @override
+  String get aboutThirdParty => 'Kolmansien osapuolten lisenssit';
+
+  @override
+  String get aboutAuthors => 'Tämän asiakkaan tekijät';
+
+  @override
+  String get aboutOriginalAuthors => 'Tryton-asiakkaan tekijät (alkuperäinen)';
+
+  @override
+  String get aboutTranslations => 'Käännökset';
+
+  @override
+  String get aboutNoWarranty =>
+      'Tällä ohjelmalla ei ole minkäänlaista takuuta.';
+
+  @override
+  String aboutSeeLicense(String license) {
+    return 'Katso lisätietoja: $license.';
+  }
+
+  @override
+  String get aboutGplName => 'GNU General Public License, versio 3 tai uudempi';
+
+  @override
+  String get appDevelopment => 'kehitys';
+
+  @override
+  String get appPrerelease => 'Testiversio';
 }

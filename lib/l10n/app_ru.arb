@@ -301,7 +301,7 @@
   "@wizard": {
     "description": "Action type label shown when a wizard is not yet supported"
   },
-  "versionMismatch": "Несовместимая версия сервера {server} (клиент ожидает {client}).",
+  "versionMismatch": "Несовместимая версия сервера. Сервер {server}, клиент {client}.",
   "@versionMismatch": {
     "description": "Error shown when server major.minor version doesn't match the client",
     "placeholders": {
@@ -563,5 +563,22 @@
   "scanCodeNoCamera": "Камера недоступна — введите код или считайте его ручным сканером.",
   "allTabs": "Все вкладки",
   "connectionSecure": "Зашифрованное соединение (HTTPS)",
-  "connectionInsecure": "Незашифрованное соединение (HTTP) — пароль передаётся открытым текстом"
+  "connectionInsecure": "Незашифрованное соединение (HTTP) — пароль передаётся открытым текстом",
+  "documentation": "Документация…",
+  "aboutMenu": "О программе…",
+  "aboutVersion": "Версия",
+  "aboutBasedOn": "Основан на настольном клиенте Tryton и SAO – Copyright (C) 2004-2026 Tryton",
+  "aboutProjectPage": "Страница проекта",
+  "aboutCredits": "Авторы",
+  "aboutLicense": "Лицензия",
+  "aboutCopyright": "Авторские права",
+  "aboutThirdParty": "Лицензии сторонних компонентов",
+  "aboutAuthors": "Авторы этого клиента",
+  "aboutOriginalAuthors": "Авторы клиента Tryton (оригинал)",
+  "aboutTranslations": "Переводы",
+  "aboutNoWarranty": "Эта программа не предоставляет никаких гарантий.",
+  "aboutSeeLicense": "Подробности см. в {license}.",
+  "aboutGplName": "GNU General Public License версии 3 или более поздней",
+  "appDevelopment": "разработка",
+  "appPrerelease": "Тестовая версия"
 }

@@ -301,7 +301,7 @@
   "@wizard": {
     "description": "Action type label shown when a wizard is not yet supported"
   },
-  "versionMismatch": "Inkompatibel serverversion {server} (klienten forventer {client}).",
+  "versionMismatch": "Inkompatibel serverversion. Server {server}, klient {client}.",
   "@versionMismatch": {
     "description": "Error shown when server major.minor version doesn't match the client",
     "placeholders": {
@@ -563,5 +563,22 @@
   "scanCodeNoCamera": "Intet kamera tilgængeligt – indtast koden eller scan den med en håndscanner.",
   "allTabs": "Alle faner",
   "connectionSecure": "Krypteret forbindelse (HTTPS)",
-  "connectionInsecure": "Ukrypteret forbindelse (HTTP) – adgangskoden sendes i klartekst"
+  "connectionInsecure": "Ukrypteret forbindelse (HTTP) – adgangskoden sendes i klartekst",
+  "documentation": "Dokumentation…",
+  "aboutMenu": "Om…",
+  "aboutVersion": "Version",
+  "aboutBasedOn": "Baseret på Tryton-desktopklienten og SAO – Copyright (C) 2004-2026 Tryton",
+  "aboutProjectPage": "Projektside",
+  "aboutCredits": "Medvirkende",
+  "aboutLicense": "Licens",
+  "aboutCopyright": "Ophavsret",
+  "aboutThirdParty": "Tredjepartslicenser",
+  "aboutAuthors": "Forfattere af denne klient",
+  "aboutOriginalAuthors": "Forfattere af Tryton-klienten (original)",
+  "aboutTranslations": "Oversættelser",
+  "aboutNoWarranty": "Dette program leveres uden nogen form for garanti.",
+  "aboutSeeLicense": "Se {license} for detaljer.",
+  "aboutGplName": "GNU General Public License, version 3 eller senere",
+  "appDevelopment": "udvikling",
+  "appPrerelease": "Testversion"
 }

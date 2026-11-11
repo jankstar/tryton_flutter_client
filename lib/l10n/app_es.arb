@@ -301,7 +301,7 @@
   "@wizard": {
     "description": "Action type label shown when a wizard is not yet supported"
   },
-  "versionMismatch": "Versión del servidor {server} incompatible (el cliente espera {client}).",
+  "versionMismatch": "El cliente no es compatible con la versión del servidor. Servidor {server}, cliente {client}.",
   "@versionMismatch": {
     "description": "Error shown when server major.minor version doesn't match the client",
     "placeholders": {
@@ -563,5 +563,22 @@
   "scanCodeNoCamera": "No hay cámara disponible: introduzca el código o escanéelo con un lector de mano.",
   "allTabs": "Todas las pestañas",
   "connectionSecure": "Conexión cifrada (HTTPS)",
-  "connectionInsecure": "Conexión sin cifrar (HTTP): la contraseña se envía en texto plano"
+  "connectionInsecure": "Conexión sin cifrar (HTTP): la contraseña se envía en texto plano",
+  "documentation": "Documentación…",
+  "aboutMenu": "Acerca de…",
+  "aboutVersion": "Versión",
+  "aboutBasedOn": "Basado en el cliente de escritorio de Tryton y SAO – Copyright (C) 2004-2026 Tryton",
+  "aboutProjectPage": "Página del proyecto",
+  "aboutCredits": "Créditos",
+  "aboutLicense": "Licencia",
+  "aboutCopyright": "Copyright",
+  "aboutThirdParty": "Licencias de terceros",
+  "aboutAuthors": "Autores de este cliente",
+  "aboutOriginalAuthors": "Autores del cliente Tryton (original)",
+  "aboutTranslations": "Traducciones",
+  "aboutNoWarranty": "Este programa no tiene ninguna garantía.",
+  "aboutSeeLicense": "Consulte la {license} para más detalles.",
+  "aboutGplName": "GNU General Public License, versión 3 o posterior",
+  "appDevelopment": "desarrollo",
+  "appPrerelease": "Versión de prueba"
 }

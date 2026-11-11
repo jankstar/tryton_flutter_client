@@ -1,0 +1,310 @@
+# Release builds (specs/RELEASE.md): a tag v* builds macOS (DMG), Windows
+# (Inno Setup installer) and Android (APK) and creates a DRAFT release;
+# workflow_dispatch builds the same without a release (workflow artifacts
+# only). Signing only when the secrets are set.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.47.9'
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.v.outputs.label }}
+      app_label: ${{ steps.v.outputs.app_label }}
+      build_name: ${{ steps.v.outputs.build_name }}
+      series: ${{ steps.v.outputs.series }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      title: ${{ steps.v.outputs.title }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Version from the tag (v8.0.0-beta.1 → 8.0.0, series 8.0)
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          pubspec="$(sed -n 's/^version:[[:space:]]*\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p' pubspec.yaml)"
+          if [[ "$REF_TYPE" == "tag" ]]; then
+            label="$REF_NAME"
+          else
+            label="v${pubspec}-dev.${RUN_NUMBER}"
+          fi
+          if [[ ! "$label" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9A-Za-z.-]+))?$ ]]; then
+            echo "::error::Tag '$label' is not v<major>.<minor>.<patch>[-<suffix>]"
+            exit 1
+          fi
+          build_name="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          series="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          suffix="${BASH_REMATCH[5]}"
+          if [[ "$series" != "${pubspec%.*}" ]]; then
+            echo "::error::Series $series of the tag does not match pubspec.yaml version $pubspec"
+            exit 1
+          fi
+          if [[ -n "$suffix" ]]; then
+            prerelease=true
+            title="Tryton Flutter Client ${build_name} – ${suffix}"
+            [[ "$suffix" == "beta.1" ]] && title="${title} (erste Testversion)"
+          else
+            prerelease=false
+            title="Tryton Flutter Client ${build_name}"
+          fi
+          {
+            echo "label=$label"
+            echo "app_label=${label#v}"
+            echo "build_name=$build_name"
+            echo "series=$series"
+            echo "prerelease=$prerelease"
+            echo "title=$title"
+          } >> "$GITHUB_OUTPUT"
+          echo "Label $label, build name $build_name, series $series, prerelease $prerelease"
+
+  macos:
+    name: macOS
+    needs: version
+    runs-on: macos-latest
+    env:
+      LABEL: ${{ needs.version.outputs.label }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Import the Developer ID certificate (when set)
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          if [[ -z "$MACOS_CERTIFICATE_P12" ]]; then
+            echo "::warning::No MACOS_CERTIFICATE_P12 – unsigned DMG (Gatekeeper warns)."
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/build.keychain-db"
+          keychain_password="$(uuidgen)"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$keychain_password" "$keychain"
+          # the temporary keychain first, the existing ones kept
+          existing=()
+          while IFS= read -r k; do
+            k="${k//\"/}"
+            existing+=("${k// /}")
+          done < <(security list-keychains -d user)
+          security list-keychains -d user -s "$keychain" "${existing[@]}"
+          rm "$RUNNER_TEMP/cert.p12"
+          identity="$(security find-identity -v -p codesigning "$keychain" \
+            | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -1)"
+          if [[ -z "$identity" ]]; then
+            echo "::error::No 'Developer ID Application' identity in the certificate"
+            exit 1
+          fi
+          echo "MACOS_SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+      - name: Build, sign, notarize and pack the DMG
+        env:
+          BUILD_NAME: ${{ needs.version.outputs.build_name }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          TRYTON_SERIES: ${{ needs.version.outputs.series }}
+          APP_LABEL: ${{ needs.version.outputs.app_label }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: scripts/build_macos_dmg.sh "$LABEL"
+      - name: Remove the keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/build.keychain-db" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: build/dist/TrytonFlutterClient-${{ env.LABEL }}-macos.dmg
+          if-no-files-found: error
+
+  windows:
+    name: Windows
+    needs: version
+    runs-on: windows-latest
+    env:
+      LABEL: ${{ needs.version.outputs.label }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build
+        run: >
+          flutter build windows --release
+          --build-name "${{ needs.version.outputs.build_name }}"
+          --build-number "${{ github.run_number }}"
+          --dart-define=TRYTON_SERIES=${{ needs.version.outputs.series }}
+          --dart-define=APP_VERSION=${{ needs.version.outputs.build_name }}
+          --dart-define=APP_BUILD=${{ github.run_number }}
+          --dart-define=APP_LABEL=${{ needs.version.outputs.app_label }}
+      - name: Prepare signing (when set)
+        env:
+          WINDOWS_CERTIFICATE_PFX: ${{ secrets.WINDOWS_CERTIFICATE_PFX }}
+        run: |
+          if [[ -z "$WINDOWS_CERTIFICATE_PFX" ]]; then
+            echo "::warning::No WINDOWS_CERTIFICATE_PFX – unsigned installer (SmartScreen warns)."
+            exit 0
+          fi
+          echo "$WINDOWS_CERTIFICATE_PFX" | base64 --decode > "$RUNNER_TEMP/cert.pfx"
+          signtool="$(find "/c/Program Files (x86)/Windows Kits/10/bin" \
+            -path '*/x64/signtool.exe' | sort -V | tail -1)"
+          echo "SIGNTOOL=$signtool" >> "$GITHUB_ENV"
+          echo "WINDOWS_SIGN=1" >> "$GITHUB_ENV"
+      - name: Sign the application
+        if: env.WINDOWS_SIGN == '1'
+        env:
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: >
+          "$SIGNTOOL" sign /f "$RUNNER_TEMP/cert.pfx" /p "$WINDOWS_CERTIFICATE_PASSWORD"
+          /fd sha256 /tr http://timestamp.digicert.com /td sha256
+          build/windows/x64/runner/Release/tryton_flutter_client.exe
+      - name: Inno Setup (preinstalled on the runner, else Chocolatey)
+        run: |
+          if [[ ! -f "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ]]; then
+            choco install innosetup --no-progress -y
+          fi
+      - name: Installer (Inno Setup)
+        run: >
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          "/DAppVersion=${{ needs.version.outputs.build_name }}"
+          "/DAppLabel=$LABEL"
+          installer/windows/setup.iss
+      - name: Sign the installer
+        if: env.WINDOWS_SIGN == '1'
+        env:
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: >
+          "$SIGNTOOL" sign /f "$RUNNER_TEMP/cert.pfx" /p "$WINDOWS_CERTIFICATE_PASSWORD"
+          /fd sha256 /tr http://timestamp.digicert.com /td sha256
+          "build/dist/TrytonFlutterClient-$LABEL-windows-setup.exe"
+      - name: Remove the certificate
+        if: always()
+        run: rm -f "$RUNNER_TEMP/cert.pfx"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: build/dist/TrytonFlutterClient-${{ env.LABEL }}-windows-setup.exe
+          if-no-files-found: error
+
+  android:
+    name: Android
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      LABEL: ${{ needs.version.outputs.label }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Upload key (when set)
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ -z "$ANDROID_KEYSTORE" ]]; then
+            echo "::warning::No ANDROID_KEYSTORE – the APK is signed with the debug key."
+            exit 0
+          fi
+          echo "$ANDROID_KEYSTORE" | base64 --decode > android/app/upload.jks
+          {
+            echo "storeFile=upload.jks"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
+      - name: Build
+        run: |
+          flutter build apk --release \
+            --build-name "${{ needs.version.outputs.build_name }}" \
+            --build-number "${{ github.run_number }}" \
+            --dart-define=TRYTON_SERIES=${{ needs.version.outputs.series }} \
+            --dart-define=APP_VERSION=${{ needs.version.outputs.build_name }} \
+            --dart-define=APP_BUILD=${{ github.run_number }} \
+            --dart-define=APP_LABEL=${{ needs.version.outputs.app_label }}
+          mkdir -p build/dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "build/dist/TrytonFlutterClient-$LABEL-android.apk"
+      - name: Remove the key
+        if: always()
+        run: rm -f android/app/upload.jks android/key.properties
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: build/dist/TrytonFlutterClient-${{ env.LABEL }}-android.apk
+          if-no-files-found: error
+
+  release:
+    name: Draft release
+    if: github.ref_type == 'tag'
+    needs: [version, macos, windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Notes
+        run: |
+          cat > notes.md <<'NOTES'
+          > **Testversion** – nur für **Tryton-Server 8.0**. iOS ist nicht enthalten.
+          >
+          > Unsignierte Builds: macOS (Gatekeeper) meldet „App kann nicht geöffnet werden“ – im Finder
+          > Rechtsklick → „Öffnen“ bzw. Systemeinstellungen → Datenschutz & Sicherheit → „Trotzdem öffnen“.
+          > Windows (SmartScreen) meldet „Der Computer wurde durch Windows geschützt“ – „Weitere
+          > Informationen“ → „Trotzdem ausführen“. Android: Installation aus unbekannten Quellen erlauben.
+          NOTES
+      - name: Create the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.label }}
+          TITLE: ${{ needs.version.outputs.title }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          args=(--repo "$GITHUB_REPOSITORY" --draft --title "$TITLE"
+            --notes-file notes.md --generate-notes --verify-tag)
+          [[ "$PRERELEASE" == "true" ]] && args+=(--prerelease)
+          gh release create "$TAG" "${args[@]}" dist/*

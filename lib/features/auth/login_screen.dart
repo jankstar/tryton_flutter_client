@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/rpc/server_address.dart';
+import '../shell/about_dialog.dart' show PrereleaseBadge, isPrerelease;
 import 'auth_provider.dart';
 import 'profile_editor.dart';
 import '../../../core/session/profiles.dart';
@@ -336,6 +337,11 @@ class _TrytonLogo extends StatelessWidget {
               .headlineSmall
               ?.copyWith(fontWeight: FontWeight.bold),
         ),
+        // a test version (tag with suffix) says so before the login
+        if (isPrerelease()) ...[
+          const SizedBox(height: 6),
+          const PrereleaseBadge(),
+        ],
       ],
     );
   }

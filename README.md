@@ -18,6 +18,7 @@ A native cross-platform client for the [Tryton ERP system](https://www.tryton.or
 - Menu tree from the server (module icons via `ir.ui.icon`), menu search / global search, favourites
 - Tabs on desktop, navigation stack on mobile; warning on unsaved changes
 - Record menu (title dropdown) with all toolbar functions and keyboard shortcuts as in the Python client
+- About dialog with licenses (version, server, credits, GPL-3.0, COPYRIGHT, third-party licenses); Help menu with documentation and keyboard shortcuts
 
 **Data layer** (port of the Python client `model/*`)
 - Model / Group / Record / Field with lazy loading, `on_change` / `on_change_with`, validation, `_timestamp` concurrency check (conflict dialog), x2many write commands

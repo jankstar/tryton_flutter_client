@@ -78,3 +78,10 @@ app.*.map.json
 .env
 .env.*
 secrets.dart
+# signing keys and their passwords (release workflow, specs/RELEASE.md)
+key.properties
+**/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx

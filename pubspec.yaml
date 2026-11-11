@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 8.0.0+1
 
 environment:
   sdk: ^3.12.0
@@ -95,6 +95,9 @@ flutter:
     # Tryton's own icons (Python client 8.0 / SAO, Apache 2.0, see LICENSE
     # there); module icons come from ir.ui.icon.
     - assets/icons/tryton/
+    # licence texts of the About dialog (the files of the repository root)
+    - LICENSE
+    - COPYRIGHT
 
   fonts:
     - family: Lato

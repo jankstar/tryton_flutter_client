@@ -521,7 +521,7 @@ abstract class AppLocalizations {
   /// Error shown when server major.minor version doesn't match the client
   ///
   /// In en, this message translates to:
-  /// **'Incompatible server version {server} (client expects {client}).'**
+  /// **'Incompatible version of the server. Server {server}, client {client}.'**
   String versionMismatch(String server, String client);
 
   /// Dialog shown when navigating away from a modified record
@@ -1975,6 +1975,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unencrypted connection (HTTP) – the password is sent in plain text'**
   String get connectionInsecure;
+
+  /// No description provided for @documentation.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentation…'**
+  String get documentation;
+
+  /// No description provided for @aboutMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'About…'**
+  String get aboutMenu;
+
+  /// No description provided for @aboutVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get aboutVersion;
+
+  /// No description provided for @aboutBasedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on the Tryton desktop client and SAO – Copyright (C) 2004-2026 Tryton'**
+  String get aboutBasedOn;
+
+  /// No description provided for @aboutProjectPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Project page'**
+  String get aboutProjectPage;
+
+  /// No description provided for @aboutCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Credits'**
+  String get aboutCredits;
+
+  /// No description provided for @aboutLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'License'**
+  String get aboutLicense;
+
+  /// No description provided for @aboutCopyright.
+  ///
+  /// In en, this message translates to:
+  /// **'Copyright'**
+  String get aboutCopyright;
+
+  /// No description provided for @aboutThirdParty.
+  ///
+  /// In en, this message translates to:
+  /// **'Third-party licenses'**
+  String get aboutThirdParty;
+
+  /// No description provided for @aboutAuthors.
+  ///
+  /// In en, this message translates to:
+  /// **'Authors of this client'**
+  String get aboutAuthors;
+
+  /// No description provided for @aboutOriginalAuthors.
+  ///
+  /// In en, this message translates to:
+  /// **'Authors of the Tryton client (original)'**
+  String get aboutOriginalAuthors;
+
+  /// No description provided for @aboutTranslations.
+  ///
+  /// In en, this message translates to:
+  /// **'Translations'**
+  String get aboutTranslations;
+
+  /// No description provided for @aboutNoWarranty.
+  ///
+  /// In en, this message translates to:
+  /// **'This program comes with absolutely no warranty.'**
+  String get aboutNoWarranty;
+
+  /// No description provided for @aboutSeeLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'See the {license} for details.'**
+  String aboutSeeLicense(String license);
+
+  /// No description provided for @aboutGplName.
+  ///
+  /// In en, this message translates to:
+  /// **'GNU General Public License, version 3 or later'**
+  String get aboutGplName;
+
+  /// No description provided for @appDevelopment.
+  ///
+  /// In en, this message translates to:
+  /// **'development'**
+  String get appDevelopment;
+
+  /// No description provided for @appPrerelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Test version'**
+  String get appPrerelease;
 }
 
 class _AppLocalizationsDelegate

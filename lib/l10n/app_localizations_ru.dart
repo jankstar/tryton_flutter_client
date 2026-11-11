@@ -223,7 +223,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String versionMismatch(String server, String client) {
-    return 'Несовместимая версия сервера $server (клиент ожидает $client).';
+    return 'Несовместимая версия сервера. Сервер $server, клиент $client.';
   }
 
   @override
@@ -1011,4 +1011,60 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get connectionInsecure =>
       'Незашифрованное соединение (HTTP) — пароль передаётся открытым текстом';
+
+  @override
+  String get documentation => 'Документация…';
+
+  @override
+  String get aboutMenu => 'О программе…';
+
+  @override
+  String get aboutVersion => 'Версия';
+
+  @override
+  String get aboutBasedOn =>
+      'Основан на настольном клиенте Tryton и SAO – Copyright (C) 2004-2026 Tryton';
+
+  @override
+  String get aboutProjectPage => 'Страница проекта';
+
+  @override
+  String get aboutCredits => 'Авторы';
+
+  @override
+  String get aboutLicense => 'Лицензия';
+
+  @override
+  String get aboutCopyright => 'Авторские права';
+
+  @override
+  String get aboutThirdParty => 'Лицензии сторонних компонентов';
+
+  @override
+  String get aboutAuthors => 'Авторы этого клиента';
+
+  @override
+  String get aboutOriginalAuthors => 'Авторы клиента Tryton (оригинал)';
+
+  @override
+  String get aboutTranslations => 'Переводы';
+
+  @override
+  String get aboutNoWarranty =>
+      'Эта программа не предоставляет никаких гарантий.';
+
+  @override
+  String aboutSeeLicense(String license) {
+    return 'Подробности см. в $license.';
+  }
+
+  @override
+  String get aboutGplName =>
+      'GNU General Public License версии 3 или более поздней';
+
+  @override
+  String get appDevelopment => 'разработка';
+
+  @override
+  String get appPrerelease => 'Тестовая версия';
 }

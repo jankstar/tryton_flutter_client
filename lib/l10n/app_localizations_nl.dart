@@ -224,7 +224,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String versionMismatch(String server, String client) {
-    return 'Incompatibele serverversie $server (client verwacht $client).';
+    return 'Onjuiste versie van de server. Server $server, client $client.';
   }
 
   @override
@@ -1011,4 +1011,59 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get connectionInsecure =>
       'Onversleutelde verbinding (HTTP) – het wachtwoord wordt onversleuteld verzonden';
+
+  @override
+  String get documentation => 'Documentatie…';
+
+  @override
+  String get aboutMenu => 'Over…';
+
+  @override
+  String get aboutVersion => 'Versie';
+
+  @override
+  String get aboutBasedOn =>
+      'Gebaseerd op de Tryton-desktopclient en SAO – Copyright (C) 2004-2026 Tryton';
+
+  @override
+  String get aboutProjectPage => 'Projectpagina';
+
+  @override
+  String get aboutCredits => 'Credits';
+
+  @override
+  String get aboutLicense => 'Licentie';
+
+  @override
+  String get aboutCopyright => 'Copyright';
+
+  @override
+  String get aboutThirdParty => 'Licenties van derden';
+
+  @override
+  String get aboutAuthors => 'Auteurs van deze client';
+
+  @override
+  String get aboutOriginalAuthors => 'Auteurs van de Tryton-client (origineel)';
+
+  @override
+  String get aboutTranslations => 'Vertalingen';
+
+  @override
+  String get aboutNoWarranty =>
+      'Dit programma wordt geleverd zonder enige garantie.';
+
+  @override
+  String aboutSeeLicense(String license) {
+    return 'Zie de $license voor details.';
+  }
+
+  @override
+  String get aboutGplName => 'GNU General Public License, versie 3 of later';
+
+  @override
+  String get appDevelopment => 'ontwikkeling';
+
+  @override
+  String get appPrerelease => 'Testversie';
 }

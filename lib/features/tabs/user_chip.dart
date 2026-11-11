@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/l10n/locale_provider.dart';
 import '../../core/theme/app_theme.dart';
@@ -12,10 +11,12 @@ import '../auth/user_preferences_provider.dart';
 import '../notifications/notifications.dart';
 import '../shell/tab_manager.dart';
 import '../views/record_menu.dart';
+import '../shell/about_dialog.dart';
+import '../actions/action_service.dart' show DialogActionUi;
 
 // ─── User chip (top-right like SAO) ──────────────────────────────────────────
 
-enum _UserMenuItem { preferences, help, shortcuts, themes, logout }
+enum _UserMenuItem { preferences, help, shortcuts, about, themes, logout }
 
 class UserChip extends ConsumerWidget {
   const UserChip({super.key});
@@ -47,8 +48,12 @@ class UserChip extends ConsumerWidget {
               await showPreferencesDialog(context, ref);
             }
           case _UserMenuItem.help:
-            final uri = Uri.parse('https://docs.tryton.org/');
-            if (await canLaunchUrl(uri)) launchUrl(uri);
+            // the documentation of the series (Python `open_documentation`)
+            if (context.mounted) {
+              await DialogActionUi(context).openUrl(documentationUrl());
+            }
+          case _UserMenuItem.about:
+            if (context.mounted) await showAboutTryton(context);
           case _UserMenuItem.shortcuts:
             if (context.mounted) await showShortcutsHelp(context);
           case _UserMenuItem.themes:
@@ -79,13 +84,21 @@ class UserChip extends ConsumerWidget {
             Text(ctx.l10n.preferences),
           ]),
         ),
-        // ── Help ───────────────────────────────────────────────────────
+        // ── Help (Python `Main` menu "Help") ───────────────────────────
+        const PopupMenuDivider(),
         PopupMenuItem<_UserMenuItem>(
+          enabled: false,
+          height: 28,
+          child: Text(ctx.l10n.help,
+              style: Theme.of(ctx).textTheme.labelSmall),
+        ),
+        PopupMenuItem<_UserMenuItem>(
+          key: const ValueKey('user-menu-documentation'),
           value: _UserMenuItem.help,
           child: Row(children: [
-            const Icon(Icons.help_outline, size: 16),
+            const Icon(Icons.menu_book_outlined, size: 16),
             const SizedBox(width: 8),
-            Text(ctx.l10n.help),
+            Text(ctx.l10n.documentation),
           ]),
         ),
         PopupMenuItem(
@@ -94,9 +107,19 @@ class UserChip extends ConsumerWidget {
           child: Row(children: [
             const Icon(Icons.keyboard_outlined, size: 16),
             const SizedBox(width: 8),
-            Text(ctx.l10n.keyboardShortcuts),
+            Text('${ctx.l10n.keyboardShortcuts}…'),
           ]),
         ),
+        PopupMenuItem<_UserMenuItem>(
+          key: const ValueKey('user-menu-about'),
+          value: _UserMenuItem.about,
+          child: Row(children: [
+            const Icon(Icons.info_outline, size: 16),
+            const SizedBox(width: 8),
+            Text(ctx.l10n.aboutMenu),
+          ]),
+        ),
+        const PopupMenuDivider(),
         // ── Theme ──────────────────────────────────────────────────────
         PopupMenuItem<_UserMenuItem>(
           value: _UserMenuItem.themes,

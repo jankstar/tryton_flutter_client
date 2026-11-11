@@ -7,9 +7,26 @@ import '../rpc/rpc_client.dart';
 import '../rpc/rpc_exceptions.dart';
 import 'session_store.dart';
 
-/// The Tryton major.minor version this client was built against.
-/// Only major.minor is compared (patch is ignored), identical to SAO.
-const kClientVersion = '8.0';
+/// The Tryton series (server major.minor) of this client – the only
+/// place of it: the app version is `<series>.N` (pubspec.yaml, e.g.
+/// 8.0.0), the release build sets it from the tag with
+/// `--dart-define=TRYTON_SERIES=8.0`. Only major.minor of the server is
+/// compared (spec 2.9, like the Python client and SAO).
+const kClientVersion =
+    String.fromEnvironment('TRYTON_SERIES', defaultValue: '8.0');
+
+/// Version (`x.y.z`, its major.minor is [kClientVersion]) and build number
+/// of the app: `--dart-define=APP_VERSION=8.0.0 --dart-define=APP_BUILD=…`
+/// of the release build (= `--build-name`/`--build-number`), the default
+/// is the version of pubspec.yaml (kept equal by a test).
+const kAppVersion = String.fromEnvironment('APP_VERSION', defaultValue: '8.0.0');
+const kAppBuild = String.fromEnvironment('APP_BUILD');
+
+/// Label of the release shown to the user: the tag without `v`
+/// (`8.0.0-beta.1`, `--dart-define=APP_LABEL=…` of the release
+/// workflow; [kAppVersion] stays numeric for the platforms). Empty in a
+/// local build (shown as development version).
+const kAppLabel = String.fromEnvironment('APP_LABEL');
 
 const _deviceCookieKey = 'tryton_device_cookies';
 /// Former non-secret session info in shared_preferences (removed on start).

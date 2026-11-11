@@ -224,7 +224,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String versionMismatch(String server, String client) {
-    return 'Version du serveur $server incompatible (le client attend $client).';
+    return 'Version du serveur incompatible. Serveur $server, client $client.';
   }
 
   @override
@@ -1014,4 +1014,59 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get connectionInsecure =>
       'Connexion non chiffrée (HTTP) – le mot de passe est transmis en clair';
+
+  @override
+  String get documentation => 'Documentation…';
+
+  @override
+  String get aboutMenu => 'À propos…';
+
+  @override
+  String get aboutVersion => 'Version';
+
+  @override
+  String get aboutBasedOn =>
+      'Basé sur le client de bureau Tryton et SAO – Copyright (C) 2004-2026 Tryton';
+
+  @override
+  String get aboutProjectPage => 'Page du projet';
+
+  @override
+  String get aboutCredits => 'Crédits';
+
+  @override
+  String get aboutLicense => 'Licence';
+
+  @override
+  String get aboutCopyright => 'Copyright';
+
+  @override
+  String get aboutThirdParty => 'Licences tierces';
+
+  @override
+  String get aboutAuthors => 'Auteurs de ce client';
+
+  @override
+  String get aboutOriginalAuthors => 'Auteurs du client Tryton (original)';
+
+  @override
+  String get aboutTranslations => 'Traductions';
+
+  @override
+  String get aboutNoWarranty => 'Ce programme est fourni sans aucune garantie.';
+
+  @override
+  String aboutSeeLicense(String license) {
+    return 'Consultez la $license pour plus de détails.';
+  }
+
+  @override
+  String get aboutGplName =>
+      'GNU General Public License, version 3 ou ultérieure';
+
+  @override
+  String get appDevelopment => 'développement';
+
+  @override
+  String get appPrerelease => 'Version de test';
 }
