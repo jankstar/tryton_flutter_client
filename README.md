@@ -1,242 +1,150 @@
-# Tryton_Flutter_Client
+# Tryton Flutter Client
 
-A Flutter client for the [Tryton ERP system](https://www.tryton.org/), providing a native cross-platform interface that communicates with a Tryton server using the same JSON-RPC protocol as the official [SAO web client](https://foss.heptapod.net/tryton/sao).
+A native cross-platform client for the [Tryton ERP system](https://www.tryton.org/), written in Flutter. It talks to a Tryton server (**trytond 8.0**) with the same protocol as the official clients and ports their client logic to Dart. The **Tryton desktop client 8.0 (Python/GTK)** is the primary reference for behaviour and features; the **SAO web client** is used as a supplementary reference for asynchronous flows and the mobile/responsive layout.
+
+> **Status:** feature-complete against the internal specification; manual acceptance testing on macOS, iOS and Android is in progress. Not yet released.
 
 ## Features
 
-### Authentication & Session
-- Login with database selection, MFA support, and device cookie ("stay logged in")
-- Server URL and last-used database persisted across app restarts
-- Automatic session renewal on 401 — compact re-login dialog (username + password only), original request retried transparently
-- Persistent session: app reconnects on next start without requiring a full login
-- Server-side language applied after login (`reloadContext()`) — Tryton translates all field labels and selection values server-side
+**Connection & session**
+- Server URL, database list (`common.db.list`), version check
+- Multi-step login (password, MFA/other `LoginException` steps), device cookie as brute-force protection
+- Session token (`Authorization: Session …`) stored in the OS keychain/keystore (`flutter_secure_storage`) – reconnect after restart without logging in; the password is never stored
+- Automatic re-login on 401 with transparent retry; logout invalidates the session on the server
+- Connection profiles (server, database, user)
+- User preferences dialog; language, company and employee switching with context reload
 
-### Shell & Multi-Tab Navigation
-- Tab-based AppShell: each menu action opens in its own tab with an independent Navigator stack (`IndexedStack`)
-- Toggleable sidebar (animated, 250 px) with the full Tryton menu tree
-- Tab close button (×); welcome screen shown when no tab is open
-- `tabsProvider` (Riverpod `StateNotifierProvider`) manages tab lifecycle with UUID-keyed `AppTab` entries
+**Main window**
+- Menu tree from the server (module icons via `ir.ui.icon`), menu search / global search, favourites
+- Tabs on desktop, navigation stack on mobile; warning on unsaved changes
+- Record menu (title dropdown) with all toolbar functions and keyboard shortcuts as in the Python client
 
-### Menu & Navigation
-- Full Tryton menu tree loaded from the server with expand/collapse
-- SVG icons from `ir.ui.icon` with Material Design fallback for `LOCAL_ICONS`
-- Action domain filtering via PYSON evaluation (`ir.action.act_window.pyson_domain`)
-- User info chip (top right): name, currency, avatar initials, dropdown with Preferences / Help / Sign out
+**Data layer** (port of the Python client `model/*`)
+- Model / Group / Record / Field with lazy loading, `on_change` / `on_change_with`, validation, `_timestamp` concurrency check (conflict dialog), x2many write commands
+- PYSON evaluator/encoder, domain inversion, domain parser (Tryton search syntax)
+- Client-side metadata and RPC caches (`X-Tryton-Cache`)
 
-### List Views (Tree)
-- Server-driven columns from `fields_view_get` with correct order and labels
-- Hierarchical tree views with lazy expand/collapse (`field_childs`)
-  - Primary source: `field_childs` attribute from `fields_view_get`
-  - Fallback: direct query of `ir.ui.view` ordered by priority — picks the first tree view that sets `field_childs`
-  - Auto-detection of self-referential models when `field_childs` is not configured
-- Explicit search button (no request on every keystroke — like SAO)
-- SAO-style toolbar: Switch (⇄), New, Reload, Duplicate, Delete, Attachment, Action, Relate, Print, Email, Close
-- Buttons enabled only when a record is selected (except Reload, New, Close)
-- Record navigation context for Prev/Next in form view
-- Many2One name resolution with session-level batch cache (`listEquals` comparison to prevent redundant reloads)
+**Views**
+- Form: XML grid layout (`col`, `colspan`, `expand`, groups, notebooks, expanders, paned), floating labels, `states`, buttons, links with counters, images, translation dialog
+- All field widgets: char, text, integer, float, numeric, date, datetime, time, timedelta, boolean, selection, multiselection, many2one, reference, one2many, many2many, binary/image/document preview, rich text, URL/e-mail/phone, progress bar, colour, password
+- One2many/many2many: embedded list = full tree view, toolbar as in the Python client, popup forms, `add_remove`, `size`, `sequence`, `product`, `pre_validate`
+- Tree/list: paging, sorting, tree expand/collapse, editable rows, sums, column widths and optional columns, context menu, copy/paste, drag & drop on `sequence`, `visual`
+- list-form (mobile cards), graph (bar/line/pie with `graph_open`), calendar (month/week/day, drag & drop), board
 
-### Form Views
-- Server-driven layout from XML arch (`fields_view_get`): grid, groups, notebooks, tabs
-- PYSON states evaluation for `invisible`, `readonly`, `required` per field and per notebook page
-- Required fields shown with red asterisk `*`
-- SAO-style toolbar: Prev/Next record, New, Save, Reload, Duplicate, Delete, View Logs, Attachment (badge), Note, Action, Relate, Print, Email, Close
-- Translated model name from `ir.model` shown in AppBar
-- Record position indicator (e.g. `3 / 47`)
-- Binary fields (e.g. avatar) excluded from `read()` to avoid non-JSON responses
-- **Responsive layout**: form width scales proportionally with the window (horizontal padding = 3 % of width, clamped 12–40 px); no fixed maximum width
-- **Minimum field width** (160 px): grid columns wrap to the next line rather than shrinking below this threshold
-- **Sticky footer**: root-level form buttons (from `<button>` elements at form root) rendered in a permanently visible footer below the scroll area — PYSON `invisible`/`readonly` states evaluated per button
+**Actions, wizards, reports**
+- `act_window`, wizards, reports (open, share, print), URLs, keywords (`tree_open`, `form_relate`, `graph_open`), client actions
+- Deep links `tryton://…` (macOS, iOS, Android)
 
-### Field Types
-- `char`, `text`, `integer`, `float`, `numeric` — text input; `on_change` RPC triggered on focus loss only (not on every keystroke, like SAO)
-- `selection` — dropdown; static list (`[[key, label], ...]`) or method-based (classmethod name as string); method-based options pre-loaded during form initialisation (`getSelectionOptions`); `on_change` triggered immediately
-- `date`, `datetime` — date/time pickers
-- `boolean` — checkbox
-- `many2one` — autocomplete search, **open-in-form button** (uses local tab Navigator, not GoRouter), clear button, async `rec_name` loading
-- `one2many`, `many2many` — inline embedded tree with Add, Switch, Undelete, Delete; strikethrough for pending deletions (committed on parent save)
+**Additional windows**
+- Attachments (incl. preview side panel), notes, logs, revisions
+- CSV export (predefined exports, export URL) and CSV import
+- E-mail with templates, reports and attachments
+- Code scanner (`scan_code`): camera on mobile/macOS, keyboard/hand scanner input on desktop
 
-### Performance
-- `on_change` RPC only on field blur (focus loss), not on every keystroke
-- `listEquals` for collection parameters in `didUpdateWidget` — prevents spurious reloads
-- Session-level caches: Many2One names, model display names, icons, currency symbols
-- Binary fields skipped in `read()` to avoid non-JSON server responses
-- Selection options pre-loaded with `Future.wait` in parallel during form load
+**Notifications**
+- Bus long polling (`client:` / `notification:` channels), notifications with badge, chat on records
 
-### Internationalisation
-- 11 languages: English, German, French, Spanish, Portuguese, Polish, Danish, Dutch, Swedish, Finnish, Russian
-- Language selector on the login screen; persisted via `shared_preferences`
-- All UI strings via Flutter `AppLocalizations` (ARB files in `lib/l10n/`)
-- Server-side translations activated by sending the selected language in the RPC context
+**Internationalisation**
+- 11 UI languages: English, German, French, Spanish, Portuguese, Polish, Danish, Dutch, Swedish, Finnish, Russian
+- Server translations via the language in the context; date, number and duration formats from the user's language
 
 ## Platforms
 
-Targets all Flutter platforms. Tested on **macOS**. iOS, Android, Web, Linux, and Windows are also configured.
+| Platform | Status |
+|---|---|
+| macOS (≥ 12) | primary development platform |
+| iOS (≥ 15), Android | supported, acceptance tests in progress |
+| Windows, Linux, Web | configured, not tested |
+
+## Getting started
+
+Prerequisites: Flutter SDK with Dart ≥ 3.12, a Tryton 8.0 server.
+
+```bash
+flutter pub get
+flutter gen-l10n          # after changing lib/l10n/app_*.arb
+flutter run -d macos      # or: -d ios, -d android
+```
+
+On first start enter the server URL (e.g. `http://localhost:8000`), choose the database and log in.
+
+Build:
+
+```bash
+flutter build macos
+flutter build ios
+flutter build apk
+```
+
+## Tests
+
+```bash
+flutter analyze
+flutter test                                   # unit and widget tests
+
+# integration tests against a test server
+# (http://127.0.0.1:8000, database "tryton", user "admin")
+TRYTON_PASSWORD=… flutter test --run-skipped -t integration
+```
+
+Integration tests only read data, or create records with the prefix `CLAUDE-TEST` and delete them again.
 
 ## Architecture
 
-Clean Architecture in three layers:
+Riverpod for state, Dio for HTTP, GoRouter for top-level routes.
 
 ```
 lib/
 ├── core/
-│   ├── icons/          # SVG icon cache + TrytonIcon widget
-│   ├── l10n/           # LocaleProvider, BuildContext.l10n extension
-│   ├── pyson/          # PYSON expression evaluator (Eval, Not, Bool, Equal, In, …)
-│   ├── rpc/            # JSON-RPC 2.0 client (dio), ReAuthService, exception types
-│   ├── serialization/  # Tryton ↔ Dart type conversion (DateTime, Decimal, Bytes)
-│   ├── session/        # Session management, device cookie, persistence
-│   ├── theme/          # AppTheme, ThemeProvider (light/dark)
-│   └── xml/            # fields_view_get parsing, form/tree XML parser
+│   ├── domain/         # domain parser, domain inversion, date text
+│   ├── icons/          # Tryton icons (bundled tryton-* and ir.ui.icon)
+│   ├── l10n/           # locale provider
+│   ├── model/          # Model, Group, Record, Field (data layer)
+│   ├── pyson/          # PYSON evaluator, encoder, environment
+│   ├── rpc/            # RPC client, cache, errors, re-login, bus
+│   ├── screen/         # Screen, graph and calendar logic, Tryton URLs
+│   ├── serialization/  # Tryton JSON types (datetime, Decimal, bytes, …)
+│   ├── session/        # session, secure session store, profiles
+│   ├── theme/          # light/dark theme
+│   ├── wizard/         # wizard runtime
+│   └── xml/            # view XML parsing
 ├── features/
-│   ├── actions/        # Action executor (act_window, report, wizard)
-│   ├── auth/           # Login, re-login dialog, session provider, user preferences
-│   ├── model/          # ModelService CRUD, FieldDefinition, TrytonRecord, TrytonToolbar
-│   ├── shell/          # AppShell (tab bar + sidebar), TabManager (tabsProvider)
-│   ├── tabs/           # ModelBrowserSidebar, UserChip
-│   └── views/          # DynamicFormScreen, ListViewScreen, EmbeddedTreeWidget,
-│                       # NavigationContext (Prev/Next)
-├── l10n/               # ARB localisation files (11 languages)
-└── shared/
-    ├── utils/          # m2o_name_cache, symbol_cache, number_format_utils
-    └── widgets/        # FieldWidget, ToolbarDropdownButton
+│   ├── actions/        # action service, deep links, URL opener
+│   ├── auth/           # login, re-login, preferences, start sequence
+│   ├── model/          # model services, metadata, concurrency
+│   ├── notifications/  # notifications
+│   ├── shell/          # app shell, tabs
+│   ├── tabs/           # menu sidebar, user chip
+│   └── views/          # form, tree, list-form, graph, calendar, board,
+│                       # widgets, dialogs (search, CSV, e-mail, scanner, …)
+├── l10n/               # ARB files (11 languages)
+└── shared/             # dialogs, error handling, utils, widgets
 ```
-
-### Key providers (Riverpod)
-
-| Provider | Type | Purpose |
-|----------|------|---------|
-| `rpcClientProvider` | `Provider` | JSON-RPC 2.0 HTTP client |
-| `sessionProvider` | `Provider` | Active Tryton session (database, user, context) |
-| `modelServiceProvider` | `Provider` | CRUD + RPC calls (fieldsGet, read, write, …) |
-| `authProvider` | `StateNotifierProvider` | Login / logout / re-auth state |
-| `localeProvider` | `StateProvider` | Selected UI locale |
-| `navContextProvider` | `StateProvider` | Prev/Next record navigation state |
-| `userPreferencesProvider` | `FutureProvider` | Server-side user preferences |
-| `tabsProvider` | `StateNotifierProvider` | Open tabs, active tab index |
-
-**Navigation:** GoRouter handles top-level routes (`/login`, `/models`). Within each tab, a dedicated `Navigator` (`AppTab.navigatorKey`) handles sub-screens (`ListViewScreen` → `DynamicFormScreen`) so that each tab keeps an independent history stack.
-
-**HTTP:** dio + CookieJar  
-**SVG rendering:** flutter_svg  
-**Localisation:** flutter_localizations + gen_l10n
 
 ## Protocol
 
-Communicates with the Tryton server via JSON-RPC 2.0:
+JSON-RPC in Tryton's 1.0 style – the body contains exactly `id`, `method` and `params` (no `jsonrpc` field); the context is always the last parameter:
 
 ```
 POST /{database}/rpc/
-{ "id": 1, "method": "model.party.party.search_read", "params": [..., context] }
+Authorization: Session base64(login:user_id:token)
+
+{"id": 1, "method": "model.party.party.search_read", "params": [[], 0, 10, null, ["name"], {…context}]}
 ```
 
-Special Tryton types handled by `TrytonSerializer`:
+Tryton types are encoded with `__class__` (`datetime` in UTC, `date`, `time`, `timedelta`, `Decimal`, `bytes`). Handled errors: `UserError`, `UserWarning`, `ConcurrencyException`, `LoginException`, 401 (re-login), 503 (retry).
 
-| Tryton type | JSON encoding |
-|-------------|---------------|
-| `datetime`  | `{"__class__": "datetime", "year": ..., ...}` |
-| `date`      | `{"__class__": "date", ...}` |
-| `Decimal`   | `{"__class__": "Decimal", "decimal": "123.45"}` |
-| `bytes`     | `{"__class__": "bytes", "base64": "..."}` |
+## Tryton compatibility
 
-Error types handled: `UserError`, `UserWarning`, `ConcurrencyException`, `LoginException`, 503 retry with backoff, 401 automatic re-authentication.
-
-### Session Authentication (like SAO)
-
-| Layer | Mechanism | Storage |
-|-------|-----------|---------|
-| HTTP session cookie | Short-lived, per-request | CookieJar |
-| Device cookie | Long-lived, passwordless login | `shared_preferences` |
-| Session data | `database`, `login`, `user_id` | `shared_preferences` |
-
-On 401: `ReAuthService` pauses the failed request, shows a compact re-login dialog, and retries automatically after success — identical to SAO's `Session.renew`.
-
-## Getting Started
-
-### Prerequisites
-
-- Flutter SDK ≥ 3.19 (Dart SDK ≥ 3.12)
-- A running Tryton server (8.x)
-- macOS entitlement `com.apple.security.network.client` is already set
-
-### Install dependencies
-
-```bash
-flutter pub get
-```
-
-### Generate localisations
-
-```bash
-flutter gen-l10n
-```
-
-### Run on macOS
-
-```bash
-flutter run -d macos
-```
-
-### Run on other platforms
-
-```bash
-flutter run -d ios        # requires Xcode
-flutter run -d android    # requires Android SDK
-flutter run -d chrome     # web
-```
-
-### Build
-
-```bash
-flutter build macos
-flutter build apk
-flutter build ios
-```
-
-## Configuration
-
-On first launch, enter the Tryton server URL (e.g. `http://localhost:8000`), select the database, and log in. Server URL and database are persisted and pre-filled on subsequent starts. Only username and password need to be re-entered.
-
-## Key Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `dio` + `dio_cookie_manager` | HTTP client with cookie-based session |
-| `flutter_riverpod` | State management |
-| `go_router` | Top-level declarative navigation |
-| `xml` | XML arch parsing |
-| `flutter_svg` | SVG icon rendering |
-| `shared_preferences` | Session and locale persistence |
-| `flutter_localizations` | 11-language UI |
-| `intl` | Date/number formatting |
-| `uuid` | Tab identity (UUID v4) |
-| `url_launcher` | Help link |
-
-## Tryton Compatibility
-
-Tested with Tryton **8.x**. The protocol implementation follows the [SAO web client](https://foss.heptapod.net/tryton/sao) version **8.0.0** as reference.
+Developed and tested against **trytond 8.0**. Reference implementations: Tryton desktop client 8.0 (primary) and SAO.
 
 ## License
 
-GPL-3.0 — same as Tryton. See [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
+GPL-3.0-or-later, like Tryton. Large parts of the client logic are ports of the Tryton desktop client and SAO (both GPL-3.0-or-later).
 
-## Third-Party Icons
+Third-party components:
+- Tryton UI icons (`assets/icons/tryton/`) – Apache License 2.0
+- Lato font (`assets/fonts/`) – SIL Open Font License 1.1
+- Flutter/Dart packages – BSD-3-Clause, MIT, Apache-2.0, MPL-2.0
 
-Icons in assets/icons/tryton/ are taken from the Tryton project and licensed under the Apache License 2.0 (see assets/icons/tryton/LICENSE).
-
-## Third-Party Fonts
-
-### Lato
-
-**Designer:** Łukasz Dziedzic / tyPoland  
-**Source:** [Google Fonts — Lato](https://fonts.google.com/specimen/Lato)  
-**License:** [SIL Open Font License 1.1](https://openfontlicense.org/)
-
-> Copyright (c) 2010–2014 by tyPoland Lukasz Dziedzic (team@latofonts.com)
-> with Reserved Font Name "Lato".
->
-> This Font Software is licensed under the SIL Open Font License, Version 1.1.
-> This license is available with a FAQ at https://openfontlicense.org/
-
-Lato covers Latin, Latin Extended, and Cyrillic character sets, supporting all
-11 application languages: English, German, French, Spanish, Portuguese, Polish,
-Danish, Dutch, Swedish, Finnish, and Russian.
+Full copyright and license details: [COPYRIGHT](COPYRIGHT), license text: [LICENSE](LICENSE).

@@ -1,19 +1,7 @@
 tryton_flutter_client
-Copyright (C) 2026 jankstar
+=====================
 
-SAO 
-Copyright (C) 2012-2026 Nicolas Évrard <nicolas.evrard@b2ck.com>
-Copyright (C) 2012-2026 Cédric Krier <cedric.krier@b2ck.com>
-Copyright (C) 2012-2014 Bertrand Chenal <bertrand.chenal@b2ck.com>
-Copyright (C) 2012-2026 B2CK SRL
-Copyright (C) 2019 Jitbit
-Copyright (C) 2013 Thomas Park
-Copyright (C) 2020-2021 Maxime Richez <maxime.richez@saluc.com>
-Copyright (C) 2020-2021 SALUC SA
-
-
-Icons in assets/icons/tryton/ are taken from the Tryton project and licensed under the Apache License 2.0 (see assets/icons/tryton/LICENSE).
-
+Copyright (C) 2026 jankstar (https://github.com/jankstar/tryton_flutter_client)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,4 +14,290 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+The full text of the GNU GPL version 3 is in the file LICENSE.
+
+This file lists the copyright holders and licenses of all works that
+this program is derived from or that are distributed with it.
+
+
+1. Works this program is derived from (GPL-3.0-or-later)
+--------------------------------------------------------
+
+Client logic (PYSON, domain parser, domain inversion, model/group/record
+layer, screen, views, widgets, actions, wizards, CSV import/export,
+code scanner and others) was ported to Dart from the official Tryton
+clients. Both are licensed under GPL-3.0-or-later.
+
+1.1 Tryton desktop client (Python/GTK), version 8.0
+    https://www.tryton.org/ - https://foss.heptapod.net/tryton/tryton
+
+    Copyright (C) 2004-2008 Tiny SPRL
+    Copyright (C) 2007-2009 Lorenzo Gil Sanchez
+    Copyright (C) 2007-2013 Bertrand Chenal <bertrand.chenal@b2ck.com>
+    Copyright (C) 2007-2026 Cédric Krier <cedric.krier@b2ck.com>
+    Copyright (C) 2008-2025 Udo Spallek
+    Copyright (C) 2008-2011 virtual things - Preisler & Spallek GbR
+    Copyright (C) 2008-2026 B2CK SRL
+    Copyright (C) 2010-2026 Nicolas Évrard <nicolas.evrard@b2ck.com>
+    Copyright (C) 2011-2012 Rodrigo Hübner
+    Copyright (C) 2012-2013 Antoine Smolders
+    Copyright (C) 2020-2026 Maxime Richez <maxime.richez@saluc.com>
+    Copyright (C) 2020-2026 SALUC SA
+
+1.2 SAO - Tryton web client (JavaScript), versions 8.0 / 8.2
+    https://www.tryton.org/ - https://foss.heptapod.net/tryton/tryton (sao)
+
+    Copyright (C) 2012-2026 Nicolas Évrard <nicolas.evrard@b2ck.com>
+    Copyright (C) 2012-2026 Cédric Krier <cedric.krier@b2ck.com>
+    Copyright (C) 2012-2014 Bertrand Chenal <bertrand.chenal@b2ck.com>
+    Copyright (C) 2012-2026 B2CK SRL
+    Copyright (C) 2019 Jitbit
+    Copyright (C) 2013 Thomas Park
+    Copyright (C) 2020-2021 Maxime Richez <maxime.richez@saluc.com>
+    Copyright (C) 2020-2021 SALUC SA
+
+1.3 trytond - Tryton server, version 8.0 (GPL-3.0-or-later)
+    Used only as the reference for the protocol and server behaviour;
+    no server code is included in this program.
+
+
+2. Icons (Apache License 2.0)
+-----------------------------
+
+assets/icons/tryton/*.svg
+    The "tryton-*" user interface icons of the Tryton desktop client 8.0
+    (tryton/data/pixmaps/tryton) and SAO (sao/images), based on the
+    Material Design icons by Google.
+    Copyright (C) the Tryton project (B2CK SRL and contributors),
+    Copyright (C) Google LLC.
+    License: Apache License 2.0 - full text in assets/icons/tryton/LICENSE
+
+Module icons (ir.ui.icon) are not distributed with this program; they
+are loaded at runtime from the Tryton server and keep the license of
+the respective Tryton module.
+
+assets/app_icon.png
+    Application icon "TFC". Own work, part of this program
+    (GPL-3.0-or-later).
+
+The Material Icons font and cupertino_icons are part of the Flutter SDK
+and the cupertino_icons package (see sections 4 and 5).
+
+
+3. Fonts (SIL Open Font License 1.1)
+------------------------------------
+
+assets/fonts/Lato-*.ttf
+    Lato, designed by Lukasz Dziedzic (tyPoland).
+    Copyright (c) 2010-2014 by tyPoland Lukasz Dziedzic (team@latofonts.com)
+    with Reserved Font Name "Lato".
+    License: SIL Open Font License, Version 1.1 - full text in
+    assets/fonts/Lato-OFL.txt (https://openfontlicense.org/)
+
+
+4. Flutter SDK and Dart SDK (BSD-3-Clause)
+------------------------------------------
+
+Flutter (framework, engine, flutter_localizations, flutter_web_plugins,
+sky_engine) - Copyright 2014 The Flutter Authors.
+Dart SDK - Copyright 2012, the Dart project authors.
+License: BSD 3-Clause. The Flutter engine contains further third-party
+components (Skia, ICU, HarfBuzz, FreeType, zlib, BoringSSL and others)
+under their own permissive licenses; their notices are bundled with
+every build (see section 7).
+
+
+5. Dart / Flutter packages (pub.dev)
+------------------------------------
+
+Versions according to pubspec.lock. "direct" = listed in pubspec.yaml, "dev" = build/development
+only, "transitive" = indirect dependency. Copyright lines are taken from the
+LICENSE file of each package.
+
+Package                                        Version    License       Use                            Copyright
+---------------------------------------------- ---------- ------------- ------------------------------ ----------------------------------------
+android_file_picker                            2.1.3      MIT           transitive                     Copyright (c) 2018 Miguel Ruivo
+app_links                                      7.2.2      Apache-2.0    direct                         Copyright (c) llfbandit (https://github.com/llfbandit/app_links)
+app_links_linux                                1.0.5      Apache-2.0    transitive                     Copyright (c) llfbandit
+app_links_platform_interface                   2.0.4      Apache-2.0    transitive                     Copyright (c) llfbandit
+app_links_web                                  1.0.5      Apache-2.0    transitive                     Copyright (c) llfbandit
+archive                                        4.6.0      MIT           transitive                     Copyright (c) 2013-2021 Brendan Duncan.
+args                                           2.7.0      BSD-3-Clause  transitive                     Copyright 2013, the Dart project authors.
+async                                          2.13.1     BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+barcode                                        2.2.9      Apache-2.0    transitive                     Copyright (c) David PHAM-VAN
+bidi                                           2.0.13     MIT           transitive                     Copyright (c) 2020 Mahdi K. Fard
+boolean_selector                               2.1.2      BSD-3-Clause  transitive                     Copyright 2016, the Dart project authors.
+characters                                     1.4.1      BSD-3-Clause  transitive                     Copyright 2019, the Dart project authors.
+charcode                                       1.4.0      BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+checked_yaml                                   2.0.4      BSD-3-Clause  transitive                     Copyright 2019, the Dart project authors.
+cli_util                                       0.4.2      BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+clock                                          1.1.3      Apache-2.0    transitive                     Copyright the Dart project authors
+code_assets                                    2.1.0      BSD-3-Clause  transitive                     Copyright 2025, the Dart project authors.
+collection                                     1.19.1     BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+cross_file                                     0.3.5+5    BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+crypto                                         3.0.8      BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+csslib                                         1.0.2      BSD-3-Clause  transitive                     Copyright 2013, the Dart project authors.
+cupertino_icons                                1.0.9      MIT           direct                         Copyright (c) 2016 Vladimir Kharlampidi
+dart_quill_delta                               10.8.3     MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+dbus                                           0.8.0      MPL-2.0       transitive                     Copyright Canonical Ltd.
+diff_match_patch                               0.4.1      Apache-2.0    transitive                     Copyright Google Inc. (Neil Fraser); Dart port by jheyne
+dio                                            5.11.1     MIT           direct                         Copyright (c) 2018 Wen Du (wendux) ; Copyright (c) 2022 The CFUG Team
+dio_web_adapter                                2.2.2      MIT           transitive                     Copyright (c) 2018 Wen Du (wendux) ; Copyright (c) 2022 The CFUG Team
+equatable                                      3.0.0      MIT           transitive                     Copyright (c) 2026 Felix Angelov
+fake_async                                     1.3.3      Apache-2.0    transitive                     Copyright the Dart project authors
+ffi                                            2.2.0      BSD-3-Clause  transitive                     Copyright 2019, the Dart project authors.
+ffi_leak_tracker                               0.1.2      BSD-3-Clause  transitive                     Copyright (c) 2026, Halil Durmus
+file                                           7.0.1      BSD-3-Clause  transitive                     Copyright 2017, the Dart project authors.
+file_picker                                    13.3.2     MIT           direct                         Copyright (c) 2018 Miguel Ruivo
+file_picker_darwin                             2.4.2      MIT           transitive                     Copyright (c) 2018 Miguel Ruivo
+file_picker_linux                              2.0.3      MIT           transitive                     Copyright (c) 2018 Miguel Ruivo
+file_picker_platform_interface                 4.2.0      MIT           transitive                     Copyright (c) 2018 Miguel Ruivo
+file_picker_web                                4.2.0      MIT           transitive                     Copyright (c) 2018 Miguel Ruivo
+file_selector_linux                            0.9.4+1    BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+file_selector_platform_interface               2.7.0      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+file_selector_windows                          0.9.3+6    BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+fixnum                                         1.1.1      BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+fl_chart                                       1.3.0      MIT           direct                         Copyright (c) 2022 Flutter 4 Fun
+flutter_colorpicker                            1.1.0      MIT           transitive                     Copyright (c) 2021 fuyumi
+flutter_keyboard_visibility_linux              1.0.0      MIT           transitive                     Copyright (c) 2022 Jason Rai
+flutter_keyboard_visibility_macos              1.0.0      MIT           transitive                     Copyright (c) 2022 Jason Rai
+flutter_keyboard_visibility_platform_interface 2.0.0      MIT           transitive                     Copyright (c) 2006-2020
+flutter_keyboard_visibility_temp_fork          0.1.6      MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+flutter_keyboard_visibility_windows            1.0.0      MIT           transitive                     Copyright (c) 2022 Jason Rai
+flutter_launcher_icons                         0.14.4     MIT           direct, dev                    Copyright (c) 2019 Mark O'Sullivan
+flutter_lints                                  6.0.0      BSD-3-Clause  direct, dev                    Copyright 2013 The Flutter Authors.
+flutter_quill                                  11.6.0     MIT           direct                         Copyright (c) 2024 Flutter Quill project and open source contributors.
+flutter_quill_delta_from_html                  1.5.3      MIT           transitive                     Copyright (c) 2024 Cat
+flutter_riverpod                               2.6.1      MIT           direct                         Copyright (c) 2020 Remi Rousselet
+flutter_secure_storage                         11.2.0     BSD-3-Clause  direct                         Copyright 2017 German Saprykin
+flutter_secure_storage_darwin                  0.4.3      BSD-3-Clause  transitive                     Copyright 2025 Julian Steenbakker
+flutter_secure_storage_linux                   3.0.3      BSD-3-Clause  transitive                     Copyright 2017 German Saprykin
+flutter_secure_storage_platform_interface      2.1.1      BSD-3-Clause  transitive                     Copyright 2017 German Saprykin
+flutter_secure_storage_web                     2.1.1      BSD-3-Clause  transitive                     Copyright 2017 German Saprykin
+flutter_secure_storage_windows                 4.2.2      BSD-3-Clause  transitive                     Copyright 2017 German Saprykin
+flutter_svg                                    2.3.2      MIT           direct                         Copyright (c) 2018 Dan Field
+go_router                                      14.8.1     BSD-3-Clause  direct                         Copyright 2013 The Flutter Authors.
+hooks                                          2.2.0      BSD-3-Clause  transitive                     Copyright 2025, the Dart project authors.
+html                                           0.15.7     MIT           transitive                     Copyright (c) 2006-2012 The Authors
+http                                           1.6.0      BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+http_parser                                    4.1.2      BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+image                                          4.12.0     MIT           transitive                     Copyright (c) 2013-2022 Brendan Duncan.
+intl                                           0.20.3     BSD-3-Clause  direct                         Copyright 2013, the Dart project authors.
+is_ios_simulator                               1.0.1      MIT           transitive                     Copyright (c) 2026 Ellet
+jni                                            1.1.1      BSD-3-Clause  transitive                     Copyright 2022, the Dart project authors.
+jni_flutter                                    1.0.4+1    BSD-3-Clause  transitive                     Copyright 2026, the Dart project authors.
+jni_util                                       1.0.0      BSD-3-Clause  transitive                     Copyright 2026, the Dart project authors.
+json_annotation                                4.12.0     BSD-3-Clause  transitive                     Copyright 2017, the Dart project authors.
+leak_tracker                                   11.0.2     BSD-3-Clause  transitive                     Copyright 2022, the Dart project authors.
+leak_tracker_flutter_testing                   3.0.10     BSD-3-Clause  transitive                     Copyright 2022, the Dart project authors.
+leak_tracker_testing                           3.0.2      BSD-3-Clause  transitive                     Copyright 2022, the Dart project authors.
+lints                                          6.1.0      BSD-3-Clause  transitive                     Copyright 2021, the Dart project authors.
+logging                                        1.3.0      BSD-3-Clause  transitive                     Copyright 2013, the Dart project authors.
+markdown                                       7.3.1      BSD-3-Clause  transitive                     Copyright 2012, the Dart project authors.
+matcher                                        0.12.20    BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+material_color_utilities                       0.13.0     Apache-2.0    transitive                     Copyright 2021 Google LLC
+meta                                           1.19.0     BSD-3-Clause  transitive                     Copyright 2016, the Dart project authors.
+mime                                           2.1.0      BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+mobile_scanner                                 7.5.0      BSD-3-Clause  direct                         Copyright (c) 2022, Julian Steenbakker
+objective_c                                    9.6.2      BSD-3-Clause  transitive                     Copyright 2024, the Dart project authors.
+open_filex                                     5.0.0      BSD-3-Clause  direct                         Copyright 2018 crazecoder.
+package_config                                 3.0.0      BSD-3-Clause  transitive                     Copyright 2019, the Dart project authors.
+path                                           1.9.1      BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+path_parsing                                   1.1.0      MIT           transitive                     Copyright (c) 2018 Dan Field
+path_provider                                  2.1.6      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+path_provider_android                          2.3.1      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+path_provider_foundation                       2.6.0      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+path_provider_linux                            2.2.2      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+path_provider_platform_interface               2.1.3      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+path_provider_windows                          2.3.0      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+pdf                                            3.13.1     Apache-2.0    transitive                     Copyright (c) David PHAM-VAN
+pdf_widget_wrapper                             1.0.4      Apache-2.0    transitive                     Copyright (c) David PHAM-VAN
+petitparser                                    7.1.0      MIT           transitive                     Copyright (c) 2006-2026 Lukas Renggli.
+platform                                       3.2.0      BSD-3-Clause  transitive                     Copyright 2017, the Dart project authors.
+plugin_platform_interface                      2.1.8      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+posix                                          6.5.4      MIT           transitive                     Copyright (c) 2020 Brett Sutton
+printing                                       5.15.1     Apache-2.0    direct                         Copyright (c) David PHAM-VAN
+pub_semver                                     2.2.1      BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+qr                                             3.0.3      BSD-3-Clause  transitive                     Copyright 2014, the Dart QR project authors.
+quill_native_bridge                            11.2.0     MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quill_native_bridge_android                    0.0.2      MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quill_native_bridge_ios                        0.0.3      MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quill_native_bridge_linux                      0.0.3      MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quill_native_bridge_macos                      0.0.1      MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quill_native_bridge_platform_interface         0.0.2+1    MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quill_native_bridge_web                        0.0.2      MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quill_native_bridge_windows                    0.1.1      MIT           transitive                     Copyright (c) 2024 Flutter Quill project and open source contributors.
+quiver                                         3.2.2      Apache-2.0    transitive                     Copyright Google Inc. (quiver-dart authors)
+record_use                                     1.1.1      BSD-3-Clause  transitive                     Copyright 2024, the Dart project authors.
+riverpod                                       2.6.1      MIT           direct                         Copyright (c) 2020 Remi Rousselet
+share_plus                                     13.3.1     BSD-3-Clause  direct                         Copyright 2017, the Flutter project authors.
+share_plus_platform_interface                  7.2.0      BSD-3-Clause  transitive                     Copyright 2017 The Chromium Authors.
+shared_preferences                             2.5.6      BSD-3-Clause  direct                         Copyright 2013 The Flutter Authors
+shared_preferences_android                     2.5.4      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+shared_preferences_foundation                  2.6.1      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+shared_preferences_linux                       2.4.1      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+shared_preferences_platform_interface          2.4.2      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+shared_preferences_web                         2.4.3      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+shared_preferences_windows                     2.4.1      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+source_span                                    1.10.2     BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+stack_trace                                    1.12.2     BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+state_notifier                                 1.0.0      MIT           transitive                     Copyright (c) 2020 Remi Rousselet
+stream_channel                                 2.1.4      BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+string_scanner                                 1.4.1      BSD-3-Clause  transitive                     Copyright 2014, the Dart project authors.
+term_glyph                                     1.2.2      BSD-3-Clause  transitive                     Copyright 2017, the Dart project authors.
+test_api                                       0.7.12     BSD-3-Clause  transitive                     Copyright 2018, the Dart project authors.
+typed_data                                     1.4.0      BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+url_launcher                                   6.3.3      BSD-3-Clause  direct                         Copyright 2013 The Flutter Authors
+url_launcher_android                           6.3.33     BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+url_launcher_ios                               6.4.2      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+url_launcher_linux                             3.2.3      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+url_launcher_macos                             3.2.6      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+url_launcher_platform_interface                2.3.2      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+url_launcher_web                               2.4.3      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+url_launcher_windows                           3.1.6      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+uuid                                           4.6.0      MIT           direct                         Copyright (c) 2021 Yulian Kuncheff
+vector_graphics                                1.2.5      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+vector_graphics_codec                          1.1.13     BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+vector_graphics_compiler                       1.3.4      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+vector_math                                    2.4.4      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors
+vm_service                                     15.4.0     BSD-3-Clause  transitive                     Copyright 2015, the Dart project authors.
+web                                            1.1.2      BSD-3-Clause  transitive                     Copyright 2023, the Dart project authors.
+win32                                          6.4.0      BSD-3-Clause  transitive                     Copyright (c) 2024, Halil Durmus
+windows_file_picker                            2.0.1      MIT           transitive                     Copyright (c) 2018 Miguel Ruivo
+xdg_directories                                1.1.0      BSD-3-Clause  transitive                     Copyright 2013 The Flutter Authors.
+xml                                            7.0.1      MIT           direct                         Copyright (c) 2006-2026 Lukas Renggli.
+yaml                                           3.1.4      MIT           transitive                     Copyright (c) 2014, the Dart project authors. ; Copyright (c) 2006, Kirill Simonov.
+
+License summary: BSD-3-Clause, MIT, Apache-2.0 and MPL-2.0 (dbus, used
+unmodified on Linux only). All of them are compatible with
+GPL-3.0-or-later.
+
+
+6. Platform components used through packages
+--------------------------------------------
+
+- Android, code scanner (mobile_scanner): Google ML Kit Barcode Scanning
+  (com.google.mlkit:barcode-scanning or Google Play services). Proprietary,
+  subject to the Google ML Kit Terms of Service
+  (https://developers.google.com/ml-kit/terms). Not open source.
+- iOS/macOS, code scanner (mobile_scanner): Apple Vision / AVFoundation
+  (system frameworks).
+- Windows/Linux, printing (printing): PDFium binaries
+  (https://github.com/bblanchon/pdfium-binaries), downloaded at build
+  time; PDFium is licensed under BSD-3-Clause / Apache-2.0.
+- Linux, secure storage (flutter_secure_storage): libsecret (system
+  library, LGPL-2.1-or-later).
+
+
+7. License texts
+----------------
+
+- GPL-3.0:  LICENSE
+- Apache-2.0 (icons): assets/icons/tryton/LICENSE
+- OFL-1.1 (Lato): assets/fonts/Lato-OFL.txt
+- The LICENSE files of all Flutter/Dart packages (section 5) and of the
+  Flutter engine (section 4) are collected automatically by Flutter into
+  the NOTICES file of every build and can be shown in the app with
+  Flutter's license page (showLicensePage).

@@ -15,8 +15,21 @@ class UserPreferences {
   final String? avatarUrl;
   final String? avatarBadgeUrl;
 
+  /// Counts the loads of the preferences: part of the image URLs, so a
+  /// new avatar is fetched again – the server keeps the URL (same
+  /// `ir.avatar` uuid) when the image changes, and Flutter caches images
+  /// by URL.
+  final int revision;
+
   const UserPreferences(
-      {required this.statusBar, this.avatarUrl, this.avatarBadgeUrl});
+      {required this.statusBar,
+      this.avatarUrl,
+      this.avatarBadgeUrl,
+      this.revision = 0});
+
+  /// [url] of an avatar image in [size] pixels for this load.
+  static String imageUrl(String url, int size, int revision) =>
+      '$url?s=$size&v=$revision';
 
   /// Name without the bracketed part of the status bar.
   String get name {
@@ -37,7 +50,8 @@ class UserPreferences {
   /// against the server root ([serverUrl]) – they are no RPC paths, and
   /// the endpoint only answers GET (POST/`<db>/…` give 405).
   factory UserPreferences.fromPreferences(
-      Map<String, dynamic> preferences, String serverUrl) {
+      Map<String, dynamic> preferences, String serverUrl,
+      {int revision = 0}) {
     String? absolute(dynamic url) {
       if (url is! String || url.isEmpty) return null;
       final uri = Uri.parse(url);
@@ -51,6 +65,7 @@ class UserPreferences {
       statusBar: '${preferences['status_bar'] ?? ''}',
       avatarUrl: absolute(preferences['avatar_url']),
       avatarBadgeUrl: absolute(preferences['avatar_badge_url']),
+      revision: revision,
     );
   }
 }
@@ -66,8 +81,12 @@ final userPreferencesProvider = Provider<UserPreferences?>((ref) {
   final preferences = ref.watch(preferencesProvider);
   if (preferences == null) return null;
   return UserPreferences.fromPreferences(
-      preferences, ref.read(rpcClientProvider).baseUrl);
+      preferences, ref.read(rpcClientProvider).baseUrl,
+      revision: ++_preferencesRevision);
 });
+
+/// Number of the preferences loaded (see [UserPreferences.revision]).
+int _preferencesRevision = 0;
 
 /// Number format of `preferences.locale` (spec 15.1/15.4); null without
 /// preferences – the widgets then use the app locale.

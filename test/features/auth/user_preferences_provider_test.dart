@@ -34,4 +34,27 @@ void main() {
     expect(container.read(userPreferencesProvider)!.initials, 'JK');
     expect(container.read(userPreferencesProvider)!.avatarUrl, isNull);
   });
+
+  test('every load of the preferences gives the avatar a new image URL: '
+      'a changed image under the same server URL is fetched again', () {
+    final rpc = FakeFormRpc({})..baseUrl = 'http://127.0.0.1:8000';
+    final container = ProviderContainer(overrides: [
+      rpcClientProvider.overrideWithValue(rpc),
+    ]);
+    addTearDown(container.dispose);
+    final prefs = container.read(preferencesProvider.notifier);
+    Map<String, dynamic> load() => {
+          'status_bar': 'Administrator [EUR]',
+          'avatar_url': 'avatar/dHJ5dG9u/57c4',
+        };
+    prefs.state = load();
+    final first = container.read(userPreferencesProvider)!;
+    prefs.state = load(); // reload after saving the own user
+    final second = container.read(userPreferencesProvider)!;
+    expect(second.avatarUrl, first.avatarUrl, reason: 'same server URL');
+    final a = UserPreferences.imageUrl(first.avatarUrl!, 56, first.revision);
+    final b = UserPreferences.imageUrl(second.avatarUrl!, 56, second.revision);
+    expect(a, startsWith('http://127.0.0.1:8000/avatar/dHJ5dG9u/57c4?s=56&v='));
+    expect(b, isNot(a));
+  });
 }

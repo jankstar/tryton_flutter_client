@@ -206,7 +206,7 @@ class _Avatar extends StatelessWidget {
         ? initials
         : ClipOval(
             child: Image.network(
-              '$url?s=${(size * 2).round()}',
+              UserPreferences.imageUrl(url, (size * 2).round(), prefs!.revision),
               width: size,
               height: size,
               fit: BoxFit.cover,
@@ -221,7 +221,8 @@ class _Avatar extends StatelessWidget {
         right: -2,
         bottom: -2,
         child: ClipOval(
-          child: Image.network('$badge?s=${(size).round()}',
+          child: Image.network(
+              UserPreferences.imageUrl(badge, size.round(), prefs!.revision),
               width: size / 2,
               height: size / 2,
               errorBuilder: (_, _, _) => const SizedBox.shrink()),
