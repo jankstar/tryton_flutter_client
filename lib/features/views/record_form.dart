@@ -6,6 +6,7 @@ import '../../core/model/model.dart';
 import '../../core/pyson/pyson_evaluator.dart';
 import '../../core/xml/view_definition.dart';
 import '../../shared/widgets/field_widget.dart';
+import '../../shared/widgets/shrink_to_fit.dart';
 import '../model/field_definition.dart';
 import 'embedded_tree_widget.dart';
 import 'fill_column.dart';
@@ -874,10 +875,18 @@ class FormButtonFooter extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        children: buttons,
+      // many buttons on a narrow window wrap into lines: at most about a
+      // third of the window high, then scrolling (no overflow of the form)
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height / 3),
+        child: SingleChildScrollView(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: buttons,
+          ),
+        ),
       ),
     );
   }
@@ -945,7 +954,9 @@ class RecordButton extends StatelessWidget {
         : caption;
     final iconName = states.icon;
     void press() => onPressed?.call(node);
-    return iconName != null && iconName.isNotEmpty
+    // a grid column narrower than the button (resizing): scaled down
+    // instead of overflowing
+    return ShrinkToFit(child: iconName != null && iconName.isNotEmpty
         ? OutlinedButton.icon(
             icon: TrytonIcon(
               iconName: iconName,
@@ -959,7 +970,7 @@ class RecordButton extends StatelessWidget {
         : OutlinedButton(
             onPressed: disabled ? null : press,
             child: text,
-          );
+          ));
   }
 }
 

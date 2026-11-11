@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:tryton_flutter_client/features/auth/auth_provider.dart';
 import 'package:tryton_flutter_client/features/auth/login_screen.dart';
+import 'package:tryton_flutter_client/features/shell/about_dialog.dart';
 import 'package:tryton_flutter_client/features/auth/user_preferences_provider.dart';
 import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 import 'package:tryton_flutter_client/features/shell/tab_strip.dart';
@@ -143,6 +144,8 @@ void main() {
     });
   }
 
+  _aboutScreenshot(out);
+
   // the login screen with the connection reached (lock icon)
   for (final (name, url) in [
     ('login-http', 'http://localhost:8000'),
@@ -194,6 +197,60 @@ void main() {
       });
     });
   }
+}
+
+/// Screenshot of "About …" (dialog).
+void _aboutScreenshot(String? out) {
+  testWidgets('screenshot about', (tester) async {
+    if (out == null) {
+      markTestSkipped('SCREENSHOT_DIR not set');
+      return;
+    }
+    await tester.runAsync(_loadFonts);
+    const size = Size(760, 760);
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final boundary = GlobalKey();
+    final theme = AppTheme.polarFox.buildThemeData();
+    await tester.pumpWidget(RepaintBoundary(
+      key: boundary,
+      child: ProviderScope(
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme.copyWith(
+              textTheme: theme.textTheme.apply(fontFamily: 'Roboto')),
+          locale: const Locale('de'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => showAboutTryton(context, openUrl: (_) {}),
+                  child: const Text('about'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('about'));
+    for (var i = 0; i < 10; i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await tester.runAsync(() async {
+      final render =
+          boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      final image = await render.toImage();
+      final png = await image.toByteData(format: ui.ImageByteFormat.png);
+      Directory(out).createSync(recursive: true);
+      File('$out/flutter-about.png').writeAsBytesSync(png!.buffer.asUint8List());
+    });
+  });
 }
 
 /// Auth state after reaching [url] (no server needed).

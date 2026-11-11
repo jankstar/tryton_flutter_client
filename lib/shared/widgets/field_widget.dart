@@ -131,16 +131,24 @@ class FieldWidget extends ConsumerWidget {
                 ),
               )
             : Text(field.label, overflow: TextOverflow.ellipsis);
+        final checkbox = Checkbox(
+            value: value as bool? ?? false,
+            onChanged: effective ? null : (v) => onChanged?.call(v));
+        // labels before the fields: the label cell shows the text, the
+        // checkbox alone shrinks in a column narrower than it (resizing)
+        final withLabel = formLabel(context, true) ?? false;
         return InkWell(
           onTap: effective ? null : () => onChanged?.call(!(value == true)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Checkbox(value: value as bool? ?? false, onChanged: effective ? null : (v) => onChanged?.call(v)),
-              // (labels before the fields: the label cell shows the text)
-              if (formLabel(context, true) ?? false) Flexible(child: label),
-            ],
-          ),
+          child: withLabel
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [checkbox, Flexible(child: label)],
+                )
+              : FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: checkbox,
+                ),
         );
 
       case 'selection':
