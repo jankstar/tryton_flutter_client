@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tryton_flutter_client/core/session/profiles.dart';
+import 'package:tryton_flutter_client/core/session/session.dart' show kClientVersion;
 import 'package:tryton_flutter_client/core/session/session_store.dart';
 
 /// Connection profiles (spec 3.1, 16; H6) and the stored sessions per
@@ -31,6 +32,25 @@ void main() {
       // saved: the next load reads the profiles, not the old keys
       final prefs = await SharedPreferences.getInstance();
       expect(jsonDecode(prefs.getString(ProfileStore.profilesKey)!), hasLength(1));
+    });
+
+    test('first start without saved values: „Standard“ = the Tryton demo '
+        'of the series, no localhost', () async {
+      SharedPreferences.setMockInitialValues({});
+      final profiles = await ProfileStore().load();
+      expect(profiles, [
+        const ConnectionProfile(
+            name: 'Standard',
+            serverUrl: 'demo$kClientVersion.tryton.org',
+            database: 'demo$kClientVersion',
+            login: 'demo'),
+      ]);
+      expect(demoServer, 'demo8.0.tryton.org');
+      expect(demoDatabase, 'demo8.0');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(ProfileStore.profilesKey), isNot(contains('localhost')));
+      expect(prefs.getString(ProfileStore.profilesKey), isNot(contains('password')),
+          reason: 'the password is not stored');
     });
 
     test('create, rename, delete; no passwords stored', () async {

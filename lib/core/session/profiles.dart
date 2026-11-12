@@ -2,7 +2,17 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'session.dart' show kClientVersion;
 import 'session_store.dart';
+
+/// The public Tryton demo of the series (`demo<series>.tryton.org`, HTTPS):
+/// the values of the login screen on the first start without saved
+/// values. Server and database follow [kClientVersion]; the demo login
+/// is lower case (`Demo` is refused by the server).
+const demoServer = 'demo$kClientVersion.tryton.org';
+const demoDatabase = 'demo$kClientVersion';
+const demoLogin = 'demo';
+const demoPassword = 'demo';
 
 /// A connection profile (spec 3.1, 16; Python `profiles.cfg`): name,
 /// server URL, database and user – never a password.
@@ -104,13 +114,22 @@ class ProfileStore {
         return const [];
       }
     }
+    // former settings of an older version, else the Tryton demo
+    final legacyServer = prefs.getString(legacyServerKey);
     final profiles = [
-      ConnectionProfile(
-        name: defaultName,
-        serverUrl: prefs.getString(legacyServerKey) ?? 'localhost:8000',
-        database: prefs.getString(legacyDatabaseKey) ?? '',
-        login: await storedLogin?.call() ?? '',
-      ),
+      legacyServer == null
+          ? const ConnectionProfile(
+              name: defaultName,
+              serverUrl: demoServer,
+              database: demoDatabase,
+              login: demoLogin,
+            )
+          : ConnectionProfile(
+              name: defaultName,
+              serverUrl: legacyServer,
+              database: prefs.getString(legacyDatabaseKey) ?? '',
+              login: await storedLogin?.call() ?? '',
+            ),
     ];
     await save(profiles);
     await setLast(defaultName);

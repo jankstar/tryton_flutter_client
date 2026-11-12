@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/rpc/rpc_client.dart';
 import '../../core/rpc/server_address.dart';
 import '../../core/rpc/rpc_exceptions.dart';
+import '../../core/session/profiles.dart' show demoServer;
 import '../../core/session/session.dart';
 import '../views/embedded_tree_widget.dart' show clearEmbeddedViewCache;
 
 /// Singleton RpcClient – URL is set during login
 final rpcClientProvider = Provider<RpcClient>((ref) {
-  return RpcClient(baseUrl: 'http://localhost:8000');
+  // the server of the login screen replaces it (no local default)
+  return RpcClient(baseUrl: 'https://$demoServer');
 });
 
 final sessionProvider = Provider<TrytonSession>((ref) {

@@ -23,10 +23,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _serverCtrl = TextEditingController(text: 'localhost:8000');
-  final _dbCtrl = TextEditingController();
-  final _userCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
+  // the Tryton demo until the saved profile is applied
+  final _serverCtrl = TextEditingController(text: demoServer);
+  final _dbCtrl = TextEditingController(text: demoDatabase);
+  final _userCtrl = TextEditingController(text: demoLogin);
+  final _passCtrl = TextEditingController(text: demoPassword);
   final _mfaCtrl = TextEditingController();
 
   bool _passwordObscured = true;
@@ -89,7 +90,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _serverCtrl.text = profile.serverUrl;
     _dbCtrl.text = profile.database;
     _userCtrl.text = profile.login;
-    _passCtrl.clear();
+    // only the public demo gets its (public) password
+    _passCtrl.text = profile.serverUrl == demoServer &&
+            profile.database == demoDatabase &&
+            profile.login == demoLogin
+        ? demoPassword
+        : '';
   }
 
   /// The session of [profile] (`login@host:port/db`, A8) is resumed.
@@ -443,7 +449,7 @@ class _ServerField extends ConsumerWidget {
       controller: ctrl,
       decoration: InputDecoration(
         labelText: context.l10n.serverUrl,
-        hintText: 'localhost:8000',
+        hintText: demoServer,
         prefixIcon: const Icon(Icons.dns_outlined),
         // the server reached for this address: HTTPS or plain HTTP
         suffixIcon: ValueListenableBuilder<TextEditingValue>(
