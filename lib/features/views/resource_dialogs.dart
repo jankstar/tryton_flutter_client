@@ -127,6 +127,8 @@ Future<void> _showScreenDialog(BuildContext context,
               child: ScreenWidget(
                 attributes: attributes,
                 title: title,
+                // like Python's WinForm: no attachments/notes of a note
+                dialogToolbar: true,
                 onScreen: (s) {
                   screen = s;
                   if (onReady != null) {

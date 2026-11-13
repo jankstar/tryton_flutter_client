@@ -190,6 +190,57 @@ void main() {
     expect(find.byKey(const ValueKey('notes-dialog')), findsNothing);
   });
 
+  testWidgets('notes dialog: a slim toolbar like Python WinForm – no notes, '
+      'attachments, actions or reports of a note', (tester) async {
+    final rpc = server({
+      'model.ir.note.fields_view_get': (p) => p[1] == 'tree'
+          ? {
+              'type': 'tree',
+              'view_id': 2,
+              'arch': '<tree><field name="message"/><field name="unread"/></tree>',
+              'fields': noteFields
+            }
+          : formView('<form><field name="message"/></form>', noteFields),
+      'model.ir.note.search': (_) => [5],
+      'model.ir.note.search_count': (_) => 1,
+      'model.ir.note.read': (p) => [
+            for (final id in p[0] as List)
+              {'id': id, 'message': 'N$id', 'unread': false, '_timestamp': '1'}
+          ],
+      'model.ir.note.write': (_) => null,
+      'model.ir.note.view_toolbar_get': (_) => <String, dynamic>{},
+      'model.ir.note.resources': (_) => <String, dynamic>{},
+    });
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    await tester.tap(find.byTooltip('Note'));
+    await pumpFrames(tester);
+    final dialog = find.byKey(const ValueKey('notes-dialog'));
+    Finder inDialog(Finder f) => find.descendant(of: dialog, matching: f);
+    void slim(String view) {
+      for (final tip in ['Note', 'Launch actions', 'Open report', 'Print report',
+          'Related records', 'Email', 'Duplicate', 'View logs']) {
+        expect(inDialog(find.byTooltip(tip)), findsNothing,
+            reason: '$view: $tip');
+      }
+      expect(inDialog(find.byKey(const ValueKey('attachment-button'))),
+          findsNothing, reason: view);
+      expect(inDialog(find.byTooltip('Delete')), findsWidgets, reason: view);
+    }
+
+    slim('list');
+    // the form of the note: also slim
+    // (a tap opens the form on touch platforms, else the switch)
+    await tester.tap(find.text('N5'));
+    await pumpFrames(tester);
+    final toForm = inDialog(find.byTooltip('Switch to form'));
+    if (toForm.evaluate().isNotEmpty) {
+      await tester.tap(toForm.first);
+      await pumpFrames(tester);
+    }
+    expect(inDialog(find.text('N5')), findsWidgets);
+    slim('form');
+  });
+
   testWidgets('logs: header with model, ID, module/XML ID, created by/at',
       (tester) async {
     final rpc = server({

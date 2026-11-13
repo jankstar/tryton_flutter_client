@@ -45,11 +45,16 @@ class ListViewScreen extends ConsumerStatefulWidget {
   /// Called when the user clicks "Close" – removes this tab from AppShell.
   final Future<void> Function()? onClose;
 
+  /// Slim toolbar of a dialog (notes, attachments; Python `WinForm`):
+  /// without attachments, notes, actions, print, … ([dialogHiddenActions]).
+  final bool dialogToolbar;
+
   const ListViewScreen({
     super.key,
     required this.screen,
     required this.title,
     this.onClose,
+    this.dialogToolbar = false,
   });
 
   @override
@@ -350,7 +355,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final single = selected.length == 1 && selected.first.id >= 0;
     VoidCallback? menu(GlobalKey key, bool active) =>
         active ? () => pressButtonOf(key) : null;
-    return {
+    final RecordActions actions = {
       RecordAction.switchView: hasSelection ? _switchToForm : null,
       RecordAction.previous:
           _listed.isEmpty ? null : () => _moveSelection(next: false),
@@ -391,6 +396,11 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           copyScreenUrl(context, ref, _screen, widget.title),
       RecordAction.close: () => widget.onClose?.call(),
     };
+    // a slim dialog (notes, attachments) offers no notes of a note
+    if (widget.dialogToolbar) {
+      actions.removeWhere((a, _) => dialogHiddenActions.contains(a));
+    }
+    return actions;
   }
 
 
@@ -569,6 +579,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             tooltip: l.reload,
             onPressed: _reload,
           )),
+          if (!widget.dialogToolbar)
           ToolbarSlot(3, IconButton(
             icon: Icon(Icons.copy_outlined,
                 color: hasSelection && _screen.canCreate
@@ -587,6 +598,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           )),
 
           // ── Attachment (requires selection) ───────────────────────────
+          if (!widget.dialogToolbar)
           ToolbarSlot(1, _ResourceButtons(
             attachKey: _attachKey,
             record: singleSelection ? _screen.selectedRecords.first : null,
@@ -596,6 +608,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           ), slots: 2),
 
           // ── Action / Relate / Print / Email (require selection) ───────
+          if (!widget.dialogToolbar)
           ToolbarSlot(2, ToolbarDropdownButton(
             key: _actionKey,
             screen: _screen,
@@ -611,6 +624,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             buttons: _keywordButtons('action'),
             onButton: _runButton,
           )),
+          if (!widget.dialogToolbar)
           ToolbarSlot(2, ToolbarDropdownButton(
             key: _relateKey,
             screen: _screen,
@@ -625,6 +639,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             buttons: _keywordButtons('relate'),
             onButton: _runButton,
           )),
+          if (!widget.dialogToolbar)
           ToolbarSlot(2, ToolbarDropdownButton(
             key: _printKey,
             screen: _screen,
@@ -643,6 +658,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
                 listed: _listed),
           )),
           // the same reports straight to the printer (Python „Print“)
+          if (!widget.dialogToolbar)
           ToolbarSlot(2, ToolbarDropdownButton(
             key: _printDirectKey,
             screen: _screen,
@@ -658,6 +674,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             onButton: _runButton,
             directPrint: true,
           )),
+          if (!widget.dialogToolbar)
           ToolbarSlot(2, IconButton(
             key: _emailKey,
             icon: const Icon(Icons.email_outlined),
@@ -840,6 +857,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
                   screen: _screen,
                   view: view,
                   controller: _table,
+                  recordFunctions: !widget.dialogToolbar,
                   displayStep: _displayStep,
                   onActivate: _openRecord,
                   onSelectionChanged: () => setState(() {}),

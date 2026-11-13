@@ -45,6 +45,9 @@ class ScreenWidget extends ConsumerStatefulWidget {
   /// records when closed, e.g. notes marked as read).
   final void Function(TrytonScreen screen)? onScreen;
 
+  /// Slim toolbars of a dialog (notes, attachments; Python `WinForm`).
+  final bool dialogToolbar;
+
   const ScreenWidget({
     super.key,
     required this.attributes,
@@ -53,6 +56,7 @@ class ScreenWidget extends ConsumerStatefulWidget {
     this.closeOnSaveNew = false,
     this.tabRoot = false,
     this.onScreen,
+    this.dialogToolbar = false,
   });
 
   @override
@@ -325,6 +329,7 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
           title: widget.title,
           onClose: widget.onClose,
           closeOnSaveNew: widget.closeOnSaveNew,
+          dialogToolbar: widget.dialogToolbar,
         ),
       // tree and list-form (cards) share the list shell
       _ => ListViewScreen(
@@ -332,6 +337,7 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
           screen: screen,
           title: widget.title,
           onClose: widget.onClose,
+          dialogToolbar: widget.dialogToolbar,
         ),
     };
   }

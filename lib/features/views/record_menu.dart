@@ -40,6 +40,25 @@ enum RecordAction {
   close,
 }
 
+/// Actions a slim dialog (`ScreenWidget.dialogToolbar`, Python `WinForm`
+/// of notes and attachments) does not offer: no notes of a note.
+const dialogHiddenActions = {
+  RecordAction.copy,
+  RecordAction.logs,
+  RecordAction.revision,
+  RecordAction.attach,
+  RecordAction.note,
+  RecordAction.chat,
+  RecordAction.action,
+  RecordAction.relate,
+  RecordAction.print,
+  RecordAction.printDirect,
+  RecordAction.email,
+  RecordAction.export,
+  RecordAction.import,
+  RecordAction.copyUrl,
+};
+
 /// Groups of [RecordAction] (separators between them, Python `None`).
 const recordMenuGroups = [
   [RecordAction.switchView, RecordAction.previous, RecordAction.next, RecordAction.search],

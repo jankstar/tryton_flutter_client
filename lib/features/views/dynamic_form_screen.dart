@@ -47,12 +47,17 @@ class DynamicFormScreen extends ConsumerStatefulWidget {
   /// opened only to create a record, e.g. "Add attachment").
   final bool closeOnSaveNew;
 
+  /// Slim toolbar of a dialog (notes, attachments; Python `WinForm`):
+  /// without attachments, notes, actions, print, … ([dialogHiddenActions]).
+  final bool dialogToolbar;
+
   const DynamicFormScreen({
     super.key,
     required this.screen,
     required this.title,
     this.onClose,
     this.closeOnSaveNew = false,
+    this.dialogToolbar = false,
   });
 
   @override
@@ -733,7 +738,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
         [for (final b in buttons) if ((b.keyword ?? 'action') == k) b];
     VoidCallback? menu(GlobalKey key, bool active) =>
         idle && active ? () => pressButtonOf(key) : null;
-    return {
+    final RecordActions actions = {
       RecordAction.switchView:
           idle && _screen.numberOfViews > 1 ? _switchView : null,
       RecordAction.previous:
@@ -773,6 +778,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           copyScreenUrl(context, ref, _screen, widget.title),
       RecordAction.close: () => widget.onClose?.call(),
     };
+    // a slim dialog (notes, attachments) offers no notes of a note
+    if (widget.dialogToolbar) {
+      actions.removeWhere((a, _) => dialogHiddenActions.contains(a));
+    }
+    return actions;
   }
 
   void _showSnack(String msg) =>
@@ -891,6 +901,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             tooltip: l.reload,
             onPressed: _saving ? null : _reload,
           )),
+          if (!widget.dialogToolbar)
           ToolbarSlot(3, IconButton(
             icon: const Icon(Icons.copy_outlined),
             tooltip: l.duplicate,
@@ -906,6 +917,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           )),
 
           // ── Logs / Attachment / Note ──────────────────────────────────
+          if (!widget.dialogToolbar)
           ToolbarSlot(3, IconButton(
             icon: const Icon(Icons.history),
             tooltip: context.l10n.viewLogs,
@@ -913,12 +925,13 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           )),
           // Revisions only for models with history (MODELHISTORY):
           // otherwise the server answers "No history table".
-          if (_hasHistory)
+          if (_hasHistory && !widget.dialogToolbar)
             ToolbarSlot(3, IconButton(
               icon: const Icon(Icons.manage_history),
               tooltip: context.l10n.revisions,
               onPressed: actions[RecordAction.revision],
             )),
+          if (!widget.dialogToolbar)
           ToolbarSlot(1, AttachmentMenuButton(
             key: _attachKey,
             resource: _resourceRef,
@@ -926,12 +939,13 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             onChanged: _loadResources,
             onPreview: () => setState(() => _preview = !_preview),
           )),
+          if (!widget.dialogToolbar)
           ToolbarSlot(1, NoteIconButton(
             total: (resources?['note_count'] as num?)?.toInt() ?? 0,
             unread: (resources?['note_unread'] as num?)?.toInt() ?? 0,
             onPressed: actions[RecordAction.note],
           )),
-          if (_hasChat)
+          if (_hasChat && !widget.dialogToolbar)
             ToolbarSlot(1, IconButton(
               key: const ValueKey('chat-button'),
               icon: const Icon(Icons.forum_outlined), // tryton-chat
@@ -942,8 +956,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
           // ── Action / Relate / Print / Email ──────────────────────────
           // Always shown like in SAO original (disabled when not
-          // available).
-          ...[
+          // available); not in a slim dialog.
+          if (!widget.dialogToolbar) ...[
             ToolbarSlot(2, ToolbarDropdownButton(
               key: _actionKey,
               screen: _screen,

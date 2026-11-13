@@ -140,6 +140,10 @@ class TreeView extends ConsumerStatefulWidget {
   /// Number of rows rendered at once (Python `display_size`).
   final int displayStep;
 
+  /// The context menu offers the functions of the row's record
+  /// (attachments, notes, actions, …); not in a slim dialog.
+  final bool recordFunctions;
+
   const TreeView({
     super.key,
     required this.screen,
@@ -152,6 +156,7 @@ class TreeView extends ConsumerStatefulWidget {
     this.maxHeight,
     this.keyPrefix = 'list',
     this.displayStep = 100,
+    this.recordFunctions = true,
   });
 
   @override
@@ -753,7 +758,9 @@ class _TreeViewState extends ConsumerState<TreeView> {
     }
 
     if (selected.length == 1) {
-      if (!_parentModified(record) && record.id >= 0) {
+      if (widget.recordFunctions &&
+          !_parentModified(record) &&
+          record.id >= 0) {
         String name;
         try {
           name = await record.recName();
