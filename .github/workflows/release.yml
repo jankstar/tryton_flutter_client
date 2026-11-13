@@ -317,31 +317,12 @@ jobs:
       - name: Remove the key
         if: always()
         run: rm -f android/app/upload.jks android/key.properties
+      - name: Self-test of the signature check
+        run: bash test/scripts/check_apk_signature_test.sh
       - name: Check the signature (apksigner)
         env:
           UPLOAD_KEY: ${{ secrets.ANDROID_KEYSTORE != '' }}
-        run: |
-          apk="build/dist/TrytonFlutterClient-$LABEL-android.apk"
-          tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-          out="$("$tools/apksigner" verify --verbose --print-certs "$apk")"
-          echo "$out"
-          dn="$(sed -n 's/^Signer #1 certificate DN: //p' <<<"$out")"
-          sha="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<<"$out")"
-          {
-            echo "### Android: signature ($(basename "$tools"))"
-            echo '```'
-            grep -E '^Verified using v[0-9]' <<<"$out" || true
-            echo "Owner (DN): $dn"
-            echo "SHA-256: $sha"
-            echo '```'
-            if [[ "$dn" == *"CN=Android Debug"* ]]; then
-              echo "**Debug key** – no upload key (ANDROID_KEYSTORE) set."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$UPLOAD_KEY" == "true" && "$dn" == *"CN=Android Debug"* ]]; then
-            echo "::error::ANDROID_KEYSTORE is set, but the APK is signed with the debug key"
-            exit 1
-          fi
+        run: scripts/check_apk_signature.sh "build/dist/TrytonFlutterClient-$LABEL-android.apk"
       - uses: actions/upload-artifact@v7
         with:
           name: android
