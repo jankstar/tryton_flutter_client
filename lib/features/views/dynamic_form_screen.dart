@@ -947,7 +947,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             ToolbarSlot(2, ToolbarDropdownButton(
               key: _actionKey,
               screen: _screen,
-              icon: Icons.rocket_launch_outlined, // tryton-launch
+              icon: Icons.toys_outlined,
+              iconName: 'tryton-launch', // the propeller of the Python client
               tooltip: l.launchActions,
               items: _toolbar.actions,
               model: _model,

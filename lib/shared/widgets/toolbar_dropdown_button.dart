@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/icons/tryton_icon.dart';
 import '../../features/actions/action_service.dart';
 import '../../core/screen/screen.dart';
 import '../../core/xml/view_definition.dart';
@@ -12,6 +13,10 @@ import '../errors/error_dialogs.dart';
 /// Always visible – greyed out when the category has no items (like SAO).
 class ToolbarDropdownButton extends ConsumerWidget {
   final IconData icon;
+
+  /// Tryton icon drawn instead of [icon] (its SVG, [icon] as fallback),
+  /// e.g. `tryton-launch` like the Python client.
+  final String? iconName;
   final String tooltip;
   final List<TrytonActionItem> items;
   final String model;
@@ -49,6 +54,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
   const ToolbarDropdownButton({
     super.key,
     required this.icon,
+    this.iconName,
     required this.tooltip,
     required this.items,
     required this.model,
@@ -100,6 +106,18 @@ class ToolbarDropdownButton extends ConsumerWidget {
     }
   }
 
+  /// The button's icon: the Tryton SVG of [iconName], else [icon].
+  Widget _icon(BuildContext context, [Color? color]) {
+    final name = iconName;
+    if (name == null) return Icon(icon, color: color);
+    return TrytonIcon(
+      iconName: name,
+      size: IconTheme.of(context).size ?? 24,
+      color: color ?? IconTheme.of(context).color,
+      fallback: icon,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shownButtons = onButton == null ? const <ButtonNode>[] : buttons;
@@ -109,7 +127,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
     if ((!enabled || (items.isEmpty && shownButtons.isEmpty)) &&
         shownExports.isEmpty) {
       return IconButton(
-        icon: Icon(icon, color: Theme.of(context).disabledColor),
+        icon: _icon(context, Theme.of(context).disabledColor),
         tooltip: tooltip,
         onPressed: null,
       );
@@ -118,7 +136,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
     // Single item → execute directly
     if (items.length == 1 && shownButtons.isEmpty && shownExports.isEmpty) {
       return IconButton(
-        icon: Icon(icon),
+        icon: _icon(context),
         tooltip: '$tooltip: ${items.first.name}',
         onPressed: () => _execute(context, ref, items.first),
       );
@@ -126,7 +144,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
 
     // Multiple items → dropdown (actions, then the form buttons)
     return PopupMenuButton<Object>(
-      icon: Icon(icon),
+      icon: _icon(context),
       tooltip: tooltip,
       position: PopupMenuPosition.under,
       onSelected: (entry) => switch (entry) {

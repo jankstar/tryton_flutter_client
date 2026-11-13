@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/icons/tryton_icon.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 
 import 'form_harness.dart';
@@ -75,8 +76,12 @@ void main() {
     await select(tester, 'Cron 1');
     expect(find.byTooltip('Launch actions'), findsOneWidget);
     final button = tester.widget<IconButton>(find.ancestor(
-        of: find.byIcon(Icons.rocket_launch_outlined),
+        of: find.byTooltip('Launch actions'),
         matching: find.byType(IconButton)));
     expect(button.onPressed, isNull, reason: 'nothing to launch');
+    // the propeller of the Python client (`tryton-launch`), not a rocket
+    final icon = tester.widget<TrytonIcon>(find.descendant(
+        of: find.byTooltip('Launch actions'), matching: find.byType(TrytonIcon)));
+    expect(icon.iconName, 'tryton-launch');
   }, variant: desktop);
 }

@@ -273,7 +273,7 @@ class TrytonIcon extends StatelessWidget {
       'tryton-find': Icons.search,
       'tryton-close': Icons.close,
       'tryton-open': Icons.open_in_new,
-      'tryton-launch': Icons.launch,
+      'tryton-launch': Icons.toys_outlined, // the propeller (not „open“)
       'tryton-edit': Icons.edit,
 
       // ── Documents & communication ─────────────────────────────────────────────

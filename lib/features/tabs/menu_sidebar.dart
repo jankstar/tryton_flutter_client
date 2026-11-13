@@ -96,7 +96,12 @@ final menuFavoritesProvider = FutureProvider<List<List<dynamic>>>((ref) async {
 
 /// Loads the SVGs of [names] (ir.ui.icon) into the icon cache.
 Future<void> preloadIconSvgs(ModelService svc, Set<String> names) async {
-  final missing = names.where((n) => !isIconCached(n)).toList();
+  // Tryton's own icons (e.g. `tryton-launch` of wizards) are not in
+  // ir.ui.icon: TrytonIcon loads them from the assets – marking them as
+  // missing here would show the Material fallback instead
+  final missing = names
+      .where((n) => !isIconCached(n) && !localIcons.contains(n))
+      .toList();
   if (missing.isEmpty) return;
   try {
     final records = await svc.searchRead(
