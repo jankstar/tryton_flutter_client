@@ -77,7 +77,7 @@
   "@deleteRecords": {
     "description": "Dialog title for multi-record deletion"
   },
-  "reallyDeleteRecords": "Poistetaanko {count} tietue(tta)?",
+  "reallyDeleteRecords": "Haluatko varmasti poistaa nämä tietueet?",
   "@reallyDeleteRecords": {
     "description": "Confirmation message for deleting multiple records",
     "placeholders": {
@@ -154,7 +154,7 @@
   "@deleteRecord": {
     "description": "Confirmation dialog title for deleting a single record"
   },
-  "reallyDelete": "Poistetaanko? Tätä toimintoa ei voi kumota.",
+  "reallyDelete": "Haluatko varmasti poistaa tämän tietueen?",
   "@reallyDelete": {
     "description": "Confirmation dialog body for deleting a record"
   },
@@ -326,7 +326,7 @@
     "description": "Negative answer in dialogs"
   },
   "concurrencyWarning": "Samanaikaisuusvaroitus",
-  "concurrencyMessage": "Tätä tietuetta on muutettu muokkauksesi aikana.\nValitse:\n• \"Peruuta\" peruuttaaksesi tallennuksen;\n• \"Vertaa\" nähdäksesi muutetun version;\n• \"Kirjoita silti\" tallentaaksesi nykyisen versiosi.",
+  "concurrencyMessage": "Tätä tietuetta on muutettu muokkauksesi aikana.",
   "compare": "Vertaa",
   "writeAnyway": "Kirjoita silti",
   "concurrencyException": "Samanaikaisuusvirhe",
@@ -590,5 +590,6 @@
   "resetPasswordSent": "Salasanan palautuspyyntö on lähetetty.\nTarkista sähköpostisi.",
   "resetPasswordNeedsUser": "Anna ensin palvelin, tietokanta ja käyttäjätunnus.",
   "openReport": "Avaa raportti",
-  "printReport": "Tulosta raportti"
+  "printReport": "Tulosta raportti",
+  "aboutTranslationsTryton": "Monet tekstit Tryton-projektin käännöksistä"
 }

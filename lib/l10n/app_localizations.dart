@@ -224,11 +224,11 @@ abstract class AppLocalizations {
   /// **'Delete records'**
   String get deleteRecords;
 
-  /// Confirmation message for deleting multiple records
+  /// Confirmation message for deleting several records
   ///
   /// In en, this message translates to:
-  /// **'Really delete {count} record(s)?'**
-  String reallyDeleteRecords(int count);
+  /// **'Are you sure to remove those records?'**
+  String get reallyDeleteRecords;
 
   /// Shown when a list view returns no results
   ///
@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// Confirmation dialog body for deleting a record
   ///
   /// In en, this message translates to:
-  /// **'Really delete? This cannot be undone.'**
+  /// **'Are you sure to remove this record?'**
   String get reallyDelete;
 
   /// Button label to add a row in an inline tree widget
@@ -551,7 +551,7 @@ abstract class AppLocalizations {
   /// Body of the concurrency dialog
   ///
   /// In en, this message translates to:
-  /// **'This record has been modified while you were editing it.\nChoose:\n• \"Cancel\" to cancel saving;\n• \"Compare\" to see the modified version;\n• \"Write Anyway\" to save your current version.'**
+  /// **'This record has been modified while you were editing it.'**
   String get concurrencyMessage;
 
   /// Concurrency dialog: open the server version
@@ -2137,6 +2137,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Print report'**
   String get printReport;
+
+  /// About dialog: the translations partly come from Tryton
+  ///
+  /// In en, this message translates to:
+  /// **'Many texts from the translations of the Tryton project'**
+  String get aboutTranslationsTryton;
 }
 
 class _AppLocalizationsDelegate

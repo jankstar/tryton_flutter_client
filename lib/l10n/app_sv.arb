@@ -77,7 +77,7 @@
   "@deleteRecords": {
     "description": "Dialog title for multi-record deletion"
   },
-  "reallyDeleteRecords": "Ta bort {count} post(er)?",
+  "reallyDeleteRecords": "Är du säker på att du vill ta bort dessa poster?",
   "@reallyDeleteRecords": {
     "description": "Confirmation message for deleting multiple records",
     "placeholders": {
@@ -154,7 +154,7 @@
   "@deleteRecord": {
     "description": "Confirmation dialog title for deleting a single record"
   },
-  "reallyDelete": "Ta bort? Denna åtgärd kan inte ångras.",
+  "reallyDelete": "Är du säker på att du vill ta bort denna post?",
   "@reallyDelete": {
     "description": "Confirmation dialog body for deleting a record"
   },
@@ -326,7 +326,7 @@
     "description": "Negative answer in dialogs"
   },
   "concurrencyWarning": "Varning för samtidig åtkomst",
-  "concurrencyMessage": "Denna post har ändrats medan du redigerade den.\nVälj:\n• \"Avbryt\" för att avbryta sparandet;\n• \"Jämför\" för att se den ändrade versionen;\n• \"Skriv ändå\" för att spara din nuvarande version.",
+  "concurrencyMessage": "Denna post har ändrats medan du redigerade den.",
   "compare": "Jämför",
   "writeAnyway": "Skriv ändå",
   "concurrencyException": "Fel vid samtidig åtkomst",
@@ -590,5 +590,6 @@
   "resetPasswordSent": "En begäran om att återställa ditt lösenord har skickats.\nKontrollera din inkorg.",
   "resetPasswordNeedsUser": "Ange först server, databas och användarnamn.",
   "openReport": "Öppna rapport",
-  "printReport": "Skriv ut rapport"
+  "printReport": "Skriv ut rapport",
+  "aboutTranslationsTryton": "Många texter från Tryton-projektets översättningar"
 }

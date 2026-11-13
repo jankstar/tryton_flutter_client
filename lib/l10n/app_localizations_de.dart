@@ -54,7 +54,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get error => 'Fehler';
 
   @override
-  String get search => 'Suchen…';
+  String get search => 'Suche…';
 
   @override
   String selected(int count) {
@@ -65,9 +65,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deleteRecords => 'Datensätze löschen';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Wirklich $count Datensatz/Datensätze löschen?';
-  }
+  String get reallyDeleteRecords =>
+      'Möchten Sie diese Datensätze wirklich löschen?';
 
   @override
   String get noRecordsFound => 'Keine Datensätze gefunden.';
@@ -94,10 +93,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get moreActions => 'Weitere Aktionen';
 
   @override
-  String get launchActions => 'Aktionen starten';
+  String get launchActions => 'Aktion ausführen';
 
   @override
-  String get relatedRecords => 'Verknüpfte Datensätze';
+  String get relatedRecords => 'Datensätze einer Beziehung öffnen';
 
   @override
   String get reports => 'Berichte';
@@ -121,8 +120,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deleteRecord => 'Datensatz löschen';
 
   @override
-  String get reallyDelete =>
-      'Wirklich löschen? Dies kann nicht rückgängig gemacht werden.';
+  String get reallyDelete => 'Möchten Sie diesen Datensatz wirklich löschen?';
 
   @override
   String get add => 'Hinzufügen';
@@ -137,7 +135,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get openRecord => 'Datensatz öffnen';
 
   @override
-  String get clearField => 'Feld leeren';
+  String get clearField => 'Feld löschen';
 
   @override
   String get searchRecord => 'Datensatz suchen';
@@ -229,7 +227,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get recordModified =>
-      'Dieser Datensatz wurde geändert.\nMöchten Sie ihn speichern?';
+      'Datensatz geändert.\nSoll der Datensatz gespeichert werden?';
 
   @override
   String get yes => 'Ja';
@@ -238,20 +236,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get no => 'Nein';
 
   @override
-  String get concurrencyWarning => 'Warnung: Gleichzeitiger Zugriff';
+  String get concurrencyWarning => 'Aktualisierungskonflikt';
 
   @override
   String get concurrencyMessage =>
-      'Dieser Datensatz wurde geändert, während Sie ihn bearbeitet haben.\nWählen Sie:\n• „Abbrechen“, um das Speichern abzubrechen;\n• „Vergleichen“, um die geänderte Version anzuzeigen;\n• „Trotzdem schreiben“, um Ihre aktuelle Version zu speichern.';
+      'Dieser Datensatz wurde anderweitig geändert, während Sie ihn bearbeitet haben.';
 
   @override
   String get compare => 'Vergleichen';
 
   @override
-  String get writeAnyway => 'Trotzdem schreiben';
+  String get writeAnyway => 'Überschreiben';
 
   @override
-  String get concurrencyException => 'Gleichzeitiger Zugriff';
+  String get concurrencyException => 'Aktualisierungskonflikt';
 
   @override
   String compareTabTitle(String name) {
@@ -285,30 +283,30 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String invalidRequired(String field) {
-    return '„$field“ ist erforderlich.';
+    return 'In Feld „$field“ ist ein Eintrag erforderlich.';
   }
 
   @override
   String invalidDomain(String field) {
-    return '„$field“ ist laut Domain nicht gültig.';
+    return '„$field“ liegt nicht im gültigen Wertebereich (Domain).';
   }
 
   @override
   String invalidChildren(String field) {
-    return 'Die Werte von „$field“ sind nicht gültig.';
+    return 'Die Werte von „$field“ sind ungültig.';
   }
 
   @override
   String get invalidRecordTitle => 'Datensatz nicht gültig';
 
   @override
-  String get selectAction => 'Aktion auswählen';
+  String get selectAction => 'Aktion wählen';
 
   @override
   String get noActionDefined => 'Keine Aktion definiert.';
 
   @override
-  String get preValidation => 'Vorabprüfung';
+  String get preValidation => 'Vorvalidierung';
 
   @override
   String buttonClickedBy(String users) {
@@ -325,7 +323,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addAndNew => 'Hinzufügen und Neu';
 
   @override
-  String get applyChanges => 'Änderungen übernehmen';
+  String get applyChanges => 'Änderungen anwenden';
 
   @override
   String get find => 'Suchen';
@@ -334,19 +332,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get remove => 'Entfernen';
 
   @override
-  String get searchMenu => 'Suchen…';
+  String get searchMenu => 'Suche…';
 
   @override
-  String get createMenu => 'Neu…';
+  String get createMenu => 'Erstellen…';
 
   @override
   String searchTitle(String title) {
-    return '$title suchen';
+    return 'Suche $title';
   }
 
   @override
   String createNamed(String name) {
-    return '„$name“ anlegen…';
+    return 'Erstelle „$name“ …';
   }
 
   @override
@@ -362,16 +360,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get filters => 'Filter';
 
   @override
-  String get bookmarkFilter => 'Filter als Lesezeichen speichern';
+  String get bookmarkFilter => 'Diesen Filter als Lesezeichen hinzufügen';
 
   @override
-  String get removeBookmark => 'Lesezeichen entfernen';
+  String get removeBookmark => 'Dieses Lesezeichen entfernen';
 
   @override
   String get bookmarks => 'Lesezeichen';
 
   @override
-  String get bookmarkName => 'Name des Lesezeichens:';
+  String get bookmarkName => 'Lesezeichenname:';
 
   @override
   String get showInactive => 'Inaktive Datensätze anzeigen';
@@ -389,10 +387,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get createdAt => 'Erstellt am';
 
   @override
-  String get modifiedBy => 'Geändert von';
+  String get modifiedBy => 'Zuletzt verändert von';
 
   @override
-  String get modifiedAt => 'Geändert am';
+  String get modifiedAt => 'Zuletzt verändert am';
 
   @override
   String get rangeFrom => 'Von';
@@ -411,7 +409,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noFavorites =>
-      'Menüeinträge mit dem Stern als Favoriten markieren';
+      'Menüeinträge markieren um sie zu den Favoriten hinzuzufügen';
 
   @override
   String get globalSearch => 'Globale Suche';
@@ -420,7 +418,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get selectMenuEntry => 'Wähle einen Menüeintrag';
 
   @override
-  String get selectColor => 'Farbe wählen';
+  String get selectColor => 'Eine Farbe auswählen';
 
   @override
   String get addValue => 'Wert hinzufügen';
@@ -430,10 +428,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get saveBeforeTranslate =>
-      'Sie müssen den Datensatz speichern, bevor Sie Übersetzungen hinzufügen.';
+      'Der Datensatz muss gespeichert werden, bevor eine Übersetzung hinzugefügt werden kann.';
 
   @override
-  String get noOtherLanguage => 'Keine andere Sprache verfügbar.';
+  String get noOtherLanguage => 'Keine weitere Sprache verfügbar.';
 
   @override
   String get edit => 'Bearbeiten';
@@ -490,7 +488,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String logsOf(Object name) {
-    return 'Protokolle ($name)';
+    return 'Logs ($name)';
   }
 
   @override
@@ -520,10 +518,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get logCreatedAt => 'Erstellt am';
 
   @override
-  String get logModifiedBy => 'Zuletzt geändert von';
+  String get logModifiedBy => 'Zuletzt verändert von';
 
   @override
-  String get logModifiedAt => 'Zuletzt geändert am';
+  String get logModifiedAt => 'Zuletzt verändert am';
 
   @override
   String get exportData => 'Daten exportieren …';
@@ -548,19 +546,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get csvFieldsSelected => 'Ausgewählte Felder';
 
   @override
-  String get csvRemoveAll => 'Alle entfernen';
+  String get csvRemoveAll => 'Leeren';
 
   @override
   String get csvParameters => 'CSV-Parameter';
 
   @override
-  String get csvDelimiter => 'Trennzeichen';
+  String get csvDelimiter => 'Feldtrenner';
 
   @override
   String get csvQuoteChar => 'Anführungszeichen';
 
   @override
-  String get csvEncoding => 'Kodierung';
+  String get csvEncoding => 'Zeichenkodierung';
 
   @override
   String get csvLocaleFormat => 'Lokales Format verwenden';
@@ -569,7 +567,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get csvAddFieldNames => 'Feldnamen hinzufügen';
 
   @override
-  String get csvListedRecords => 'Aufgelistete Datensätze';
+  String get csvListedRecords => 'Angezeigte Datensätze';
 
   @override
   String get csvSelectedRecords => 'Ausgewählte Datensätze';
@@ -581,13 +579,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get csvPredefinedExports => 'Vordefinierte Exporte';
 
   @override
-  String get csvSaveExport => 'Export speichern';
+  String get csvSaveExport => 'Exportkonfiguration speichern';
 
   @override
-  String get csvDeleteExport => 'Export löschen';
+  String get csvDeleteExport => 'Exportkonfiguration löschen';
 
   @override
-  String get csvExportName => 'Wie soll dieser Export heißen?';
+  String get csvExportName => 'Wie soll der Name des Exports lauten?';
 
   @override
   String csvOverrideExport(Object name) {
@@ -603,19 +601,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get csvExportFailed => 'Export fehlgeschlagen';
 
   @override
-  String get csvFileToImport => 'Zu importierende Datei';
+  String get csvFileToImport => 'Importdatei';
 
   @override
   String get csvLinesToSkip => 'Zu überspringende Zeilen';
 
   @override
-  String get csvAutoDetect => 'Automatisch erkennen';
+  String get csvAutoDetect => 'Automatische Erkennung';
 
   @override
-  String get csvImport => 'Importieren';
+  String get csvImport => 'Import';
 
   @override
-  String get csvSelectImportFile => 'Bitte zuerst eine Importdatei auswählen.';
+  String get csvSelectImportFile =>
+      'Es muss zuerst eine Importdatei ausgewählt werden.';
 
   @override
   String csvUnknownHeader(Object name) {
@@ -623,7 +622,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get csvDetectionFailed => 'Erkennung fehlgeschlagen';
+  String get csvDetectionFailed => 'Lesen der Datei fehlgeschlagen';
 
   @override
   String csvRecordsImported(Object count) {
@@ -640,12 +639,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String csvFieldModelName(Object name) {
-    return '$name (Modellname)';
+    return '$name (Bezeichnung des Modells)';
   }
 
   @override
   String csvFieldRecordName(Object name) {
-    return '$name/Datensatzname';
+    return '$name/Bezeichnung des Datensatzes';
   }
 
   @override
@@ -664,7 +663,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get menuNext => 'Nächster';
 
   @override
-  String get menuSearch => 'Suchen';
+  String get menuSearch => 'Suche';
 
   @override
   String get menuNew => 'Neu';
@@ -682,7 +681,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get menuDelete => 'Löschen …';
 
   @override
-  String get menuLogs => 'Protokolle anzeigen …';
+  String get menuLogs => 'Logs anzeigen …';
 
   @override
   String get menuRevisions => 'Revisionen anzeigen …';
@@ -697,10 +696,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get menuActions => 'Aktionen …';
 
   @override
-  String get menuRelate => 'Verknüpfen …';
+  String get menuRelate => 'Beziehungen …';
 
   @override
-  String get menuReport => 'Bericht …';
+  String get menuReport => 'Berichte …';
 
   @override
   String get menuEmail => 'E-Mail …';
@@ -709,16 +708,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get menuCloseTab => 'Tab schließen';
 
   @override
-  String get keyboardShortcuts => 'Tastenkürzel';
+  String get keyboardShortcuts => 'Tastenkombinationen';
 
   @override
-  String get shortcutsGlobal => 'Allgemein';
+  String get shortcutsGlobal => 'Global';
 
   @override
   String get shortcutsForm => 'Formular';
 
   @override
-  String get shortcutsRelation => 'Relationsfelder';
+  String get shortcutsRelation => 'Beziehungsfelder';
 
   @override
   String get shortcutsList => 'Listenfelder';
@@ -742,19 +741,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shortcutQuit => 'Beenden';
 
   @override
-  String get shortcutRelationNew => 'Neue Relation anlegen';
+  String get shortcutRelationNew => 'Neue Beziehung erstellen';
 
   @override
-  String get shortcutRelationOpen => 'Relation öffnen/suchen';
+  String get shortcutRelationOpen => 'Beziehung suchen/öffnen';
 
   @override
   String get shortcutListSwitch => 'Ansicht wechseln';
 
   @override
-  String get shortcutListNew => 'Neue Zeile anlegen/auswählen';
+  String get shortcutListNew => 'Neue Zeile erstellen/auswählen';
 
   @override
-  String get shortcutListOpen => 'Relation öffnen';
+  String get shortcutListOpen => 'Beziehung öffnen';
 
   @override
   String get shortcutListDelete => 'Zeile zum Löschen/Entfernen markieren';
@@ -763,7 +762,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get shortcutListRemove => 'Zeile zum Entfernen markieren';
 
   @override
-  String get shortcutListUndelete => 'Löschmarkierung aufheben';
+  String get shortcutListUndelete => 'Löschmarkierung für Zeile aufheben';
 
   @override
   String get shortcutDateToday => 'Heute';
@@ -804,28 +803,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get ctxPrint => 'Drucken …';
 
   @override
-  String get x2mCreate => 'Neuen Datensatz anlegen';
+  String get x2mCreate => 'Neuen Datensatz erstellen';
 
   @override
   String get x2mEdit => 'Ausgewählten Datensatz bearbeiten';
 
   @override
-  String get x2mDelete => 'Ausgewählten Datensatz löschen';
+  String get x2mDelete => 'Ausgewählte Datensätze löschen';
 
   @override
   String get x2mAdd => 'Bestehenden Datensatz hinzufügen';
 
   @override
-  String get x2mRemove => 'Ausgewählten Datensatz entfernen';
+  String get x2mRemove => 'Ausgewählten Datensatz löschen';
 
   @override
-  String get x2mUndelete => 'Wiederherstellen';
+  String get x2mUndelete =>
+      'Löschung der ausgewählten Datensätze rückgängig machen';
 
   @override
-  String get x2mRestore => 'Wiederherstellen';
+  String get x2mRestore => 'Ausgewählten Datensatz wiederherstellen';
 
   @override
-  String get x2mSwitch => 'Wechseln';
+  String get x2mSwitch => 'Ansicht wechseln';
 
   @override
   String get x2mPrevious => 'Vorheriger';
@@ -908,7 +908,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get profileName => 'Profilname';
 
   @override
-  String get newProfile => 'Neues Profil';
+  String get newProfile => 'Neues Profil hinzufügen';
 
   @override
   String get deleteProfile => 'Profil löschen';
@@ -920,10 +920,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get profileNameTaken => 'Dieser Profilname ist schon vergeben.';
 
   @override
-  String get incompatibleServer => 'Inkompatible Version des Servers.';
+  String get incompatibleServer => 'Inkompatible Serverversion.';
 
   @override
-  String get couldNotConnect => 'Keine Verbindung zum Server.';
+  String get couldNotConnect => 'Verbindung zum Server nicht möglich.';
 
   @override
   String get copyUrl => 'URL kopieren';
@@ -948,7 +948,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get chat => 'Chat';
 
   @override
-  String get chatInternal => 'Als interne Nachricht senden';
+  String get chatInternal => 'Nur intern versenden';
 
   @override
   String get chatInternalTag => 'intern';
@@ -967,7 +967,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String chatUnsubscribeQuestion(Object name) {
-    return '„$name“ wirklich von diesem Kanal abmelden?';
+    return 'Möchten Sie „$name“ wirklich von diesem Channel abbestellen?';
   }
 
   @override
@@ -989,7 +989,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get scanCode => 'Scannen';
 
   @override
-  String get codeScanner => 'Code-Scanner';
+  String get codeScanner => 'Barcode Scanner';
 
   @override
   String get scanCodeHint => 'Code';
@@ -1092,7 +1092,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get resetPasswordSent =>
-      'Eine Anfrage zum Zurücksetzen Ihres Passworts wurde gesendet.\nBitte prüfen Sie Ihr Postfach.';
+      'Eine Anfrage zum Zurücksetzen Ihres Passworts wurde gesendet.\nBitte überprüfen Sie Ihr Postfach.';
 
   @override
   String get resetPasswordNeedsUser =>
@@ -1103,4 +1103,8 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get printReport => 'Bericht drucken';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Viele Texte aus den Übersetzungen des Tryton-Projekts';
 }

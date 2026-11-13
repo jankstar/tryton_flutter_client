@@ -65,9 +65,8 @@ class AppLocalizationsNl extends AppLocalizations {
   String get deleteRecords => 'Records verwijderen';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return '$count record(s) verwijderen?';
-  }
+  String get reallyDeleteRecords =>
+      'Weet u zeker dat u deze records wilt verwijderen?';
 
   @override
   String get noRecordsFound => 'Geen records gevonden.';
@@ -94,22 +93,22 @@ class AppLocalizationsNl extends AppLocalizations {
   String get moreActions => 'Meer acties';
 
   @override
-  String get launchActions => 'Acties starten';
+  String get launchActions => 'Actie uitvoeren';
 
   @override
-  String get relatedRecords => 'Gerelateerde records';
+  String get relatedRecords => 'Open gerelateerde records';
 
   @override
   String get reports => 'Rapporten';
 
   @override
-  String get email => 'E-mail';
+  String get email => 'Email';
 
   @override
   String get save => 'Opslaan';
 
   @override
-  String get cancel => 'Annuleren';
+  String get cancel => 'Annuleer';
 
   @override
   String get recordCreated => 'Record aangemaakt.';
@@ -121,8 +120,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get deleteRecord => 'Record verwijderen';
 
   @override
-  String get reallyDelete =>
-      'Verwijderen? Dit kan niet ongedaan worden gemaakt.';
+  String get reallyDelete => 'Weet u zeker dat u dit record wilt verwijderen?';
 
   @override
   String get add => 'Toevoegen';
@@ -134,13 +132,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get apply => 'Toepassen';
 
   @override
-  String get openRecord => 'Record openen';
+  String get openRecord => 'Open het record';
 
   @override
-  String get clearField => 'Veld wissen';
+  String get clearField => 'Wis het veld';
 
   @override
-  String get searchRecord => 'Record zoeken';
+  String get searchRecord => 'Zoek een record';
 
   @override
   String entries(int count) {
@@ -193,7 +191,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get switchToForm => 'Naar formulier schakelen';
 
   @override
-  String get switchView => 'Weergave wisselen';
+  String get switchView => 'Wissel van weergave';
 
   @override
   String get close => 'Sluiten';
@@ -220,7 +218,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get note => 'Aantekening';
 
   @override
-  String get wizard => 'Wizard';
+  String get wizard => 'Assistent';
 
   @override
   String versionMismatch(String server, String client) {
@@ -228,7 +226,8 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get recordModified => 'Dit record is gewijzigd.\nWilt u het opslaan?';
+  String get recordModified =>
+      'Dit record is aangepast.\nWilt u de wijzigingen opslaan?';
 
   @override
   String get yes => 'Ja';
@@ -237,24 +236,24 @@ class AppLocalizationsNl extends AppLocalizations {
   String get no => 'Nee';
 
   @override
-  String get concurrencyWarning => 'Waarschuwing gelijktijdige toegang';
+  String get concurrencyWarning => 'Simultaan gebruik waarschuwing';
 
   @override
   String get concurrencyMessage =>
-      'Dit record is gewijzigd terwijl u het bewerkte.\nKies:\n• \"Annuleren\" om het opslaan te annuleren;\n• \"Vergelijken\" om de gewijzigde versie te zien;\n• \"Toch schrijven\" om uw huidige versie op te slaan.';
+      'Dit record werd gewijzigd terwijl u het aan het bewerken was.';
 
   @override
-  String get compare => 'Vergelijken';
+  String get compare => 'Vergelijk';
 
   @override
-  String get writeAnyway => 'Toch schrijven';
+  String get writeAnyway => 'Overschrijven';
 
   @override
   String get concurrencyException => 'Fout door gelijktijdige toegang';
 
   @override
   String compareTabTitle(String name) {
-    return 'Vergelijken: $name';
+    return 'Vergelijk: $name';
   }
 
   @override
@@ -267,7 +266,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get alwaysIgnore => 'Altijd negeren';
 
   @override
-  String get applicationError => 'Toepassingsfout';
+  String get applicationError => 'Applicatiefout';
 
   @override
   String get details => 'Details';
@@ -284,12 +283,12 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String invalidRequired(String field) {
-    return '\"$field\" is verplicht.';
+    return '\"$field\" is vereist.';
   }
 
   @override
   String invalidDomain(String field) {
-    return '\"$field\" is niet geldig volgens het domein.';
+    return '\"$field\" is niet geldig volgens zijn domein.';
   }
 
   @override
@@ -301,13 +300,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get invalidRecordTitle => 'Record niet geldig';
 
   @override
-  String get selectAction => 'Kies uw actie';
+  String get selectAction => 'Selecteer een actie';
 
   @override
   String get noActionDefined => 'Geen actie gedefinieerd.';
 
   @override
-  String get preValidation => 'Voorafgaande validatie';
+  String get preValidation => 'Pre-validatie';
 
   @override
   String buttonClickedBy(String users) {
@@ -315,7 +314,7 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get discardChanges => 'Wijzigingen verwerpen';
+  String get discardChanges => 'Wijzigingen ongedaan maken';
 
   @override
   String get saveAndNew => 'Opslaan en nieuw';
@@ -324,7 +323,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get addAndNew => 'Toevoegen en nieuw';
 
   @override
-  String get applyChanges => 'Wijzigingen toepassen';
+  String get applyChanges => 'Wijzigingen opslaan';
 
   @override
   String get find => 'Zoeken';
@@ -336,16 +335,16 @@ class AppLocalizationsNl extends AppLocalizations {
   String get searchMenu => 'Zoeken…';
 
   @override
-  String get createMenu => 'Aanmaken…';
+  String get createMenu => 'Maak…';
 
   @override
   String searchTitle(String title) {
-    return '$title zoeken';
+    return 'Zoek $title';
   }
 
   @override
   String createNamed(String name) {
-    return '\"$name\" aanmaken…';
+    return 'Maak \"$name\"…';
   }
 
   @override
@@ -361,22 +360,22 @@ class AppLocalizationsNl extends AppLocalizations {
   String get filters => 'Filters';
 
   @override
-  String get bookmarkFilter => 'Filter als bladwijzer opslaan';
+  String get bookmarkFilter => 'Maak een bladwijzer voor dit filter';
 
   @override
-  String get removeBookmark => 'Bladwijzer verwijderen';
+  String get removeBookmark => 'Verwijder deze bladwijzer';
 
   @override
   String get bookmarks => 'Bladwijzers';
 
   @override
-  String get bookmarkName => 'Naam van de bladwijzer:';
+  String get bookmarkName => 'Bladwijzer naam:';
 
   @override
-  String get showInactive => 'Inactieve records tonen';
+  String get showInactive => 'Geef niet-actieve records weer';
 
   @override
-  String get showActive => 'Actieve records tonen';
+  String get showActive => 'Geef actieve records weer';
 
   @override
   String get fieldId => 'ID';
@@ -385,13 +384,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get createdBy => 'Aangemaakt door';
 
   @override
-  String get createdAt => 'Aangemaakt op';
+  String get createdAt => 'Aanmaakdatum';
 
   @override
-  String get modifiedBy => 'Gewijzigd door';
+  String get modifiedBy => 'Aangepast door';
 
   @override
-  String get modifiedAt => 'Gewijzigd op';
+  String get modifiedAt => 'Gewijzigd om';
 
   @override
   String get rangeFrom => 'Van';
@@ -403,22 +402,23 @@ class AppLocalizationsNl extends AppLocalizations {
   String get favorites => 'Favorieten';
 
   @override
-  String get addToFavorites => 'Aan favorieten toevoegen';
+  String get addToFavorites => 'Toevoegen aan favorieten';
 
   @override
-  String get removeFromFavorites => 'Uit favorieten verwijderen';
+  String get removeFromFavorites => 'Verwijderen uit favorieten';
 
   @override
-  String get noFavorites => 'Vink menu-items aan om favorieten toe te voegen';
+  String get noFavorites =>
+      'Vink menu-items aan om ze aan de favorieten toe te voegen';
 
   @override
-  String get globalSearch => 'Globaal zoeken';
+  String get globalSearch => 'Algemeen zoeken';
 
   @override
   String get selectMenuEntry => 'Kies een menu-item';
 
   @override
-  String get selectColor => 'Kies een kleur';
+  String get selectColor => 'Selecteer een kleur';
 
   @override
   String get addValue => 'Waarde toevoegen';
@@ -428,7 +428,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get saveBeforeTranslate =>
-      'U moet het record opslaan voordat u vertalingen toevoegt.';
+      'U moet de record opslaan voordat u vertalingen kunt toevoegen.';
 
   @override
   String get noOtherLanguage => 'Geen andere taal beschikbaar.';
@@ -443,16 +443,16 @@ class AppLocalizationsNl extends AppLocalizations {
   String get columns => 'Kolommen';
 
   @override
-  String get resetColumnWidths => 'Kolombreedtes herstellen';
+  String get resetColumnWidths => 'Reset kolombreedtes';
 
   @override
-  String get copySelectedRows => 'Geselecteerde rijen kopiëren';
+  String get copySelectedRows => 'Kopieer geselecteerde regels';
 
   @override
   String get notifications => 'Meldingen';
 
   @override
-  String get noNotifications => 'Momenteel geen meldingen';
+  String get noNotifications => 'Geen meldingen op dit moment';
 
   @override
   String get allNotifications => 'Alle meldingen…';
@@ -462,13 +462,13 @@ class AppLocalizationsNl extends AppLocalizations {
       'Voor deze actie moeten alle tabbladen worden gesloten.\nWilt u doorgaan?';
 
   @override
-  String get editUserPreferences => 'Gebruikersvoorkeuren bewerken';
+  String get editUserPreferences => 'Voorkeuren gebruiker aanpassen';
 
   @override
   String get saveAs => 'Opslaan als…';
 
   @override
-  String get selectFile => 'Selecteren…';
+  String get selectFile => 'Selecteer…';
 
   @override
   String get clear => 'Wissen';
@@ -509,34 +509,34 @@ class AppLocalizationsNl extends AppLocalizations {
   String get logModule => 'Module';
 
   @override
-  String get logXmlId => 'XML-ID';
+  String get logXmlId => 'XML id';
 
   @override
   String get logCreatedBy => 'Aangemaakt door';
 
   @override
-  String get logCreatedAt => 'Aangemaakt op';
+  String get logCreatedAt => 'Aanmaakdatum';
 
   @override
-  String get logModifiedBy => 'Laatst gewijzigd door';
+  String get logModifiedBy => 'Laatst aangepast door';
 
   @override
-  String get logModifiedAt => 'Laatst gewijzigd op';
+  String get logModifiedAt => 'Laatst gewijzigd om';
 
   @override
-  String get exportData => 'Gegevens exporteren…';
+  String get exportData => 'Exporteer gegevens…';
 
   @override
-  String get importData => 'Gegevens importeren…';
+  String get importData => 'Importeer gegevens…';
 
   @override
   String csvExportTitle(Object name) {
-    return 'CSV-export: $name';
+    return 'Exporteer CSV: $name';
   }
 
   @override
   String csvImportTitle(Object name) {
-    return 'CSV-import: $name';
+    return 'Importeer CSV: $name';
   }
 
   @override
@@ -549,25 +549,25 @@ class AppLocalizationsNl extends AppLocalizations {
   String get csvRemoveAll => 'Wissen';
 
   @override
-  String get csvParameters => 'CSV-parameters';
+  String get csvParameters => 'CSV parameters';
 
   @override
   String get csvDelimiter => 'Scheidingsteken';
 
   @override
-  String get csvQuoteChar => 'Aanhalingsteken';
+  String get csvQuoteChar => 'Aanhalingstekens';
 
   @override
   String get csvEncoding => 'Codering';
 
   @override
-  String get csvLocaleFormat => 'Lokaal formaat gebruiken';
+  String get csvLocaleFormat => 'Gebruik taalinstellingen';
 
   @override
-  String get csvAddFieldNames => 'Veldnamen toevoegen';
+  String get csvAddFieldNames => 'Voeg veldnamen toe';
 
   @override
-  String get csvListedRecords => 'Getoonde records';
+  String get csvListedRecords => 'Weergegeven records';
 
   @override
   String get csvSelectedRecords => 'Geselecteerde records';
@@ -576,20 +576,20 @@ class AppLocalizationsNl extends AppLocalizations {
   String get csvIgnoreSearchLimit => 'Zoeklimiet negeren';
 
   @override
-  String get csvPredefinedExports => 'Voorgedefinieerde exports';
+  String get csvPredefinedExports => 'Vooraf gedefinieerde exports';
 
   @override
-  String get csvSaveExport => 'Export opslaan';
+  String get csvSaveExport => 'Exportgegevens opslaan';
 
   @override
-  String get csvDeleteExport => 'Export verwijderen';
+  String get csvDeleteExport => 'Exportgegevens verwijderen';
 
   @override
-  String get csvExportName => 'Wat is de naam van deze export?';
+  String get csvExportName => 'Wat is de naam voor deze export?';
 
   @override
   String csvOverrideExport(Object name) {
-    return 'Definitie van \'$name\' overschrijven?';
+    return 'Vervang \'$name\' definitie?';
   }
 
   @override
@@ -598,22 +598,23 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get csvExportFailed => 'Export mislukt';
+  String get csvExportFailed => 'Exporteren mislukt';
 
   @override
-  String get csvFileToImport => 'Te importeren bestand';
+  String get csvFileToImport => 'Bestand om te importeren';
 
   @override
-  String get csvLinesToSkip => 'Over te slaan regels';
+  String get csvLinesToSkip => 'Regels overslaan';
 
   @override
-  String get csvAutoDetect => 'Automatisch herkennen';
+  String get csvAutoDetect => 'Automatische detectie';
 
   @override
-  String get csvImport => 'Importeren';
+  String get csvImport => 'Importeer';
 
   @override
-  String get csvSelectImportFile => 'Selecteer eerst een importbestand.';
+  String get csvSelectImportFile =>
+      'U moet eerst een importbestand selecteren.';
 
   @override
   String csvUnknownHeader(Object name) {
@@ -621,7 +622,7 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get csvDetectionFailed => 'Herkenning mislukt';
+  String get csvDetectionFailed => 'Detecteren faalde';
 
   @override
   String csvRecordsImported(Object count) {
@@ -629,11 +630,11 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get csvImportFailed => 'Import mislukt';
+  String get csvImportFailed => 'Importeren faalde';
 
   @override
   String csvFieldString(Object name) {
-    return '$name (tekst)';
+    return '$name (tekstregel)';
   }
 
   @override
@@ -653,7 +654,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get recordMenu => 'Recordmenu';
 
   @override
-  String get menuSwitchView => 'Andere weergave';
+  String get menuSwitchView => 'Wissel van weergave';
 
   @override
   String get menuPrevious => 'Vorige';
@@ -671,7 +672,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get menuSave => 'Opslaan';
 
   @override
-  String get menuReload => 'Herladen/Ongedaan maken';
+  String get menuReload => 'Ongedaan maken / herladen';
 
   @override
   String get menuDuplicate => 'Dupliceren';
@@ -680,7 +681,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get menuDelete => 'Verwijderen…';
 
   @override
-  String get menuLogs => 'Logboek bekijken…';
+  String get menuLogs => 'Bekijk Logboek…';
 
   @override
   String get menuRevisions => 'Revisies tonen…';
@@ -701,34 +702,34 @@ class AppLocalizationsNl extends AppLocalizations {
   String get menuReport => 'Rapport…';
 
   @override
-  String get menuEmail => 'E-mail…';
+  String get menuEmail => 'Email…';
 
   @override
   String get menuCloseTab => 'Tabblad sluiten';
 
   @override
-  String get keyboardShortcuts => 'Sneltoetsen';
+  String get keyboardShortcuts => 'Toetsenbord sneltoetsen';
 
   @override
-  String get shortcutsGlobal => 'Algemeen';
+  String get shortcutsGlobal => 'Globaal';
 
   @override
   String get shortcutsForm => 'Formulier';
 
   @override
-  String get shortcutsRelation => 'Relatievelden';
+  String get shortcutsRelation => 'Gerelateerde velden';
 
   @override
-  String get shortcutsList => 'Lijstvelden';
+  String get shortcutsList => 'Lijst invoer';
 
   @override
   String get shortcutsDate => 'Datumvelden';
 
   @override
-  String get shortcutSearchMenu => 'Menu doorzoeken';
+  String get shortcutSearchMenu => 'Zoekmenu';
 
   @override
-  String get shortcutToggleMenu => 'Menu tonen/verbergen';
+  String get shortcutToggleMenu => 'Menu wisselen';
 
   @override
   String get shortcutPreviousTab => 'Vorig tabblad';
@@ -740,28 +741,28 @@ class AppLocalizationsNl extends AppLocalizations {
   String get shortcutQuit => 'Afsluiten';
 
   @override
-  String get shortcutRelationNew => 'Nieuwe relatie aanmaken';
+  String get shortcutRelationNew => 'Maak een nieuwe relatie';
 
   @override
-  String get shortcutRelationOpen => 'Relatie openen/zoeken';
+  String get shortcutRelationOpen => 'Zoek / open gerelateerd';
 
   @override
-  String get shortcutListSwitch => 'Andere weergave';
+  String get shortcutListSwitch => 'Wissel van weergave';
 
   @override
-  String get shortcutListNew => 'Nieuwe regel aanmaken/kiezen';
+  String get shortcutListNew => 'Maak / Selecteer nieuwe regel';
 
   @override
-  String get shortcutListOpen => 'Relatie openen';
+  String get shortcutListOpen => 'Open gerelateerd';
 
   @override
-  String get shortcutListDelete => 'Regel markeren voor verwijderen';
+  String get shortcutListDelete => 'Markeer regel om te wissen / verwijderen';
 
   @override
-  String get shortcutListRemove => 'Regel markeren voor ontkoppelen';
+  String get shortcutListRemove => 'Markeer regel voor verwijderen';
 
   @override
-  String get shortcutListUndelete => 'Verwijdermarkering opheffen';
+  String get shortcutListUndelete => 'Annuleer markering voor verwijdering';
 
   @override
   String get shortcutDateToday => 'Vandaag';
@@ -781,19 +782,19 @@ class AppLocalizationsNl extends AppLocalizations {
   String get keyInsert => 'Insert';
 
   @override
-  String get ctxCopy => 'Kopiëren';
+  String get ctxCopy => 'Kopieer';
 
   @override
-  String get ctxCopyRow => 'Regel kopiëren';
+  String get ctxCopyRow => 'Kopieer regel';
 
   @override
-  String get ctxCopyRows => 'Regels kopiëren';
+  String get ctxCopyRows => 'Kopieer regels';
 
   @override
-  String get ctxCopyColumn => 'Kolom kopiëren';
+  String get ctxCopyColumn => 'Kopieer kolom';
 
   @override
-  String get ctxPasteRows => 'Regels plakken';
+  String get ctxPasteRows => 'Plak regels';
 
   @override
   String get ctxEdit => 'Bewerken…';
@@ -802,28 +803,28 @@ class AppLocalizationsNl extends AppLocalizations {
   String get ctxPrint => 'Afdrukken…';
 
   @override
-  String get x2mCreate => 'Nieuw record aanmaken';
+  String get x2mCreate => 'Maak een nieuw record';
 
   @override
-  String get x2mEdit => 'Geselecteerd record bewerken';
+  String get x2mEdit => 'Bewerk geselecteerde record';
 
   @override
-  String get x2mDelete => 'Geselecteerd record verwijderen';
+  String get x2mDelete => 'Geselecteerde record verwijderen';
 
   @override
   String get x2mAdd => 'Bestaand record toevoegen';
 
   @override
-  String get x2mRemove => 'Geselecteerd record ontkoppelen';
+  String get x2mRemove => 'Geselecteerd record verwijderen';
 
   @override
   String get x2mUndelete => 'Geselecteerd record herstellen';
 
   @override
-  String get x2mRestore => 'Geselecteerd record terugzetten';
+  String get x2mRestore => 'Geselecteerd record herstellen';
 
   @override
-  String get x2mSwitch => 'Wisselen';
+  String get x2mSwitch => 'Omschakelen';
 
   @override
   String get x2mPrevious => 'Vorige';
@@ -835,7 +836,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get x2mMore => 'Meer';
 
   @override
-  String get reportBug => 'Fout melden';
+  String get reportBug => 'Programmafout melden';
 
   @override
   String get selectionTitle => 'Selectie';
@@ -845,7 +846,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String emailTitle(Object name) {
-    return 'E-mail $name';
+    return 'Email $name';
   }
 
   @override
@@ -873,7 +874,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get emailFiles => 'Bestanden';
 
   @override
-  String get emailAddFile => 'Bestand selecteren';
+  String get emailAddFile => 'Selecteer bestand';
 
   @override
   String get emailRemoveFile => 'Bestand verwijderen';
@@ -906,7 +907,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get profileName => 'Profielnaam';
 
   @override
-  String get newProfile => 'Nieuw profiel';
+  String get newProfile => 'Nieuw profiel toevoegen';
 
   @override
   String get deleteProfile => 'Profiel verwijderen';
@@ -918,13 +919,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get profileNameTaken => 'Deze profielnaam wordt al gebruikt.';
 
   @override
-  String get incompatibleServer => 'Incompatibele serverversie.';
+  String get incompatibleServer => 'Onjuiste versie van de server.';
 
   @override
-  String get couldNotConnect => 'Kan geen verbinding maken met de server.';
+  String get couldNotConnect => 'Kan geen verbinding maken met server.';
 
   @override
-  String get copyUrl => 'URL kopiëren';
+  String get copyUrl => 'Kopieer URL';
 
   @override
   String get urlCopied => 'URL gekopieerd.';
@@ -952,20 +953,20 @@ class AppLocalizationsNl extends AppLocalizations {
   String get chatInternalTag => 'intern';
 
   @override
-  String get chatFollowers => 'Volgers tonen';
+  String get chatFollowers => 'Toon volgers';
 
   @override
   String get chatSubscribe => 'Abonneren';
 
   @override
-  String get chatUnsubscribe => 'Afmelden';
+  String get chatUnsubscribe => 'Uitschrijven';
 
   @override
-  String get chatAddFollower => 'Volger toevoegen';
+  String get chatAddFollower => 'Voeg een volger toe';
 
   @override
   String chatUnsubscribeQuestion(Object name) {
-    return 'Weet u zeker dat u \"$name\" van dit kanaal wilt afmelden?';
+    return 'Weet u zeker dat u \"$name\" wilt uitschrijven van dit kanaal?';
   }
 
   @override
@@ -987,10 +988,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get scanCode => 'Scannen';
 
   @override
-  String get codeScanner => 'Codescanner';
+  String get codeScanner => 'Barcode scanner';
 
   @override
-  String get scanCodeHint => 'Code';
+  String get scanCodeHint => 'Barcode';
 
   @override
   String get scanCodeSound => 'Geluid';
@@ -1089,7 +1090,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get resetPasswordSent =>
-      'Een verzoek om uw wachtwoord te resetten is verzonden.\nControleer uw mailbox.';
+      'Een verzoek om uw wachtwoord te resetten is verstuurd.\nController uw mailbox.';
 
   @override
   String get resetPasswordNeedsUser =>
@@ -1100,4 +1101,8 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get printReport => 'Rapport afdrukken';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Veel teksten uit de vertalingen van het Tryton-project';
 }

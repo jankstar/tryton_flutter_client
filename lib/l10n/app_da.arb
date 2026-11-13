@@ -77,7 +77,7 @@
   "@deleteRecords": {
     "description": "Dialog title for multi-record deletion"
   },
-  "reallyDeleteRecords": "Slet {count} post(er)?",
+  "reallyDeleteRecords": "Er du sikker på, at du vil fjerne disse poster?",
   "@reallyDeleteRecords": {
     "description": "Confirmation message for deleting multiple records",
     "placeholders": {
@@ -154,7 +154,7 @@
   "@deleteRecord": {
     "description": "Confirmation dialog title for deleting a single record"
   },
-  "reallyDelete": "Slet? Denne handling kan ikke fortrydes.",
+  "reallyDelete": "Er du sikker på, at du vil fjerne denne post?",
   "@reallyDelete": {
     "description": "Confirmation dialog body for deleting a record"
   },
@@ -326,7 +326,7 @@
     "description": "Negative answer in dialogs"
   },
   "concurrencyWarning": "Advarsel om samtidig adgang",
-  "concurrencyMessage": "Denne post er blevet ændret, mens du redigerede den.\nVælg:\n• \"Annuller\" for at annullere gemningen;\n• \"Sammenlign\" for at se den ændrede version;\n• \"Skriv alligevel\" for at gemme din nuværende version.",
+  "concurrencyMessage": "Denne post er blevet ændret, mens du redigerede den.",
   "compare": "Sammenlign",
   "writeAnyway": "Skriv alligevel",
   "concurrencyException": "Samtidig adgang",
@@ -590,5 +590,6 @@
   "resetPasswordSent": "En anmodning om at nulstille din adgangskode er sendt.\nTjek venligst din indbakke.",
   "resetPasswordNeedsUser": "Angiv først server, database og brugernavn.",
   "openReport": "Åbn rapport",
-  "printReport": "Udskriv rapport"
+  "printReport": "Udskriv rapport",
+  "aboutTranslationsTryton": "Mange tekster fra Tryton-projektets oversættelser"
 }

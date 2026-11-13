@@ -54,7 +54,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get error => 'Erreur';
 
   @override
-  String get search => 'Rechercher…';
+  String get search => 'Recherche…';
 
   @override
   String selected(int count) {
@@ -65,9 +65,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get deleteRecords => 'Supprimer les enregistrements';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Supprimer $count enregistrement(s) ?';
-  }
+  String get reallyDeleteRecords =>
+      'Êtes-vous sûr de vouloir supprimer ces enregistrements ?';
 
   @override
   String get noRecordsFound => 'Aucun enregistrement trouvé.';
@@ -94,16 +93,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get moreActions => 'Plus d\'actions';
 
   @override
-  String get launchActions => 'Lancer des actions';
+  String get launchActions => 'Lancer une action';
 
   @override
-  String get relatedRecords => 'Enregistrements liés';
+  String get relatedRecords => 'Ouvrir les enregistrements liés';
 
   @override
   String get reports => 'Rapports';
 
   @override
-  String get email => 'E-mail';
+  String get email => 'Courriel';
 
   @override
   String get save => 'Enregistrer';
@@ -122,7 +121,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get reallyDelete =>
-      'Confirmer la suppression ? Cette action est irréversible.';
+      'Êtes-vous sûr de vouloir supprimer cet enregistrement ?';
 
   @override
   String get add => 'Ajouter';
@@ -137,10 +136,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get openRecord => 'Ouvrir l\'enregistrement';
 
   @override
-  String get clearField => 'Vider le champ';
+  String get clearField => 'Effacer le champ';
 
   @override
-  String get searchRecord => 'Rechercher un enregistrement';
+  String get searchRecord => 'Chercher un enregistrement';
 
   @override
   String entries(int count) {
@@ -193,7 +192,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get switchToForm => 'Basculer vers le formulaire';
 
   @override
-  String get switchView => 'Changer de vue';
+  String get switchView => 'Basculer la vue';
 
   @override
   String get close => 'Fermer';
@@ -238,37 +237,37 @@ class AppLocalizationsFr extends AppLocalizations {
   String get no => 'Non';
 
   @override
-  String get concurrencyWarning => 'Avertissement d\'accès concurrent';
+  String get concurrencyWarning => 'Avertissement de concurrence';
 
   @override
   String get concurrencyMessage =>
-      'Cet enregistrement a été modifié pendant que vous l\'éditiez.\nChoisissez :\n• « Annuler » pour annuler l\'enregistrement ;\n• « Comparer » pour voir la version modifiée ;\n• « Écrire quand même » pour enregistrer votre version actuelle.';
+      'Cet enregistrement a été modifié pendant que vous étiez en train de l\'éditer.';
 
   @override
   String get compare => 'Comparer';
 
   @override
-  String get writeAnyway => 'Écrire quand même';
+  String get writeAnyway => 'Écraser';
 
   @override
-  String get concurrencyException => 'Exception d\'accès concurrent';
+  String get concurrencyException => 'Erreur d\'accès concurrent';
 
   @override
   String compareTabTitle(String name) {
-    return 'Comparer : $name';
+    return 'Comparer : $name';
   }
 
   @override
   String get fieldNotSupported => 'Pas encore pris en charge';
 
   @override
-  String get ok => 'OK';
+  String get ok => 'Valider';
 
   @override
   String get alwaysIgnore => 'Toujours ignorer';
 
   @override
-  String get applicationError => 'Erreur de l\'application';
+  String get applicationError => 'Erreur applicative';
 
   @override
   String get details => 'Détails';
@@ -285,17 +284,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String invalidRequired(String field) {
-    return '« $field » est obligatoire.';
+    return '« $field » est requis.';
   }
 
   @override
   String invalidDomain(String field) {
-    return '« $field » n\'est pas valide selon son domaine.';
+    return '« $field » n\'est pas valide selon son domaine.';
   }
 
   @override
   String invalidChildren(String field) {
-    return 'Les valeurs de « $field » ne sont pas valides.';
+    return 'Les valeurs de « $field » ne sont pas valides.';
   }
 
   @override
@@ -305,7 +304,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get selectAction => 'Sélectionnez votre action';
 
   @override
-  String get noActionDefined => 'Aucune action définie.';
+  String get noActionDefined => 'Pas d\'action définie.';
 
   @override
   String get preValidation => 'Pré-validation';
@@ -328,13 +327,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get applyChanges => 'Appliquer les modifications';
 
   @override
-  String get find => 'Rechercher';
+  String get find => 'Chercher';
 
   @override
-  String get remove => 'Retirer';
+  String get remove => 'Enlever';
 
   @override
-  String get searchMenu => 'Rechercher…';
+  String get searchMenu => 'Recherche…';
 
   @override
   String get createMenu => 'Créer…';
@@ -346,7 +345,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String createNamed(String name) {
-    return 'Créer « $name »…';
+    return 'Créer « $name »…';
   }
 
   @override
@@ -362,22 +361,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get filters => 'Filtres';
 
   @override
-  String get bookmarkFilter => 'Ajouter ce filtre aux favoris';
+  String get bookmarkFilter => 'Sauver ce filtre';
 
   @override
-  String get removeBookmark => 'Supprimer ce favori';
+  String get removeBookmark => 'Supprimer ce marque-page';
 
   @override
-  String get bookmarks => 'Favoris';
+  String get bookmarks => 'Marques-pages';
 
   @override
-  String get bookmarkName => 'Nom du favori :';
+  String get bookmarkName => 'Nom du marque-page :';
 
   @override
-  String get showInactive => 'Afficher les enregistrements inactifs';
+  String get showInactive => 'Montrer les enregistrements inactifs';
 
   @override
-  String get showActive => 'Afficher les enregistrements actifs';
+  String get showActive => 'Montrer les enregistrements actifs';
 
   @override
   String get fieldId => 'ID';
@@ -420,7 +419,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get selectMenuEntry => 'Choisissez une entrée de menu';
 
   @override
-  String get selectColor => 'Choisir une couleur';
+  String get selectColor => 'Sélectionner une couleur';
 
   @override
   String get addValue => 'Ajouter une valeur';
@@ -430,13 +429,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get saveBeforeTranslate =>
-      'Vous devez enregistrer l\'enregistrement avant d\'ajouter des traductions.';
+      'Vous devez enregistrer l\'entrée avant d\'ajouter des traductions.';
 
   @override
-  String get noOtherLanguage => 'Aucune autre langue disponible.';
+  String get noOtherLanguage => 'Pas d\'autre langue disponible.';
 
   @override
-  String get edit => 'Modifier';
+  String get edit => 'Éditer';
 
   @override
   String get fuzzy => 'Approximative';
@@ -464,7 +463,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Cette action nécessite de fermer tous les onglets.\nVoulez-vous continuer ?';
 
   @override
-  String get editUserPreferences => 'Modifier les préférences utilisateur';
+  String get editUserPreferences => 'Éditer les préférences utilisateur';
 
   @override
   String get saveAs => 'Enregistrer sous…';
@@ -480,7 +479,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String attachmentsOf(Object name) {
-    return 'Pièces jointes ($name)';
+    return 'Attachements ($name)';
   }
 
   @override
@@ -495,7 +494,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String attachmentCount(Object count) {
-    return 'Pièce jointe ($count)';
+    return 'Attachement ($count)';
   }
 
   @override
@@ -511,7 +510,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logModule => 'Module';
 
   @override
-  String get logXmlId => 'ID XML';
+  String get logXmlId => 'XML ID';
 
   @override
   String get logCreatedBy => 'Créé par';
@@ -520,25 +519,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logCreatedAt => 'Créé le';
 
   @override
-  String get logModifiedBy => 'Modifié par';
+  String get logModifiedBy => 'Dernière modification par';
 
   @override
-  String get logModifiedAt => 'Modifié le';
+  String get logModifiedAt => 'Dernière modification à';
 
   @override
-  String get exportData => 'Exporter les données…';
+  String get exportData => 'Export de données…';
 
   @override
-  String get importData => 'Importer des données…';
+  String get importData => 'Import de données…';
 
   @override
   String csvExportTitle(Object name) {
-    return 'Export CSV : $name';
+    return 'Export CSV : $name';
   }
 
   @override
   String csvImportTitle(Object name) {
-    return 'Import CSV : $name';
+    return 'Import CSV : $name';
   }
 
   @override
@@ -554,13 +553,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get csvParameters => 'Paramètres CSV';
 
   @override
-  String get csvDelimiter => 'Séparateur';
+  String get csvDelimiter => 'Délimiteur';
 
   @override
-  String get csvQuoteChar => 'Guillemet';
+  String get csvQuoteChar => 'Caractère de guillemet';
 
   @override
-  String get csvEncoding => 'Encodage';
+  String get csvEncoding => 'Codage';
 
   @override
   String get csvLocaleFormat => 'Utiliser le format local';
@@ -578,20 +577,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get csvIgnoreSearchLimit => 'Ignorer la limite de recherche';
 
   @override
-  String get csvPredefinedExports => 'Exports prédéfinis';
+  String get csvPredefinedExports => 'Exportations prédéfinies';
 
   @override
   String get csvSaveExport => 'Enregistrer l\'export';
 
   @override
-  String get csvDeleteExport => 'Supprimer l\'export';
+  String get csvDeleteExport => 'Supprimer l\'exportation';
 
   @override
-  String get csvExportName => 'Quel est le nom de cet export ?';
+  String get csvExportName => 'Quel est le nom de cet export ?';
 
   @override
   String csvOverrideExport(Object name) {
-    return 'Écraser la définition de « $name » ?';
+    return 'Surcharger la définition « $name » ?';
   }
 
   @override
@@ -600,7 +599,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get csvExportFailed => 'Échec de l\'export';
+  String get csvExportFailed => 'L\'export a échoué';
 
   @override
   String get csvFileToImport => 'Fichier à importer';
@@ -616,15 +615,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get csvSelectImportFile =>
-      'Vous devez d\'abord sélectionner un fichier à importer.';
+      'Vous devez d\'abord sélectionner un fichier d\'import.';
 
   @override
   String csvUnknownHeader(Object name) {
-    return 'En-tête de colonne inconnu « $name »';
+    return 'En-tête de colonne inconnu « $name »';
   }
 
   @override
-  String get csvDetectionFailed => 'Échec de la détection';
+  String get csvDetectionFailed => 'La détection a échoué';
 
   @override
   String csvRecordsImported(Object count) {
@@ -632,11 +631,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get csvImportFailed => 'Échec de l\'import';
+  String get csvImportFailed => 'L\'import a échoué';
 
   @override
   String csvFieldString(Object name) {
-    return '$name (texte)';
+    return '$name (chaîne)';
   }
 
   @override
@@ -656,7 +655,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get recordMenu => 'Menu de l\'enregistrement';
 
   @override
-  String get menuSwitchView => 'Changer de vue';
+  String get menuSwitchView => 'Basculer la vue';
 
   @override
   String get menuPrevious => 'Précédent';
@@ -665,7 +664,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get menuNext => 'Suivant';
 
   @override
-  String get menuSearch => 'Rechercher';
+  String get menuSearch => 'Recherche';
 
   @override
   String get menuNew => 'Nouveau';
@@ -689,7 +688,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get menuRevisions => 'Voir les révisions…';
 
   @override
-  String get menuAttachments => 'Pièces jointes…';
+  String get menuAttachments => 'Attachements…';
 
   @override
   String get menuNotes => 'Notes…';
@@ -698,13 +697,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get menuActions => 'Actions…';
 
   @override
-  String get menuRelate => 'Relations…';
+  String get menuRelate => 'Relation…';
 
   @override
   String get menuReport => 'Rapport…';
 
   @override
-  String get menuEmail => 'E-mail…';
+  String get menuEmail => 'Courriel…';
 
   @override
   String get menuCloseTab => 'Fermer l\'onglet';
@@ -713,16 +712,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get keyboardShortcuts => 'Raccourcis clavier';
 
   @override
-  String get shortcutsGlobal => 'Général';
+  String get shortcutsGlobal => 'Global';
 
   @override
   String get shortcutsForm => 'Formulaire';
 
   @override
-  String get shortcutsRelation => 'Champs de relation';
+  String get shortcutsRelation => 'Entrées de relation';
 
   @override
-  String get shortcutsList => 'Champs de liste';
+  String get shortcutsList => 'Entrées de liste';
 
   @override
   String get shortcutsDate => 'Champs de date';
@@ -731,7 +730,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shortcutSearchMenu => 'Rechercher dans le menu';
 
   @override
-  String get shortcutToggleMenu => 'Afficher/masquer le menu';
+  String get shortcutToggleMenu => 'Basculer le menu';
 
   @override
   String get shortcutPreviousTab => 'Onglet précédent';
@@ -746,25 +745,27 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shortcutRelationNew => 'Créer une nouvelle relation';
 
   @override
-  String get shortcutRelationOpen => 'Ouvrir/rechercher la relation';
+  String get shortcutRelationOpen => 'Ouvrir/Chercher une relation';
 
   @override
-  String get shortcutListSwitch => 'Changer de vue';
+  String get shortcutListSwitch => 'Basculer la vue';
 
   @override
-  String get shortcutListNew => 'Créer/sélectionner une nouvelle ligne';
+  String get shortcutListNew => 'Créer/Sélectionner une nouvelle ligne';
 
   @override
-  String get shortcutListOpen => 'Ouvrir la relation';
+  String get shortcutListOpen => 'Ouvrir une relation';
 
   @override
-  String get shortcutListDelete => 'Marquer la ligne pour suppression/retrait';
+  String get shortcutListDelete =>
+      'Marquer la ligne pour suppression/enlèvement';
 
   @override
-  String get shortcutListRemove => 'Marquer la ligne pour retrait';
+  String get shortcutListRemove => 'Marquer la ligne pour enlèvement';
 
   @override
-  String get shortcutListUndelete => 'Annuler le marquage de suppression';
+  String get shortcutListUndelete =>
+      'Annuler le marquage de la ligne pour suppression';
 
   @override
   String get shortcutDateToday => 'Aujourd\'hui';
@@ -799,7 +800,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ctxPasteRows => 'Coller les lignes';
 
   @override
-  String get ctxEdit => 'Modifier…';
+  String get ctxEdit => 'Éditer…';
 
   @override
   String get ctxPrint => 'Imprimer…';
@@ -808,7 +809,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get x2mCreate => 'Créer un nouvel enregistrement';
 
   @override
-  String get x2mEdit => 'Modifier l\'enregistrement sélectionné';
+  String get x2mEdit => 'Éditer l\'enregistrement sélectionné';
 
   @override
   String get x2mDelete => 'Supprimer l\'enregistrement sélectionné';
@@ -817,13 +818,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get x2mAdd => 'Ajouter un enregistrement existant';
 
   @override
-  String get x2mRemove => 'Retirer l\'enregistrement sélectionné';
+  String get x2mRemove => 'Supprimer l\'enregistrement sélectionné';
 
   @override
   String get x2mUndelete => 'Restaurer l\'enregistrement sélectionné';
 
   @override
-  String get x2mRestore => 'Rétablir l\'enregistrement sélectionné';
+  String get x2mRestore => 'Restaurer l\'enregistrement sélectionné';
 
   @override
   String get x2mSwitch => 'Basculer';
@@ -838,17 +839,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get x2mMore => 'Plus';
 
   @override
-  String get reportBug => 'Signaler un bogue';
+  String get reportBug => 'Rapporter un bogue';
 
   @override
   String get selectionTitle => 'Sélection';
 
   @override
-  String get yourSelection => 'Votre sélection :';
+  String get yourSelection => 'Votre sélection :';
 
   @override
   String emailTitle(Object name) {
-    return 'E-mail $name';
+    return 'Courriel $name';
   }
 
   @override
@@ -876,10 +877,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get emailFiles => 'Fichiers';
 
   @override
-  String get emailAddFile => 'Sélectionner un fichier';
+  String get emailAddFile => 'Choisir un fichier';
 
   @override
-  String get emailRemoveFile => 'Retirer le fichier';
+  String get emailRemoveFile => 'Supprimer le fichier';
 
   @override
   String get emailSend => 'Envoyer';
@@ -946,7 +947,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get chat => 'Discussion';
+  String get chat => 'Chat';
 
   @override
   String get chatInternal => 'En faire un message interne';
@@ -968,7 +969,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String chatUnsubscribeQuestion(Object name) {
-    return 'Désabonner « $name » de ce canal ?';
+    return 'Êtes-vous sûr de désabonner « $name » de cette chaîne ?';
   }
 
   @override
@@ -990,7 +991,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get scanCode => 'Scanner';
 
   @override
-  String get codeScanner => 'Lecteur de codes';
+  String get codeScanner => 'Scanner de codes';
 
   @override
   String get scanCodeHint => 'Code';
@@ -1091,7 +1092,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get resetPasswordSent =>
-      'Une demande de réinitialisation de votre mot de passe a été envoyée.\nVeuillez consulter votre boîte aux lettres.';
+      'Une demande de réinitialisation de votre mot de passe a été envoyée.\nVeuillez vérifier votre boîte aux lettres.';
 
   @override
   String get resetPasswordNeedsUser =>
@@ -1102,4 +1103,8 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get printReport => 'Imprimer un rapport';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'De nombreux textes issus des traductions du projet Tryton';
 }

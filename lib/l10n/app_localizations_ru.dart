@@ -65,9 +65,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get deleteRecords => 'Удалить записи';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Удалить $count запись(ей)?';
-  }
+  String get reallyDeleteRecords =>
+      'Вы уверены, что хотите удалить эти записи?';
 
   @override
   String get noRecordsFound => 'Записи не найдены.';
@@ -79,7 +78,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get attachments => 'Вложения';
 
   @override
-  String get duplicate => 'Дублировать';
+  String get duplicate => 'Копировать';
 
   @override
   String get openEdit => 'Открыть / Редактировать';
@@ -94,10 +93,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get moreActions => 'Дополнительные действия';
 
   @override
-  String get launchActions => 'Запустить действия';
+  String get launchActions => 'Выполнить действие';
 
   @override
-  String get relatedRecords => 'Связанные записи';
+  String get relatedRecords => 'Открыть связанные записи';
 
   @override
   String get reports => 'Отчёты';
@@ -121,7 +120,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get deleteRecord => 'Удалить запись';
 
   @override
-  String get reallyDelete => 'Удалить? Это действие нельзя отменить.';
+  String get reallyDelete => 'Вы уверены, что хотите удалить эту запись?';
 
   @override
   String get add => 'Добавить';
@@ -139,7 +138,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get clearField => 'Очистить поле';
 
   @override
-  String get searchRecord => 'Найти запись';
+  String get searchRecord => 'Поиск записи';
 
   @override
   String entries(int count) {
@@ -241,13 +240,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get concurrencyMessage =>
-      'Эта запись была изменена, пока вы её редактировали.\nВыберите:\n• «Отмена», чтобы отменить сохранение;\n• «Сравнить», чтобы увидеть изменённую версию;\n• «Всё равно записать», чтобы сохранить вашу версию.';
+      'Эта запись была изменена, пока вы её редактировали.';
 
   @override
   String get compare => 'Сравнить';
 
   @override
-  String get writeAnyway => 'Всё равно записать';
+  String get writeAnyway => 'Записать все равно';
 
   @override
   String get concurrencyException => 'Ошибка параллельного изменения';
@@ -330,7 +329,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get find => 'Найти';
 
   @override
-  String get remove => 'Убрать';
+  String get remove => 'Удалить';
 
   @override
   String get searchMenu => 'Поиск…';
@@ -361,10 +360,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get filters => 'Фильтры';
 
   @override
-  String get bookmarkFilter => 'Добавить фильтр в закладки';
+  String get bookmarkFilter => 'Запомнить этот фильтр';
 
   @override
-  String get removeBookmark => 'Удалить закладку';
+  String get removeBookmark => 'Удалить эту закладку';
 
   @override
   String get bookmarks => 'Закладки';
@@ -434,7 +433,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noOtherLanguage => 'Другие языки недоступны.';
 
   @override
-  String get edit => 'Изменить';
+  String get edit => 'Редактировать';
 
   @override
   String get fuzzy => 'Неточный';
@@ -585,7 +584,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get csvDeleteExport => 'Удалить экспорт';
 
   @override
-  String get csvExportName => 'Как назвать этот экспорт?';
+  String get csvExportName => 'Укажите имя для экспорта.';
 
   @override
   String csvOverrideExport(Object name) {
@@ -604,7 +603,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get csvFileToImport => 'Файл для импорта';
 
   @override
-  String get csvLinesToSkip => 'Пропустить строк';
+  String get csvLinesToSkip => 'Строки для пропуска';
 
   @override
   String get csvAutoDetect => 'Автоопределение';
@@ -643,7 +642,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String csvFieldRecordName(Object name) {
-    return '$name/Имя записи';
+    return '$name/имя записи';
   }
 
   @override
@@ -656,25 +655,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get menuSwitchView => 'Переключить вид';
 
   @override
-  String get menuPrevious => 'Предыдущая';
+  String get menuPrevious => 'Предыдущий';
 
   @override
-  String get menuNext => 'Следующая';
+  String get menuNext => 'Следующий';
 
   @override
   String get menuSearch => 'Поиск';
 
   @override
-  String get menuNew => 'Создать';
+  String get menuNew => 'Новый';
 
   @override
   String get menuSave => 'Сохранить';
 
   @override
-  String get menuReload => 'Перезагрузить/Отменить';
+  String get menuReload => 'Обновить/Отменить';
 
   @override
-  String get menuDuplicate => 'Дублировать';
+  String get menuDuplicate => 'Копировать';
 
   @override
   String get menuDelete => 'Удалить…';
@@ -698,7 +697,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get menuRelate => 'Связанные…';
 
   @override
-  String get menuReport => 'Отчёт…';
+  String get menuReport => 'Отчет…';
 
   @override
   String get menuEmail => 'Эл. почта…';
@@ -740,10 +739,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get shortcutQuit => 'Выход';
 
   @override
-  String get shortcutRelationNew => 'Создать связь';
+  String get shortcutRelationNew => 'Создать новую связь';
 
   @override
-  String get shortcutRelationOpen => 'Открыть/найти связь';
+  String get shortcutRelationOpen => 'Открыть / Поиск связей';
 
   @override
   String get shortcutListSwitch => 'Переключить вид';
@@ -761,7 +760,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get shortcutListRemove => 'Пометить строку на отвязку';
 
   @override
-  String get shortcutListUndelete => 'Снять пометку удаления';
+  String get shortcutListUndelete => 'Убрать отметку на удаление';
 
   @override
   String get shortcutDateToday => 'Сегодня';
@@ -826,10 +825,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get x2mSwitch => 'Переключить';
 
   @override
-  String get x2mPrevious => 'Предыдущая';
+  String get x2mPrevious => 'Предыдущий';
 
   @override
-  String get x2mNext => 'Следующая';
+  String get x2mNext => 'Следующий';
 
   @override
   String get x2mMore => 'Ещё';
@@ -1100,4 +1099,8 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get printReport => 'Печать отчета';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Многие тексты из переводов проекта Tryton';
 }

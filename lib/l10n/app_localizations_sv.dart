@@ -65,9 +65,8 @@ class AppLocalizationsSv extends AppLocalizations {
   String get deleteRecords => 'Ta bort poster';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Ta bort $count post(er)?';
-  }
+  String get reallyDeleteRecords =>
+      'Är du säker på att du vill ta bort dessa poster?';
 
   @override
   String get noRecordsFound => 'Inga poster hittades.';
@@ -121,7 +120,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get deleteRecord => 'Ta bort post';
 
   @override
-  String get reallyDelete => 'Ta bort? Denna åtgärd kan inte ångras.';
+  String get reallyDelete => 'Är du säker på att du vill ta bort denna post?';
 
   @override
   String get add => 'Lägg till';
@@ -240,7 +239,7 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get concurrencyMessage =>
-      'Denna post har ändrats medan du redigerade den.\nVälj:\n• \"Avbryt\" för att avbryta sparandet;\n• \"Jämför\" för att se den ändrade versionen;\n• \"Skriv ändå\" för att spara din nuvarande version.';
+      'Denna post har ändrats medan du redigerade den.';
 
   @override
   String get compare => 'Jämför';
@@ -1100,4 +1099,8 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get printReport => 'Skriv ut rapport';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Många texter från Tryton-projektets översättningar';
 }

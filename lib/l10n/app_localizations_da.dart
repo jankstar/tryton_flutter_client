@@ -65,9 +65,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get deleteRecords => 'Slet poster';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Slet $count post(er)?';
-  }
+  String get reallyDeleteRecords =>
+      'Er du sikker på, at du vil fjerne disse poster?';
 
   @override
   String get noRecordsFound => 'Ingen poster fundet.';
@@ -121,7 +120,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get deleteRecord => 'Slet post';
 
   @override
-  String get reallyDelete => 'Slet? Denne handling kan ikke fortrydes.';
+  String get reallyDelete => 'Er du sikker på, at du vil fjerne denne post?';
 
   @override
   String get add => 'Tilføj';
@@ -241,7 +240,7 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get concurrencyMessage =>
-      'Denne post er blevet ændret, mens du redigerede den.\nVælg:\n• \"Annuller\" for at annullere gemningen;\n• \"Sammenlign\" for at se den ændrede version;\n• \"Skriv alligevel\" for at gemme din nuværende version.';
+      'Denne post er blevet ændret, mens du redigerede den.';
 
   @override
   String get compare => 'Sammenlign';
@@ -1099,4 +1098,8 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get printReport => 'Udskriv rapport';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Mange tekster fra Tryton-projektets oversættelser';
 }

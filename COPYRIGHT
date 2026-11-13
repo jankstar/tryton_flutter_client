@@ -58,7 +58,13 @@ clients. Both are licensed under GPL-3.0-or-later.
     Copyright (C) 2020-2021 Maxime Richez <maxime.richez@saluc.com>
     Copyright (C) 2020-2021 SALUC SA
 
-1.3 trytond - Tryton server, version 8.0 (GPL-3.0-or-later)
+1.3 Translations (lib/l10n/app_*.arb)
+    Many UI texts (dialogs, buttons, menus) take the translations of the
+    Tryton desktop client 8.0 and SAO (tryton/data/locale/*/tryton.po,
+    sao/locale/*.po; tool/l10n_from_tryton.py) by the Tryton translators
+    (de, es, fr, nl, pl, pt, ru), GPL-3.0-or-later.
+
+1.4 trytond - Tryton server, version 8.0 (GPL-3.0-or-later)
     Used only as the reference for the protocol and server behaviour;
     no server code is included in this program.
 

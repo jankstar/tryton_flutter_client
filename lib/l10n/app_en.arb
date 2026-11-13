@@ -77,14 +77,9 @@
   "@deleteRecords": {
     "description": "Dialog title for multi-record deletion"
   },
-  "reallyDeleteRecords": "Really delete {count} record(s)?",
+  "reallyDeleteRecords": "Are you sure to remove those records?",
   "@reallyDeleteRecords": {
-    "description": "Confirmation message for deleting multiple records",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
+    "description": "Confirmation message for deleting several records"
   },
   "noRecordsFound": "No records found.",
   "@noRecordsFound": {
@@ -154,7 +149,7 @@
   "@deleteRecord": {
     "description": "Confirmation dialog title for deleting a single record"
   },
-  "reallyDelete": "Really delete? This cannot be undone.",
+  "reallyDelete": "Are you sure to remove this record?",
   "@reallyDelete": {
     "description": "Confirmation dialog body for deleting a record"
   },
@@ -332,7 +327,7 @@
   "@concurrencyWarning": {
     "description": "Title of the concurrency dialog (record modified on server)"
   },
-  "concurrencyMessage": "This record has been modified while you were editing it.\nChoose:\n• \"Cancel\" to cancel saving;\n• \"Compare\" to see the modified version;\n• \"Write Anyway\" to save your current version.",
+  "concurrencyMessage": "This record has been modified while you were editing it.",
   "@concurrencyMessage": {
     "description": "Body of the concurrency dialog"
   },
@@ -1090,5 +1085,9 @@
   "openReport": "Open report",
   "@openReport": {},
   "printReport": "Print report",
-  "@printReport": {}
+  "@printReport": {},
+  "aboutTranslationsTryton": "Many texts from the translations of the Tryton project",
+  "@aboutTranslationsTryton": {
+    "description": "About dialog: the translations partly come from Tryton"
+  }
 }

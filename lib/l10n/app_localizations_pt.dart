@@ -21,7 +21,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get password => 'Palavra-passe';
 
   @override
-  String get database => 'Base de dados';
+  String get database => 'Banco de Dados';
 
   @override
   String get serverUrl => 'URL do servidor';
@@ -54,7 +54,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get error => 'Erro';
 
   @override
-  String get search => 'Pesquisar…';
+  String get search => 'Buscar…';
 
   @override
   String selected(int count) {
@@ -65,9 +65,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get deleteRecords => 'Eliminar registos';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Eliminar $count registo(s)?';
-  }
+  String get reallyDeleteRecords =>
+      'Você tem certeza que deseja apagar estes registros?';
 
   @override
   String get noRecordsFound => 'Nenhum registo encontrado.';
@@ -88,25 +87,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get reload => 'Recarregar';
 
   @override
-  String get delete => 'Eliminar';
+  String get delete => 'Apagar';
 
   @override
   String get moreActions => 'Mais ações';
 
   @override
-  String get launchActions => 'Executar ações';
+  String get launchActions => 'Executar ação';
 
   @override
-  String get relatedRecords => 'Registos relacionados';
+  String get relatedRecords => 'Abrir registos relacionados';
 
   @override
   String get reports => 'Relatórios';
 
   @override
-  String get email => 'E-mail';
+  String get email => 'Email';
 
   @override
-  String get save => 'Guardar';
+  String get save => 'Salvar';
 
   @override
   String get cancel => 'Cancelar';
@@ -121,7 +120,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get deleteRecord => 'Eliminar registo';
 
   @override
-  String get reallyDelete => 'Eliminar? Esta ação não pode ser desfeita.';
+  String get reallyDelete =>
+      'Você tem certeza que deseja apagar este registro?';
 
   @override
   String get add => 'Adicionar';
@@ -133,13 +133,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get apply => 'Aplicar';
 
   @override
-  String get openRecord => 'Abrir registo';
+  String get openRecord => 'Abrir o registro';
 
   @override
   String get clearField => 'Limpar campo';
 
   @override
-  String get searchRecord => 'Pesquisar registo';
+  String get searchRecord => 'Buscar um registro';
 
   @override
   String entries(int count) {
@@ -192,7 +192,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get switchToForm => 'Alternar para formulário';
 
   @override
-  String get switchView => 'Alternar visualização';
+  String get switchView => 'Alternar exibição';
 
   @override
   String get close => 'Fechar';
@@ -228,7 +228,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get recordModified =>
-      'Este registro foi modificado.\nDeseja salvá-lo?';
+      'Este registro foi modificado\nvocê deseja salvá-lo?';
 
   @override
   String get yes => 'Sim';
@@ -237,11 +237,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get no => 'Não';
 
   @override
-  String get concurrencyWarning => 'Aviso de concorrência';
+  String get concurrencyWarning => 'Alerta de concorrência';
 
   @override
   String get concurrencyMessage =>
-      'Este registo foi modificado enquanto o editava.\nEscolha:\n• \"Cancelar\" para cancelar a gravação;\n• \"Comparar\" para ver a versão modificada;\n• \"Gravar mesmo assim\" para guardar a sua versão atual.';
+      'Este registro foi modificado enquanto você o editava.';
 
   @override
   String get compare => 'Comparar';
@@ -267,7 +267,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get alwaysIgnore => 'Ignorar sempre';
 
   @override
-  String get applicationError => 'Erro da aplicação';
+  String get applicationError => 'Erro no programa';
 
   @override
   String get details => 'Detalhes';
@@ -289,7 +289,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String invalidDomain(String field) {
-    return '\"$field\" não é válido de acordo com o domínio.';
+    return '\"$field\" não é válido de acordo com seu domínio.';
   }
 
   @override
@@ -315,37 +315,37 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get discardChanges => 'Descartar alterações';
+  String get discardChanges => 'Descartar mudanças';
 
   @override
-  String get saveAndNew => 'Salvar e novo';
+  String get saveAndNew => 'Salvar e Novo';
 
   @override
-  String get addAndNew => 'Adicionar e novo';
+  String get addAndNew => 'Adicionar e Novo';
 
   @override
-  String get applyChanges => 'Aplicar alterações';
+  String get applyChanges => 'Aplicar mudanças';
 
   @override
-  String get find => 'Procurar';
+  String get find => 'Localizar';
 
   @override
   String get remove => 'Remover';
 
   @override
-  String get searchMenu => 'Procurar…';
+  String get searchMenu => 'Buscar…';
 
   @override
   String get createMenu => 'Criar…';
 
   @override
   String searchTitle(String title) {
-    return 'Procurar $title';
+    return 'Buscar $title';
   }
 
   @override
   String createNamed(String name) {
-    return 'Criar \"$name\"…';
+    return 'Crie \"$name\"…';
   }
 
   @override
@@ -361,10 +361,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get filters => 'Filtros';
 
   @override
-  String get bookmarkFilter => 'Favoritar este filtro';
+  String get bookmarkFilter => 'Marcar este filtro como favorito';
 
   @override
-  String get removeBookmark => 'Remover favorito';
+  String get removeBookmark => 'Remover este favorito';
 
   @override
   String get bookmarks => 'Favoritos';
@@ -418,7 +418,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get selectMenuEntry => 'Escolha uma entrada do menu';
 
   @override
-  String get selectColor => 'Selecionar uma cor';
+  String get selectColor => 'Selecione uma cor';
 
   @override
   String get addValue => 'Adicionar valor';
@@ -428,10 +428,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get saveBeforeTranslate =>
-      'Você precisa salvar o registro antes de adicionar traduções.';
+      'É necessário salvar o registro antes de adicionar traduções.';
 
   @override
-  String get noOtherLanguage => 'Nenhum outro idioma disponível.';
+  String get noOtherLanguage => 'Não há outros idiomas disponíveis.';
 
   @override
   String get edit => 'Editar';
@@ -443,7 +443,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get columns => 'Colunas';
 
   @override
-  String get resetColumnWidths => 'Redefinir larguras das colunas';
+  String get resetColumnWidths => 'Redefinir larguras de colunas';
 
   @override
   String get copySelectedRows => 'Copiar linhas selecionadas';
@@ -488,7 +488,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String logsOf(Object name) {
-    return 'Registros ($name)';
+    return 'Histórico ($name)';
   }
 
   @override
@@ -509,7 +509,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get logModule => 'Módulo';
 
   @override
-  String get logXmlId => 'ID XML';
+  String get logXmlId => 'ID do XML';
 
   @override
   String get logCreatedBy => 'Criado por';
@@ -518,16 +518,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get logCreatedAt => 'Criado em';
 
   @override
-  String get logModifiedBy => 'Modificado por';
+  String get logModifiedBy => 'Modificado pela Última vez por';
 
   @override
-  String get logModifiedAt => 'Modificado em';
+  String get logModifiedAt => 'Última Modificação em';
 
   @override
-  String get exportData => 'Exportar dados…';
+  String get exportData => 'Exportar Dados…';
 
   @override
-  String get importData => 'Importar dados…';
+  String get importData => 'Importar Dados…';
 
   @override
   String csvExportTitle(Object name) {
@@ -540,10 +540,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get csvAllFields => 'Todos os campos';
+  String get csvAllFields => 'Todos os Campos';
 
   @override
-  String get csvFieldsSelected => 'Campos selecionados';
+  String get csvFieldsSelected => 'Campos Selecionados';
 
   @override
   String get csvRemoveAll => 'Limpar';
@@ -555,7 +555,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get csvDelimiter => 'Delimitador';
 
   @override
-  String get csvQuoteChar => 'Aspas';
+  String get csvQuoteChar => 'Caractere de citação';
 
   @override
   String get csvEncoding => 'Codificação';
@@ -564,32 +564,32 @@ class AppLocalizationsPt extends AppLocalizations {
   String get csvLocaleFormat => 'Usar formato local';
 
   @override
-  String get csvAddFieldNames => 'Adicionar nomes dos campos';
+  String get csvAddFieldNames => 'Adicionar nomes de campos';
 
   @override
-  String get csvListedRecords => 'Registros listados';
+  String get csvListedRecords => 'Registros Listados';
 
   @override
-  String get csvSelectedRecords => 'Registros selecionados';
+  String get csvSelectedRecords => 'Registros Selecionados';
 
   @override
-  String get csvIgnoreSearchLimit => 'Ignorar limite de pesquisa';
+  String get csvIgnoreSearchLimit => 'Ignorar o limite de busca';
 
   @override
-  String get csvPredefinedExports => 'Exportações predefinidas';
+  String get csvPredefinedExports => 'Exportações Pre-definidas';
 
   @override
-  String get csvSaveExport => 'Salvar exportação';
+  String get csvSaveExport => 'Gravar exportação';
 
   @override
-  String get csvDeleteExport => 'Excluir exportação';
+  String get csvDeleteExport => 'Apagar exportação';
 
   @override
-  String get csvExportName => 'Qual é o nome desta exportação?';
+  String get csvExportName => 'Qual é o nome dessa exportação?';
 
   @override
   String csvOverrideExport(Object name) {
-    return 'Substituir a definição de \'$name\'?';
+    return 'Sobrescrever a definição \'$name\'?';
   }
 
   @override
@@ -601,28 +601,28 @@ class AppLocalizationsPt extends AppLocalizations {
   String get csvExportFailed => 'Falha na exportação';
 
   @override
-  String get csvFileToImport => 'Arquivo a importar';
+  String get csvFileToImport => 'Arquivo para importar';
 
   @override
   String get csvLinesToSkip => 'Linhas a ignorar';
 
   @override
-  String get csvAutoDetect => 'Detectar automaticamente';
+  String get csvAutoDetect => 'Auto-Detectar';
 
   @override
   String get csvImport => 'Importar';
 
   @override
   String get csvSelectImportFile =>
-      'Selecione primeiro um arquivo de importação.';
+      'Você deve selecionar um arquivo para importar primeiro.';
 
   @override
   String csvUnknownHeader(Object name) {
-    return 'Cabeçalho de coluna desconhecido \"$name\"';
+    return 'Cabeçalho \"$name\" desconhecido';
   }
 
   @override
-  String get csvDetectionFailed => 'Falha na detecção';
+  String get csvDetectionFailed => 'Falha da detecção';
 
   @override
   String csvRecordsImported(Object count) {
@@ -654,7 +654,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get recordMenu => 'Menu do registro';
 
   @override
-  String get menuSwitchView => 'Alternar visualização';
+  String get menuSwitchView => 'Alternar exibição';
 
   @override
   String get menuPrevious => 'Anterior';
@@ -663,7 +663,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get menuNext => 'Próximo';
 
   @override
-  String get menuSearch => 'Pesquisar';
+  String get menuSearch => 'Buscar';
 
   @override
   String get menuNew => 'Novo';
@@ -678,10 +678,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get menuDuplicate => 'Duplicar';
 
   @override
-  String get menuDelete => 'Excluir…';
+  String get menuDelete => 'Apagar…';
 
   @override
-  String get menuLogs => 'Ver registros…';
+  String get menuLogs => 'Ver Logs…';
 
   @override
   String get menuRevisions => 'Mostrar revisões…';
@@ -696,22 +696,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get menuActions => 'Ações…';
 
   @override
-  String get menuRelate => 'Relacionados…';
+  String get menuRelate => 'Relacionado…';
 
   @override
   String get menuReport => 'Relatório…';
 
   @override
-  String get menuEmail => 'E-mail…';
+  String get menuEmail => 'Email…';
 
   @override
   String get menuCloseTab => 'Fechar aba';
 
   @override
-  String get keyboardShortcuts => 'Atalhos de teclado';
+  String get keyboardShortcuts => 'Teclas de atalho';
 
   @override
-  String get shortcutsGlobal => 'Geral';
+  String get shortcutsGlobal => 'Globais';
 
   @override
   String get shortcutsForm => 'Formulário';
@@ -720,13 +720,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shortcutsRelation => 'Campos de relação';
 
   @override
-  String get shortcutsList => 'Campos de lista';
+  String get shortcutsList => 'Campos em lista';
 
   @override
   String get shortcutsDate => 'Campos de data';
 
   @override
-  String get shortcutSearchMenu => 'Pesquisar no menu';
+  String get shortcutSearchMenu => 'Menu de busca';
 
   @override
   String get shortcutToggleMenu => 'Mostrar/ocultar menu';
@@ -744,25 +744,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shortcutRelationNew => 'Criar nova relação';
 
   @override
-  String get shortcutRelationOpen => 'Abrir/pesquisar relação';
+  String get shortcutRelationOpen => 'Abrir/Buscar relação';
 
   @override
-  String get shortcutListSwitch => 'Alternar visualização';
+  String get shortcutListSwitch => 'Alternar exibição';
 
   @override
-  String get shortcutListNew => 'Criar/selecionar nova linha';
+  String get shortcutListNew => 'Criar/Selecionar nova linha';
 
   @override
   String get shortcutListOpen => 'Abrir relação';
 
   @override
-  String get shortcutListDelete => 'Marcar linha para exclusão/remoção';
+  String get shortcutListDelete => 'Marcar linha para deletar/remover';
 
   @override
-  String get shortcutListRemove => 'Marcar linha para remoção';
+  String get shortcutListRemove => 'Marcar linha para remover';
 
   @override
-  String get shortcutListUndelete => 'Desmarcar exclusão da linha';
+  String get shortcutListUndelete => 'Desmarcar linha para apagar';
 
   @override
   String get shortcutDateToday => 'Hoje';
@@ -784,16 +784,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get ctxCopy => 'Copiar';
 
   @override
-  String get ctxCopyRow => 'Copiar linha';
+  String get ctxCopyRow => 'Copiar Linha';
 
   @override
-  String get ctxCopyRows => 'Copiar linhas';
+  String get ctxCopyRows => 'Copiar Linhas';
 
   @override
-  String get ctxCopyColumn => 'Copiar coluna';
+  String get ctxCopyColumn => 'Copiar Coluna';
 
   @override
-  String get ctxPasteRows => 'Colar linhas';
+  String get ctxPasteRows => 'Colar Linhas';
 
   @override
   String get ctxEdit => 'Editar…';
@@ -802,25 +802,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get ctxPrint => 'Imprimir…';
 
   @override
-  String get x2mCreate => 'Criar um novo registro';
+  String get x2mCreate => 'Criar novo registro';
 
   @override
-  String get x2mEdit => 'Editar o registro selecionado';
+  String get x2mEdit => 'Editar registro selecionado';
 
   @override
-  String get x2mDelete => 'Excluir o registro selecionado';
+  String get x2mDelete => 'Apagar o registro selecionado';
 
   @override
-  String get x2mAdd => 'Adicionar registro existente';
+  String get x2mAdd => 'Adicionar um registro existente';
 
   @override
   String get x2mRemove => 'Remover o registro selecionado';
 
   @override
-  String get x2mUndelete => 'Restaurar o registro selecionado';
+  String get x2mUndelete => 'Recuperar o registro selecionado';
 
   @override
-  String get x2mRestore => 'Restaurar o registro selecionado';
+  String get x2mRestore => 'Restaurar registro selecionado';
 
   @override
   String get x2mSwitch => 'Alternar';
@@ -835,7 +835,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get x2mMore => 'Mais';
 
   @override
-  String get reportBug => 'Relatar erro';
+  String get reportBug => 'Relatar Erro';
 
   @override
   String get selectionTitle => 'Seleção';
@@ -845,7 +845,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String emailTitle(Object name) {
-    return 'E-mail $name';
+    return 'Email $name';
   }
 
   @override
@@ -873,10 +873,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get emailFiles => 'Arquivos';
 
   @override
-  String get emailAddFile => 'Selecionar arquivo';
+  String get emailAddFile => 'Selecionar Arquivo';
 
   @override
-  String get emailRemoveFile => 'Remover arquivo';
+  String get emailRemoveFile => 'Remover Arquivo';
 
   @override
   String get emailSend => 'Enviar';
@@ -906,7 +906,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get profileName => 'Nome do perfil';
 
   @override
-  String get newProfile => 'Novo perfil';
+  String get newProfile => 'Adicionar novo perfil';
 
   @override
   String get deleteProfile => 'Excluir perfil';
@@ -918,10 +918,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get profileNameTaken => 'Este nome de perfil já está em uso.';
 
   @override
-  String get incompatibleServer => 'Versão do servidor incompatível.';
+  String get incompatibleServer => 'Versão incompatível do servidor.';
 
   @override
-  String get couldNotConnect => 'Não foi possível conectar ao servidor.';
+  String get couldNotConnect => 'Não foi possível conectar-se ao servidor.';
 
   @override
   String get copyUrl => 'Copiar URL';
@@ -943,10 +943,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get chat => 'Chat';
+  String get chat => 'Bater Papo';
 
   @override
-  String get chatInternal => 'Tornar esta uma mensagem interna';
+  String get chatInternal => 'Faça disso uma mensagem interna';
 
   @override
   String get chatInternalTag => 'interna';
@@ -987,7 +987,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get scanCode => 'Digitalizar';
 
   @override
-  String get codeScanner => 'Leitor de códigos';
+  String get codeScanner => 'Leitor de Código';
 
   @override
   String get scanCodeHint => 'Código';
@@ -1088,7 +1088,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get resetPasswordSent =>
-      'Um pedido de redefinição da sua senha foi enviado.\nVerifique sua caixa de correio.';
+      'Foi enviada uma solicitação para redefinir a sua senha.\nVerifique a sua caixa de entrada, por favor.';
 
   @override
   String get resetPasswordNeedsUser =>
@@ -1099,4 +1099,8 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get printReport => 'Imprimir relatório';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Muitos textos das traduções do projeto Tryton';
 }

@@ -253,7 +253,8 @@ class AboutContent extends StatelessWidget {
             children: [
               section(l.aboutAuthors, appAuthors),
               section(l.aboutOriginalAuthors, trytonAuthors),
-              section(l.aboutTranslations, appTranslations),
+              section(l.aboutTranslations,
+                  [...appTranslations, l.aboutTranslationsTryton]),
             ],
           ),
         ),

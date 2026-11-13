@@ -472,8 +472,12 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final screen = _screen;
     if (screen.selectedRecords.isEmpty) return;
     final l = context.l10n;
+    // Python `Form.sig_remove`: one record or several
     final confirmed = await showSur(
-        context, l.reallyDeleteRecords(screen.selectedRecords.length),
+        context,
+        screen.selectedRecords.length == 1
+            ? l.reallyDelete
+            : l.reallyDeleteRecords,
         title: l.deleteRecords, okLabel: l.delete, destructive: true);
     if (confirmed != true || !mounted) return;
     await _run(() async {

@@ -65,9 +65,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteRecords => 'Delete records';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Really delete $count record(s)?';
-  }
+  String get reallyDeleteRecords => 'Are you sure to remove those records?';
 
   @override
   String get noRecordsFound => 'No records found.';
@@ -121,7 +119,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteRecord => 'Delete record';
 
   @override
-  String get reallyDelete => 'Really delete? This cannot be undone.';
+  String get reallyDelete => 'Are you sure to remove this record?';
 
   @override
   String get add => 'Add';
@@ -241,7 +239,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get concurrencyMessage =>
-      'This record has been modified while you were editing it.\nChoose:\n• \"Cancel\" to cancel saving;\n• \"Compare\" to see the modified version;\n• \"Write Anyway\" to save your current version.';
+      'This record has been modified while you were editing it.';
 
   @override
   String get compare => 'Compare';
@@ -1098,4 +1096,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get printReport => 'Print report';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Many texts from the translations of the Tryton project';
 }

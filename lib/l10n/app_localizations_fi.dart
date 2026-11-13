@@ -65,9 +65,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get deleteRecords => 'Poista tietueet';
 
   @override
-  String reallyDeleteRecords(int count) {
-    return 'Poistetaanko $count tietue(tta)?';
-  }
+  String get reallyDeleteRecords => 'Haluatko varmasti poistaa nämä tietueet?';
 
   @override
   String get noRecordsFound => 'Tietueita ei löydy.';
@@ -121,7 +119,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get deleteRecord => 'Poista tietue';
 
   @override
-  String get reallyDelete => 'Poistetaanko? Tätä toimintoa ei voi kumota.';
+  String get reallyDelete => 'Haluatko varmasti poistaa tämän tietueen?';
 
   @override
   String get add => 'Lisää';
@@ -241,7 +239,7 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get concurrencyMessage =>
-      'Tätä tietuetta on muutettu muokkauksesi aikana.\nValitse:\n• \"Peruuta\" peruuttaaksesi tallennuksen;\n• \"Vertaa\" nähdäksesi muutetun version;\n• \"Kirjoita silti\" tallentaaksesi nykyisen versiosi.';
+      'Tätä tietuetta on muutettu muokkauksesi aikana.';
 
   @override
   String get compare => 'Vertaa';
@@ -1100,4 +1098,8 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get printReport => 'Tulosta raportti';
+
+  @override
+  String get aboutTranslationsTryton =>
+      'Monet tekstit Tryton-projektin käännöksistä';
 }

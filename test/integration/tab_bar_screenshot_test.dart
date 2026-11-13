@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/l10n/locale_provider.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 import 'package:tryton_flutter_client/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +23,7 @@ import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 import 'package:tryton_flutter_client/features/shell/tab_strip.dart';
 import 'package:tryton_flutter_client/features/tabs/user_chip.dart';
 import 'package:tryton_flutter_client/l10n/app_localizations.dart';
+import 'package:tryton_flutter_client/shared/dialogs/tryton_dialogs.dart';
 
 /// Screenshots of the tab bar of the shell (no server): many tabs with
 /// the "all tabs" button, its list open, and few tabs.
@@ -57,6 +59,7 @@ const _titles = [
 
 void main() {
   final out = Platform.environment['SCREENSHOT_DIR'];
+  dialogScreenshots(out);
 
   for (final (name, count, open) in [
     ('tabs-many', 12, false),
@@ -252,6 +255,64 @@ void _aboutScreenshot(String? out) {
       File('$out/flutter-about.png').writeAsBytesSync(png!.buffer.asUint8List());
     });
   });
+}
+
+
+/// German dialogs with the texts of the Tryton client (save prompt,
+/// delete question, concurrency).
+void dialogScreenshots(String? out) {
+  for (final (name, open) in <(String, void Function(BuildContext))>[
+    ('dialog-save', (c) => showSur3(c, c.l10n.recordModified)),
+    ('dialog-delete', (c) => showSur(c, c.l10n.reallyDelete,
+        title: c.l10n.deleteRecord, okLabel: c.l10n.delete, destructive: true)),
+    ('dialog-concurrency', (c) => showConcurrency(c)),
+  ]) {
+    testWidgets('screenshot $name', (tester) async {
+      if (out == null) {
+        markTestSkipped('SCREENSHOT_DIR not set');
+        return;
+      }
+      await tester.runAsync(_loadFonts);
+      const size = Size(640, 360);
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final boundary = GlobalKey();
+      final theme = AppTheme.polarFox.buildThemeData();
+      await tester.pumpWidget(RepaintBoundary(
+        key: boundary,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme.copyWith(
+              textTheme: theme.textTheme.apply(fontFamily: 'Roboto')),
+          locale: const Locale('de'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => open(context),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        final render = boundary.currentContext!.findRenderObject()!
+            as RenderRepaintBoundary;
+        final image = await render.toImage();
+        final png = await image.toByteData(format: ui.ImageByteFormat.png);
+        Directory(out).createSync(recursive: true);
+        File('$out/flutter-$name.png')
+            .writeAsBytesSync(png!.buffer.asUint8List());
+      });
+    });
+  }
 }
 
 /// Auth state after reaching [url] (no server needed).
