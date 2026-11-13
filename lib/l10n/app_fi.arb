@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Katso lisätietoja: {license}.",
   "aboutGplName": "GNU General Public License, versio 3 tai uudempi",
   "appDevelopment": "kehitys",
-  "appPrerelease": "Testiversio"
+  "appPrerelease": "Testiversio",
+  "loginFailed": "Väärä käyttäjätunnus tai salasana.",
+  "tooManyRequests": "Liian monta pyyntöä. Yritä myöhemmin uudelleen.",
+  "databaseNotFound": "Tietokantaa ei löytynyt.",
+  "serverForbidden": "Palvelin ei salli tätä.",
+  "resetPassword": "Palauta unohtunut salasana",
+  "resetPasswordTooltip": "Lähetä sähköposti salasanan palauttamiseksi.",
+  "resetPasswordSent": "Salasanan palautuspyyntö on lähetetty.\nTarkista sähköpostisi.",
+  "resetPasswordNeedsUser": "Anna ensin palvelin, tietokanta ja käyttäjätunnus."
 }

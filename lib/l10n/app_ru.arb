@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Подробности см. в {license}.",
   "aboutGplName": "GNU General Public License версии 3 или более поздней",
   "appDevelopment": "разработка",
-  "appPrerelease": "Тестовая версия"
+  "appPrerelease": "Тестовая версия",
+  "loginFailed": "Неверное имя пользователя или пароль.",
+  "tooManyRequests": "Слишком много запросов. Повторите попытку позже.",
+  "databaseNotFound": "База данных не найдена.",
+  "serverForbidden": "Сервер не разрешает это.",
+  "resetPassword": "Сбросить забытый пароль",
+  "resetPasswordTooltip": "Отправить письмо для сброса пароля.",
+  "resetPasswordSent": "Запрос на сброс пароля отправлен.\nПроверьте почтовый ящик.",
+  "resetPasswordNeedsUser": "Сначала укажите сервер, базу данных и имя пользователя."
 }

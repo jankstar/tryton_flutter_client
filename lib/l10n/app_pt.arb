@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Veja a {license} para mais detalhes.",
   "aboutGplName": "GNU General Public License, versão 3 ou posterior",
   "appDevelopment": "desenvolvimento",
-  "appPrerelease": "Versão de teste"
+  "appPrerelease": "Versão de teste",
+  "loginFailed": "Nome de usuário ou senha incorretos.",
+  "tooManyRequests": "Muitas solicitações. Tente novamente depois.",
+  "databaseNotFound": "Banco de dados não encontrado.",
+  "serverForbidden": "O servidor não permite isso.",
+  "resetPassword": "Redefinir senha esquecida",
+  "resetPasswordTooltip": "Envie um email para redefinir a sua senha.",
+  "resetPasswordSent": "Um pedido de redefinição da sua senha foi enviado.\nVerifique sua caixa de correio.",
+  "resetPasswordNeedsUser": "Informe primeiro o servidor, o banco de dados e o usuário."
 }

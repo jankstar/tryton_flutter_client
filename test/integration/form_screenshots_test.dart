@@ -37,6 +37,7 @@ const _forms = [
   ('party-narrow', 'party.party', 44, <String, dynamic>{}, Size(420, 1800)),
   ('invoice', 'account.invoice', 1920, {'type': 'out'}, Size(1040, 1400)),
   ('invoice-medium', 'account.invoice', 1920, {'type': 'out'}, Size(760, 1400)),
+  ('invoice-in-draft', 'account.invoice', 1927, {'type': 'in'}, Size(1040, 1400)),
   ('parties-list-narrow', 'party.party', null, <String, dynamic>{}, Size(420, 900)),
   ('billing-unit', 'real_estate.billing_unit', 1, <String, dynamic>{}, Size(1040, 1400)),
   ('graph-cron-log', 'ir.cron.log', null, <String, dynamic>{}, Size(1040, 800)),

@@ -1067,4 +1067,31 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Testversion';
+
+  @override
+  String get loginFailed => 'Fel användarnamn eller lösenord.';
+
+  @override
+  String get tooManyRequests => 'För många förfrågningar. Försök igen senare.';
+
+  @override
+  String get databaseNotFound => 'Databasen hittades inte.';
+
+  @override
+  String get serverForbidden => 'Servern tillåter inte detta.';
+
+  @override
+  String get resetPassword => 'Återställ glömt lösenord';
+
+  @override
+  String get resetPasswordTooltip =>
+      'Skicka ett e-postmeddelande för att återställa ditt lösenord.';
+
+  @override
+  String get resetPasswordSent =>
+      'En begäran om att återställa ditt lösenord har skickats.\nKontrollera din inkorg.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Ange först server, databas och användarnamn.';
 }

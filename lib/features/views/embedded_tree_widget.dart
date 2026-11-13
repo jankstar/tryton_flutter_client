@@ -119,7 +119,11 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   String? _error;
 
   String get _relModel => widget.fieldDef.relation ?? '';
-  bool get _isMany2Many => widget.fieldDef.type == 'many2many';
+  /// The many2many widget (Python chooses the widget, not the field type:
+  /// a many2many shown with `widget="one2many"` – e.g. the bank accounts
+  /// of a party – gets New/Edit/Delete/Undelete like a one2many).
+  bool get _isMany2Many =>
+      (widget.node?.widget ?? widget.fieldDef.type) == 'many2many';
 
   RecordGroup? get _group {
     final value = widget.parent.fieldGetClient(widget.fieldDef.name);
@@ -516,7 +520,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
           session: group.model.session,
           domain: _addDomain,
           searchContext: _field.getSearchContext(widget.parent),
-          order: _asList(_field.description['order']),
+          // Python `get_search_order` (the field's `order` sorts the
+          // relation table of a many2many, e.g. `account.owners_sequence`)
+          order: _asList(_field.getSearchOrder(widget.parent)),
           viewIds: [?_viewIdFor('tree')],
           multi: true,
           allowNew: _canCreate,

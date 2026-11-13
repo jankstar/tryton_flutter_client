@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Se {license} for detaljer.",
   "aboutGplName": "GNU General Public License, version 3 eller senere",
   "appDevelopment": "udvikling",
-  "appPrerelease": "Testversion"
+  "appPrerelease": "Testversion",
+  "loginFailed": "Forkert brugernavn eller adgangskode.",
+  "tooManyRequests": "For mange forespørgsler. Prøv igen senere.",
+  "databaseNotFound": "Databasen blev ikke fundet.",
+  "serverForbidden": "Serveren tillader ikke dette.",
+  "resetPassword": "Nulstil glemt adgangskode",
+  "resetPasswordTooltip": "Send dig en e-mail for at nulstille din adgangskode.",
+  "resetPasswordSent": "En anmodning om at nulstille din adgangskode er sendt.\nTjek venligst din indbakke.",
+  "resetPasswordNeedsUser": "Angiv først server, database og brugernavn."
 }

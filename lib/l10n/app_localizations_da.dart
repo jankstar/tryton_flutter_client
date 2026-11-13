@@ -1066,4 +1066,31 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Testversion';
+
+  @override
+  String get loginFailed => 'Forkert brugernavn eller adgangskode.';
+
+  @override
+  String get tooManyRequests => 'For mange forespørgsler. Prøv igen senere.';
+
+  @override
+  String get databaseNotFound => 'Databasen blev ikke fundet.';
+
+  @override
+  String get serverForbidden => 'Serveren tillader ikke dette.';
+
+  @override
+  String get resetPassword => 'Nulstil glemt adgangskode';
+
+  @override
+  String get resetPasswordTooltip =>
+      'Send dig en e-mail for at nulstille din adgangskode.';
+
+  @override
+  String get resetPasswordSent =>
+      'En anmodning om at nulstille din adgangskode er sendt.\nTjek venligst din indbakke.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Angiv først server, database og brugernavn.';
 }

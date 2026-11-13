@@ -1069,4 +1069,31 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Version de test';
+
+  @override
+  String get loginFailed => 'Nom d\'utilisateur ou mot de passe incorrect.';
+
+  @override
+  String get tooManyRequests => 'Trop de demandes. Réessayez plus tard.';
+
+  @override
+  String get databaseNotFound => 'Base de données introuvable.';
+
+  @override
+  String get serverForbidden => 'Le serveur ne le permet pas.';
+
+  @override
+  String get resetPassword => 'Réinitialiser le mot de passe oublié';
+
+  @override
+  String get resetPasswordTooltip =>
+      'Envoyez-vous un courriel pour réinitialiser votre mot de passe.';
+
+  @override
+  String get resetPasswordSent =>
+      'Une demande de réinitialisation de votre mot de passe a été envoyée.\nVeuillez consulter votre boîte aux lettres.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Indiquez d\'abord le serveur, la base de données et l\'utilisateur.';
 }

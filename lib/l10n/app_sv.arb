@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Se {license} för detaljer.",
   "aboutGplName": "GNU General Public License, version 3 eller senare",
   "appDevelopment": "utveckling",
-  "appPrerelease": "Testversion"
+  "appPrerelease": "Testversion",
+  "loginFailed": "Fel användarnamn eller lösenord.",
+  "tooManyRequests": "För många förfrågningar. Försök igen senare.",
+  "databaseNotFound": "Databasen hittades inte.",
+  "serverForbidden": "Servern tillåter inte detta.",
+  "resetPassword": "Återställ glömt lösenord",
+  "resetPasswordTooltip": "Skicka ett e-postmeddelande för att återställa ditt lösenord.",
+  "resetPasswordSent": "En begäran om att återställa ditt lösenord har skickats.\nKontrollera din inkorg.",
+  "resetPasswordNeedsUser": "Ange först server, databas och användarnamn."
 }

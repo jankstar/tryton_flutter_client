@@ -6,6 +6,7 @@ import '../../core/rpc/rpc_exceptions.dart';
 import '../../core/session/profiles.dart' show demoServer;
 import '../../core/session/session.dart';
 import '../views/embedded_tree_widget.dart' show clearEmbeddedViewCache;
+import 'login_errors.dart';
 
 /// Singleton RpcClient – URL is set during login
 final rpcClientProvider = Provider<RpcClient>((ref) {
@@ -73,6 +74,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   String? _pendingServer;
   String? _pendingDb;
   String? _pendingUsername;
+  String _pendingLanguage = 'en';
   Map<String, dynamic> _pendingParams = {};
 
   AuthNotifier(this._session, this._rpc, {ServerResolver? resolver})
@@ -133,13 +135,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String serverUrl,
     String db,
     String username,
-    String password,
-  ) async {
+    String password, {
+    String language = 'en',
+  }) async {
     _pendingServer = serverUrl;
     _pendingDb = db;
     _pendingUsername = username;
+    _pendingLanguage = language;
     _pendingParams = {'password': password};
     await _doLogin();
+  }
+
+  /// Sends [username] an email to reset the password
+  /// (`common.db.reset_password`); errors are thrown (codes via
+  /// [loginErrorCode]).
+  Future<void> resetPassword(String serverUrl, String db, String username,
+      {String language = 'en'}) async {
+    await _useServer(serverUrl);
+    await _session.resetPassword(db, username, language: language);
   }
 
   Future<void> submitMfaResponse(String fieldName, String value) async {
@@ -157,7 +170,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       // Always re-check version before login in case loadDatabases was skipped.
       await _session.checkCompatibility();
-      await _session.loginWithParams(_pendingDb!, _pendingUsername!, _pendingParams);
+      await _session.loginWithParams(
+          _pendingDb!, _pendingUsername!, _pendingParams,
+          language: _pendingLanguage);
       state = state.copyWith(status: AuthStatus.authenticated);
     } on VersionMismatchException catch (e) {
       state = state.copyWith(
@@ -179,9 +194,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       }
     } catch (e) {
+      // wrong credentials (401): the parameters start again, like the
+      // Python client (`common.Login`) – the password form shows again
+      _pendingParams = {};
       state = state.copyWith(
         status: AuthStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: loginErrorCode(e),
       );
     }
   }
@@ -189,7 +207,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Re-authenticates with the stored login and a new password.
   /// Called from the compact re-login dialog when the session expires (401).
   /// Throws on failure so the dialog can show the error.
-  Future<void> reAuthenticate(String password) async {
+  Future<void> reAuthenticate(String password, {String? language}) async {
     final login = _session.login;
     final database = _session.database;
     if (login == null || database == null) {
@@ -199,7 +217,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
       database,
       login,
       {'password': password},
+      language: language ?? _pendingLanguage,
     );
+  }
+
+  /// Sends the user of the current session an email to reset the
+  /// password (re-login dialog).
+  Future<void> resetSessionPassword({String? language}) async {
+    final login = _session.login;
+    final database = _session.database;
+    if (login == null || database == null) return;
+    await _session.resetPassword(database, login,
+        language: language ?? _pendingLanguage);
     // Session renewed – auth state stays authenticated
   }
 

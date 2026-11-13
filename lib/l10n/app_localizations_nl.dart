@@ -1066,4 +1066,32 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Testversie';
+
+  @override
+  String get loginFailed => 'Onjuiste gebruikersnaam of wachtwoord.';
+
+  @override
+  String get tooManyRequests =>
+      'Te veel verzoeken. Probeer het later nog eens.';
+
+  @override
+  String get databaseNotFound => 'Database niet gevonden.';
+
+  @override
+  String get serverForbidden => 'De server staat dit niet toe.';
+
+  @override
+  String get resetPassword => 'Reset vergeten wachtwoord';
+
+  @override
+  String get resetPasswordTooltip =>
+      'Stuurt u een email om het wachtwoord te resetten.';
+
+  @override
+  String get resetPasswordSent =>
+      'Een verzoek om uw wachtwoord te resetten is verzonden.\nControleer uw mailbox.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Vul eerst server, database en gebruikersnaam in.';
 }

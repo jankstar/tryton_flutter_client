@@ -2077,6 +2077,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Test version'**
   String get appPrerelease;
+
+  /// No description provided for @loginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong user name or password.'**
+  String get loginFailed;
+
+  /// No description provided for @tooManyRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests. Try again later.'**
+  String get tooManyRequests;
+
+  /// No description provided for @databaseNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Database not found.'**
+  String get databaseNotFound;
+
+  /// No description provided for @serverForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'The server does not allow this.'**
+  String get serverForbidden;
+
+  /// No description provided for @resetPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset forgotten password'**
+  String get resetPassword;
+
+  /// No description provided for @resetPasswordTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Send you an email to reset your password.'**
+  String get resetPasswordTooltip;
+
+  /// No description provided for @resetPasswordSent.
+  ///
+  /// In en, this message translates to:
+  /// **'A request to reset your password has been sent.\nPlease check your mailbox.'**
+  String get resetPasswordSent;
+
+  /// No description provided for @resetPasswordNeedsUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter server, database and user name first.'**
+  String get resetPasswordNeedsUser;
 }
 
 class _AppLocalizationsDelegate

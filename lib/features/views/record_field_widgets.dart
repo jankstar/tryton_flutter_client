@@ -103,19 +103,27 @@ class RecordTextInput extends StatefulWidget {
 }
 
 class _RecordTextInputState extends State<RecordTextInput> {
-  late final TextEditingController _ctrl =
-      TextEditingController(text: widget.format());
+  /// The value text shown last (the record's value, [RecordTextInput.format]).
+  late String _shown = widget.format();
+  late final TextEditingController _ctrl = TextEditingController(text: _shown);
   late final FocusNode _focus = FocusNode(onKeyEvent: _onKeyEvent)
     ..addListener(_onFocusChange);
   bool _valid = true;
 
+  /// A new value of the record (date picker, on_change) is shown – also
+  /// with the focus (it returns to the field when the picker closes), as
+  /// long as nothing was typed since the last value; typing is kept.
   @override
   void didUpdateWidget(RecordTextInput old) {
     super.didUpdateWidget(old);
-    if (!_focus.hasFocus) {
-      final text = widget.format();
-      if (_ctrl.text != text) _ctrl.text = text;
+    final text = widget.format();
+    if (text == _shown) return;
+    if (!_focus.hasFocus || _ctrl.text == _shown) {
+      _ctrl.value = TextEditingValue(
+          text: text, selection: TextSelection.collapsed(offset: text.length));
+      _valid = true;
     }
+    _shown = text;
   }
 
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
@@ -150,7 +158,7 @@ class _RecordTextInputState extends State<RecordTextInput> {
     // Invalid text is dropped (Python: the widget shows the value again).
     if (!_valid) {
       _valid = true;
-      _ctrl.text = widget.format();
+      _ctrl.text = _shown = widget.format();
     }
   }
 

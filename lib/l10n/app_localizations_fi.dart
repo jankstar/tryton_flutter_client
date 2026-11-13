@@ -1066,4 +1066,32 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Testiversio';
+
+  @override
+  String get loginFailed => 'Väärä käyttäjätunnus tai salasana.';
+
+  @override
+  String get tooManyRequests =>
+      'Liian monta pyyntöä. Yritä myöhemmin uudelleen.';
+
+  @override
+  String get databaseNotFound => 'Tietokantaa ei löytynyt.';
+
+  @override
+  String get serverForbidden => 'Palvelin ei salli tätä.';
+
+  @override
+  String get resetPassword => 'Palauta unohtunut salasana';
+
+  @override
+  String get resetPasswordTooltip =>
+      'Lähetä sähköposti salasanan palauttamiseksi.';
+
+  @override
+  String get resetPasswordSent =>
+      'Salasanan palautuspyyntö on lähetetty.\nTarkista sähköpostisi.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Anna ensin palvelin, tietokanta ja käyttäjätunnus.';
 }

@@ -1066,4 +1066,32 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Versión de prueba';
+
+  @override
+  String get loginFailed => 'Usuario o contraseña incorrectos.';
+
+  @override
+  String get tooManyRequests =>
+      'Demasiadas peticiones. Inténtalo de nuevo más tarde.';
+
+  @override
+  String get databaseNotFound => 'Base de datos no encontrada.';
+
+  @override
+  String get serverForbidden => 'El servidor no lo permite.';
+
+  @override
+  String get resetPassword => 'Restablecer la contraseña olvidada';
+
+  @override
+  String get resetPasswordTooltip =>
+      'Enviarte un correo para restablecer tu contraseña.';
+
+  @override
+  String get resetPasswordSent =>
+      'Se ha enviado una solicitud para restablecer tu contraseña.\nRevisa tu buzón de correo.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Indica primero el servidor, la base de datos y el usuario.';
 }

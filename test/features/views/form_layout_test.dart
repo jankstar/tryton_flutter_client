@@ -263,6 +263,55 @@ void main() {
         reason: 'below the scrolling form');
   });
 
+  testWidgets('a button over columns of hidden fields keeps its size, the '
+      'label beside a selection its line (invoice amounts)', (tester) async {
+    // like account.invoice with account_deposit: the amounts group
+    // beside the taxes list
+    Map<String, dynamic> amount(String label, {bool hidden = false}) => {
+          'type': 'numeric',
+          'string': label,
+          if (hidden) 'states': '{"invisible": true}',
+        };
+    final rpc = server(
+        '<form><group col="2" colspan="4" id="taxes_amount_state">'
+        '<field name="lines"/>'
+        '<group col="4" colspan="1" id="amount_state">'
+        '<group col="2" colspan="2" id="reconciled_state">'
+        '<label name="state"/><field name="state"/></group>'
+        '<group col="4" colspan="2" id="amount">'
+        '<label name="untaxed" xalign="1.0" xexpand="1" xfill="0"/>'
+        '<field name="untaxed" xalign="1.0" xexpand="0"/>'
+        '<label name="source_untaxed" string="expected" xalign="1.0" '
+        'xexpand="1" xfill="0"/>'
+        '<field name="source_untaxed" xalign="1.0" xexpand="0"/>'
+        '<label name="total" xalign="1.0" xexpand="1" xfill="0"/>'
+        '<field name="total" xalign="1.0" xexpand="0"/>'
+        '<button name="recall_deposit" string="Recall Deposit" colspan="2"/>'
+        '</group></group></group></form>',
+        {
+          'lines': lines('Taxes'),
+          'state': {
+            'type': 'selection',
+            'string': 'State',
+            'selection': [
+              ['draft', 'Draft'],
+            ],
+          },
+          'untaxed': amount('Untaxed'),
+          'source_untaxed': amount('Source', hidden: true),
+          'total': amount('Total'),
+        },
+        {'state': 'draft'});
+    await pumpForm(tester, rpc,
+        model: 'test.form', recordId: 1, size: const Size(1040, 900));
+    final text = find.text('Recall Deposit');
+    expect(tester.getRect(text).width, closeTo(tester.getSize(text).width, 0.5),
+        reason: 'the button is not scaled down');
+    expect(tester.getRect(find.text('State:')).height,
+        tester.getRect(find.text('Total:')).height,
+        reason: 'the label stays on one line');
+  });
+
   testWidgets('narrow window (< 600 px): one column', (tester) async {
     final rpc = server('<form><field name="name"/><field name="code"/></form>',
         {'name': char('Name'), 'code': char('Code')});

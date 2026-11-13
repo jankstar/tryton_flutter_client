@@ -1067,4 +1067,31 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Тестовая версия';
+
+  @override
+  String get loginFailed => 'Неверное имя пользователя или пароль.';
+
+  @override
+  String get tooManyRequests =>
+      'Слишком много запросов. Повторите попытку позже.';
+
+  @override
+  String get databaseNotFound => 'База данных не найдена.';
+
+  @override
+  String get serverForbidden => 'Сервер не разрешает это.';
+
+  @override
+  String get resetPassword => 'Сбросить забытый пароль';
+
+  @override
+  String get resetPasswordTooltip => 'Отправить письмо для сброса пароля.';
+
+  @override
+  String get resetPasswordSent =>
+      'Запрос на сброс пароля отправлен.\nПроверьте почтовый ящик.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Сначала укажите сервер, базу данных и имя пользователя.';
 }

@@ -108,6 +108,20 @@ class TrytonSession {
     throw const LoginException('', 'Login failed');
   }
 
+  /// Asks the server to send [username] an email with a temporary
+  /// password (`common.db.reset_password`, Python `rpc.reset_password`).
+  /// The server answers the same for an unknown login; 403 = no password
+  /// authentication, 429 = too many requests.
+  Future<void> resetPassword(String db, String username,
+      {String language = 'en'}) async {
+    await rpcClient.call(
+      db,
+      'common.db.reset_password',
+      [username, language],
+      reAuth: false,
+    );
+  }
+
   Future<void> logout() async {
     if (database == null) return;
     try {

@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Weitere Informationen finden Sie in der {license}.",
   "aboutGplName": "GNU General Public License, Version 3 oder später",
   "appDevelopment": "Entwicklung",
-  "appPrerelease": "Testversion"
+  "appPrerelease": "Testversion",
+  "loginFailed": "Falscher Benutzername oder falsches Passwort.",
+  "tooManyRequests": "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
+  "databaseNotFound": "Datenbank nicht gefunden.",
+  "serverForbidden": "Der Server lässt das nicht zu.",
+  "resetPassword": "Passwort zurücksetzen",
+  "resetPasswordTooltip": "E-Mail zum Zurücksetzen des Passworts senden.",
+  "resetPasswordSent": "Eine Anfrage zum Zurücksetzen Ihres Passworts wurde gesendet.\nBitte prüfen Sie Ihr Postfach.",
+  "resetPasswordNeedsUser": "Bitte zuerst Server, Datenbank und Benutzername angeben."
 }

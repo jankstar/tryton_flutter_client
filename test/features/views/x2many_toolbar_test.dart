@@ -181,6 +181,37 @@ void main() {
         'Re');
   }, variant: desktop);
 
+  testWidgets('(e) many2many shown with widget="one2many" (bank accounts of '
+      'a party): the one2many buttons; Add sorts by search_order, not by '
+      'the order of the relation table', (tester) async {
+    final rpc = server({
+      'type': 'many2many',
+      'add_remove': '[]',
+      // sorts the relation table bank.account-party.party
+      'order': [
+        ['account.owners_sequence', 'ASC NULLS FIRST'],
+        ['account.id', 'ASC'],
+      ],
+      'search_order': 'null',
+    }, [11], attrs: 'widget="one2many"', extra: {
+      'model.test.line.search': (_) => [12],
+      'model.test.line.search_count': (_) => 1,
+    });
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    for (final name in ['add', 'remove', 'new', 'open', 'delete', 'undelete']) {
+      expect(button(tester, name), isNotNull, reason: name);
+    }
+    expect(button(tester, 'undelete')!.tooltip, 'Undelete selected record');
+    await select(tester, 'L11');
+    expect(active(tester, 'delete'), isTrue, reason: 'delete right');
+
+    await tester.tap(find.byKey(const ValueKey('x2m-add')));
+    await tester.pumpAndSettle();
+    final search = rpc.named('model.test.line.search').last;
+    expect(search.params.toString(), isNot(contains('account.')),
+        reason: 'no order of the relation table on test.line');
+  }, variant: desktop);
+
   testWidgets('Switch to the inline form loads the fields of the form view '
       '(lazy function fields, Python `screen.add_view`)', (tester) async {
     final rpc = server({'type': 'one2many', 'mode': 'tree,form'}, [11, 12],

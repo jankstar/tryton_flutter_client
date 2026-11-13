@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/rpc/reauth_service.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../notifications/notifications.dart' show busServiceProvider;
+import '../../shared/dialogs/tryton_dialogs.dart' show showMessage;
 import 'auth_provider.dart';
+import 'login_errors.dart';
 
 /// Compact re-login dialog – shown when the session expires (401).
 ///
@@ -44,6 +46,7 @@ class _ReLoginDialogState extends ConsumerState<ReLoginDialog> {
     try {
       await ref.read(authProvider.notifier).reAuthenticate(
         _passCtrl.text,
+        language: Localizations.localeOf(context).languageCode,
       );
       // the bus (notifications, chat) polls with the new token
       final auth = ref.read(rpcClientProvider).auth;
@@ -51,11 +54,26 @@ class _ReLoginDialogState extends ConsumerState<ReLoginDialog> {
       ReAuthService.complete();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString();
+        _error = localizeLoginError(loginErrorCode(e), context.l10n);
       });
     }
+  }
+
+  /// „Reset forgotten password“ (Python `AskPasswordDialog`).
+  Future<void> _resetPassword() async {
+    final l = context.l10n;
+    String text;
+    try {
+      await ref.read(authProvider.notifier).resetSessionPassword(
+          language: Localizations.localeOf(context).languageCode);
+      text = l.resetPasswordSent;
+    } catch (e) {
+      text = localizeLoginError(loginErrorCode(e), l);
+    }
+    if (mounted) await showMessage(context, text);
   }
 
   @override
@@ -101,6 +119,17 @@ class _ReLoginDialogState extends ConsumerState<ReLoginDialog> {
               isDense: true,
             ),
             onSubmitted: (_) => _submit(),
+          ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: Tooltip(
+              message: l.resetPasswordTooltip,
+              child: TextButton(
+                key: const ValueKey('relogin-reset-password'),
+                onPressed: _loading ? null : _resetPassword,
+                child: Text(l.resetPassword),
+              ),
+            ),
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),

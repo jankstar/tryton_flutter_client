@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/rpc/server_address.dart';
 import '../shell/about_dialog.dart' show PrereleaseBadge, isPrerelease;
+import '../../shared/dialogs/tryton_dialogs.dart' show showMessage;
 import 'auth_provider.dart';
+import 'login_errors.dart';
 import 'profile_editor.dart';
 import '../../../core/session/profiles.dart';
 import '../../../core/l10n/locale_provider.dart';
@@ -245,6 +247,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               v!.isEmpty ? localizedCtx.l10n.required : null,
                           onFieldSubmitted: (_) => _submit(auth),
                         ),
+                        _ResetPasswordButton(
+                            onPressed: () => _resetPassword(localizedCtx)),
                       ] else ...[
                         Text(
                           auth.pendingMfaMessage ??
@@ -261,6 +265,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           onFieldSubmitted: (_) => _submitMfa(auth),
                         ),
+                        if (auth.pendingMfaType == 'password')
+                          _ResetPasswordButton(
+                              onPressed: () => _resetPassword(localizedCtx)),
                       ],
                       if (auth.errorMessage != null) ...[
                         const SizedBox(height: 12),
@@ -297,14 +304,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// Translates structured error codes into localised messages.
-  String _localizeError(String msg, BuildContext ctx) {
-    if (msg.startsWith('version_mismatch:')) {
-      final parts = msg.split(':');
-      if (parts.length == 3) {
-        return ctx.l10n.versionMismatch(parts[1], parts[2]);
-      }
+  String _localizeError(String msg, BuildContext ctx) =>
+      localizeLoginError(msg, ctx.l10n);
+
+  /// „Reset forgotten password“ (Python `AskPasswordDialog`): the server
+  /// sends the user an email with a temporary password.
+  Future<void> _resetPassword(BuildContext ctx) async {
+    final l = ctx.l10n;
+    final server = _serverCtrl.text.trim();
+    final db = _dbCtrl.text.trim();
+    final user = _userCtrl.text.trim();
+    if (server.isEmpty || db.isEmpty || user.isEmpty) {
+      await showMessage(ctx, l.resetPasswordNeedsUser);
+      return;
     }
-    return msg;
+    String text;
+    try {
+      await ref.read(authProvider.notifier).resetPassword(server, db, user,
+          language: _loginLocale.languageCode);
+      text = l.resetPasswordSent;
+    } catch (e) {
+      text = localizeLoginError(loginErrorCode(e), l);
+    }
+    if (ctx.mounted) await showMessage(ctx, text);
   }
 
   void _submit(AuthState auth) {
@@ -314,6 +336,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _dbCtrl.text.trim(),
           _userCtrl.text.trim(),
           _passCtrl.text,
+          language: _loginLocale.languageCode,
         );
   }
 
@@ -322,6 +345,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         .read(authProvider.notifier)
         .submitMfaResponse(auth.pendingMfaField!, _mfaCtrl.text);
   }
+}
+
+/// The link „Reset forgotten password“ below the password field.
+class _ResetPasswordButton extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _ResetPasswordButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: Tooltip(
+          message: context.l10n.resetPasswordTooltip,
+          child: TextButton(
+            key: const ValueKey('login-reset-password'),
+            onPressed: onPressed,
+            child: Text(context.l10n.resetPassword),
+          ),
+        ),
+      );
 }
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────

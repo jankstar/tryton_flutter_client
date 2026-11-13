@@ -296,6 +296,17 @@ class _RecordFormState extends State<RecordForm> {
       labelFor: node is LabelNode ? node.fieldName : null,
       field: node is FieldNode ? node.name : null,
       shrinks: hbox && node is FieldNode && _hboxWidth(node) != null,
+      // GTK: the size request of labels, buttons and groups is met first
+      need: node is LabelNode || node is ButtonNode
+          ? FormGridNeed.natural
+          : node is GroupNode
+              ? FormGridNeed.content
+              : node is FieldNode &&
+                      naturalWidth == null &&
+                      !const {'one2many', 'many2many'}.contains(
+                          node.widget ?? widget.viewDef.fields[node.name]?.type)
+                  ? FormGridNeed.input
+                  : FormGridNeed.none,
     );
   }
 
@@ -620,7 +631,9 @@ class _RecordFormState extends State<RecordForm> {
           padding: const EdgeInsets.all(8),
           // The child group of the record (spec 9.2.7); saved with the
           // parent through the x2many commands.
-          child: EmbeddedTreeWidget(
+          // a list needs no minimum width in the grid (and its
+          // LayoutBuilder has no intrinsic sizes)
+          child: GridIntrinsicBarrier(child: EmbeddedTreeWidget(
             key: ValueKey('x2m_${fd.name}'),
             parent: _record,
             fieldDef: fd,
@@ -629,7 +642,7 @@ class _RecordFormState extends State<RecordForm> {
             // the records follow the parent record, not the field state
             parentReadOnly: widget.isReadOnly,
             breadcrumb: widget.breadcrumb,
-            ),
+            )),
           ),
         ),
         const SizedBox(height: 8),
@@ -1032,6 +1045,10 @@ class _Cell {
   /// checkbox).
   final bool shrinks;
 
+  /// The width the cell needs in the grid (labels, buttons: natural;
+  /// groups: their content).
+  final FormGridNeed need;
+
   const _Cell({
     required this.child,
     required this.colspan,
@@ -1045,6 +1062,7 @@ class _Cell {
     this.labelFor,
     this.field,
     this.shrinks = false,
+    this.need = FormGridNeed.none,
   });
 
   _Cell at(int column, int colspan, {bool full = false}) => _Cell(
@@ -1059,7 +1077,8 @@ class _Cell {
       full: full,
       labelFor: labelFor,
       field: field,
-      shrinks: shrinks);
+      shrinks: shrinks,
+      need: need);
 }
 
 /// Grid of a container (spec 9.2.2): rows of cells at fixed columns or
@@ -1109,6 +1128,7 @@ class _Grid extends StatelessWidget {
                 xalign: cell.xalign,
                 fill: cell.fill,
                 full: cell.full,
+                need: cell.need,
                 child: cell.full
                     ? cell.child
                     : Padding(
@@ -1178,10 +1198,14 @@ class _Grid extends StatelessWidget {
   Widget _natural(_Cell cell, Map<int, double> widths, Widget child) {
     if (cell.naturalWidth == null) return child;
     final width = widths[cell.column] ?? cell.naturalWidth!;
+    // a fixed width (the column limits it) – also as intrinsic width, a
+    // parent grid sizes a group with it (FormGridNeed.content); the Align
+    // keeps the child's width (widthFactor), else the grid would measure
+    // the whole offered width as natural width of the column
     return Align(
       alignment: AlignmentDirectional.topStart,
-      child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: width), child: child),
+      widthFactor: 1,
+      child: SizedBox(width: width, child: child),
     );
   }
 

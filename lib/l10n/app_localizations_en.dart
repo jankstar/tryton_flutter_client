@@ -1065,4 +1065,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appPrerelease => 'Test version';
+
+  @override
+  String get loginFailed => 'Wrong user name or password.';
+
+  @override
+  String get tooManyRequests => 'Too many requests. Try again later.';
+
+  @override
+  String get databaseNotFound => 'Database not found.';
+
+  @override
+  String get serverForbidden => 'The server does not allow this.';
+
+  @override
+  String get resetPassword => 'Reset forgotten password';
+
+  @override
+  String get resetPasswordTooltip =>
+      'Send you an email to reset your password.';
+
+  @override
+  String get resetPasswordSent =>
+      'A request to reset your password has been sent.\nPlease check your mailbox.';
+
+  @override
+  String get resetPasswordNeedsUser =>
+      'Enter server, database and user name first.';
 }

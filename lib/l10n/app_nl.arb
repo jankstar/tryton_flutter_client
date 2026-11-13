@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Zie de {license} voor details.",
   "aboutGplName": "GNU General Public License, versie 3 of later",
   "appDevelopment": "ontwikkeling",
-  "appPrerelease": "Testversie"
+  "appPrerelease": "Testversie",
+  "loginFailed": "Onjuiste gebruikersnaam of wachtwoord.",
+  "tooManyRequests": "Te veel verzoeken. Probeer het later nog eens.",
+  "databaseNotFound": "Database niet gevonden.",
+  "serverForbidden": "De server staat dit niet toe.",
+  "resetPassword": "Reset vergeten wachtwoord",
+  "resetPasswordTooltip": "Stuurt u een email om het wachtwoord te resetten.",
+  "resetPasswordSent": "Een verzoek om uw wachtwoord te resetten is verzonden.\nControleer uw mailbox.",
+  "resetPasswordNeedsUser": "Vul eerst server, database en gebruikersnaam in."
 }

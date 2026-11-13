@@ -7,6 +7,26 @@ import 'package:flutter/widgets.dart';
 // widths are computed once for all rows, so cells of the same columns line
 // up in every row.
 
+/// What a cell needs at least in its columns (GTK: the size request of
+/// the child is met before the free width is shared).
+enum FormGridNeed {
+  /// Nothing (inputs fill what they get).
+  none,
+
+  /// Its natural width on one line (labels, buttons).
+  natural,
+
+  /// Its minimum content (a group: the needs of its own cells).
+  content,
+
+  /// [formGridInputWidth] (an input that reports no width of its own,
+  /// e.g. a selection – GTK: the size request of an entry).
+  input,
+}
+
+/// The least width of an input ([FormGridNeed.input]).
+const formGridInputWidth = 80.0;
+
 /// Position and behaviour of a child of [FormGrid].
 class FormGridCell extends ParentDataWidget<_GridParentData> {
   /// Row of the cell (rows are laid out in ascending order).
@@ -31,6 +51,10 @@ class FormGridCell extends ParentDataWidget<_GridParentData> {
   /// no influence on the column widths.
   final bool full;
 
+  /// The width the cell needs in its columns before the free width is
+  /// shared (labels, buttons, groups; also over several columns).
+  final FormGridNeed need;
+
   const FormGridCell({
     super.key,
     required this.row,
@@ -40,6 +64,7 @@ class FormGridCell extends ParentDataWidget<_GridParentData> {
     this.xalign,
     this.fill = false,
     this.full = false,
+    this.need = FormGridNeed.none,
     required super.child,
   });
 
@@ -52,7 +77,8 @@ class FormGridCell extends ParentDataWidget<_GridParentData> {
         data.expand != expand ||
         data.xalign != xalign ||
         data.fill != fill ||
-        data.full != full) {
+        data.full != full ||
+        data.need != need) {
       data
         ..row = row
         ..column = column
@@ -60,7 +86,8 @@ class FormGridCell extends ParentDataWidget<_GridParentData> {
         ..expand = expand
         ..xalign = xalign
         ..fill = fill
-        ..full = full;
+        ..full = full
+        ..need = need;
       renderObject.parent?.markNeedsLayout();
     }
   }
@@ -77,6 +104,25 @@ class _GridParentData extends ContainerBoxParentData<RenderBox> {
   double? xalign;
   bool fill = false;
   bool full = false;
+  FormGridNeed need = FormGridNeed.none;
+}
+
+/// Answers 0 for the intrinsic widths of [child] and does not ask it: a
+/// list (x2many) contains a LayoutBuilder, which has no intrinsic sizes,
+/// and needs no minimum width in the grid.
+class GridIntrinsicBarrier extends SingleChildRenderObjectWidget {
+  const GridIntrinsicBarrier({super.key, super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderIntrinsicBarrier();
+}
+
+class _RenderIntrinsicBarrier extends RenderProxyBox {
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
+  @override
+  double computeMaxIntrinsicWidth(double height) => 0;
 }
 
 /// Cells ([FormGridCell]) in [columns] columns (spec 9.2.2):
@@ -179,7 +225,11 @@ class _RenderFormGrid extends RenderBox
     ]..sort((a, b) => _data(a).colspan.compareTo(_data(b).colspan));
     for (final child in fixed) {
       final d = _data(child);
-      child.layout(BoxConstraints(maxWidth: maxNatural), parentUsesSize: true);
+      // labels and buttons keep their line (up to the whole width)
+      child.layout(
+          BoxConstraints(
+              maxWidth: d.need == FormGridNeed.natural ? width : maxNatural),
+          parentUsesSize: true);
       final natural = child.size.width;
       var current = 0.0;
       for (var c = d.column; c < d.column + d.colspan; c++) {
@@ -198,6 +248,12 @@ class _RenderFormGrid extends RenderBox
       child.layout(BoxConstraints(maxWidth: maxNatural), parentUsesSize: true);
       minimum[d.column] = math.max(minimum[d.column], child.size.width);
     }
+    // the needs of labels, buttons and groups (also over several columns)
+    // in the expanding columns – GTK meets them before sharing; the needs
+    // of single cells (labels) are kept first when the width is short
+    final multi = _addNeeds(minimum, widths, expand,
+        (c) => c.getMaxIntrinsicWidth(double.infinity),
+        (c) => c.getMinIntrinsicWidth(double.infinity));
     var used = widths.fold(0.0, (a, b) => a + b);
     if (used > width) {
       // more fixed width than there is: shrink all fixed columns
@@ -211,6 +267,16 @@ class _RenderFormGrid extends RenderBox
     // is larger keeps its minimum and leaves the others the remainder
     final pool = {for (var c = 0; c < n; c++) if (expand[c]) c};
     var rest = width - used;
+    final needed = pool.fold(0.0, (a, c) => a + minimum[c]);
+    if (needed > rest) {
+      final single = pool.fold(0.0, (a, c) => a + minimum[c] - multi[c]);
+      final extra = needed - single;
+      for (final c in pool) {
+        minimum[c] = single <= rest
+            ? minimum[c] - multi[c] + (extra > 0 ? multi[c] * (rest - single) / extra : 0)
+            : (minimum[c] - multi[c]) * (single > 0 ? rest / single : 0);
+      }
+    }
     while (pool.isNotEmpty) {
       final share = rest / pool.length;
       final wider = [for (final c in pool) if (minimum[c] > share) c];
@@ -228,6 +294,74 @@ class _RenderFormGrid extends RenderBox
       if (rest < 0) rest = 0;
     }
     return widths;
+  }
+
+  /// Adds the needs ([FormGridNeed]) of the cells to the [minimum] of the
+  /// expanding columns: single columns first, then cells over several
+  /// columns spread their missing width over their expanding columns
+  /// (beside the [widths] of their fixed columns). Returns the share of
+  /// each column that comes from cells over several columns.
+  List<double> _addNeeds(List<double> minimum, List<double> widths,
+      List<bool> expand, double Function(RenderBox) natural,
+      double Function(RenderBox) content) {
+    final multi = List.filled(minimum.length, 0.0);
+    final cells = [
+      for (final child in _cells)
+        if (_data(child).need != FormGridNeed.none) child,
+    ]..sort((a, b) => _data(a).colspan.compareTo(_data(b).colspan));
+    for (final child in cells) {
+      final d = _data(child);
+      final columns = [for (var c = d.column; c < d.column + d.colspan; c++) c];
+      final growing = [for (final c in columns) if (expand[c]) c];
+      if (growing.isEmpty) continue;
+      final need = switch (d.need) {
+        FormGridNeed.natural => natural(child),
+        FormGridNeed.content => content(child),
+        _ => formGridInputWidth,
+      };
+      final have = columns.fold(
+          0.0, (a, c) => a + (expand[c] ? minimum[c] : widths[c]));
+      if (need <= have) continue;
+      final add = (need - have) / growing.length;
+      for (final c in growing) {
+        minimum[c] += add;
+        if (d.colspan > 1) multi[c] += add;
+      }
+    }
+    return multi;
+  }
+
+  /// The minimum content width (for a parent grid, intrinsic): the fixed
+  /// cells' natural widths and the needs of labels, buttons and groups,
+  /// per column – without laying out.
+  double _minContent() {
+    final n = _n;
+    final expand = _expanding(n);
+    final widths = List.filled(n, 0.0);
+    final fixed = [
+      for (final child in _cells)
+        if (!Iterable.generate(_data(child).colspan, (i) => _data(child).column + i)
+            .any((c) => expand[c]))
+          child,
+    ]..sort((a, b) => _data(a).colspan.compareTo(_data(b).colspan));
+    for (final child in fixed) {
+      final d = _data(child);
+      final natural = child.getMaxIntrinsicWidth(double.infinity);
+      var current = 0.0;
+      for (var c = d.column; c < d.column + d.colspan; c++) {
+        current += widths[c];
+      }
+      if (natural > current) widths[d.column + d.colspan - 1] += natural - current;
+    }
+    final minimum = List.filled(n, 0.0);
+    _addNeeds(minimum, widths, expand,
+        (c) => c.getMaxIntrinsicWidth(double.infinity),
+        (c) => c.getMinIntrinsicWidth(double.infinity));
+    var total = 0.0;
+    for (var c = 0; c < n; c++) {
+      total += expand[c] ? minimum[c] : widths[c];
+    }
+    return total;
   }
 
   /// Lays out [child] in its columns ([span] wide), at least [minHeight]
@@ -332,8 +466,7 @@ class _RenderFormGrid extends RenderBox
   }
 
   @override
-  double computeMinIntrinsicWidth(double height) =>
-      _widestRow((c) => c.getMinIntrinsicWidth(double.infinity));
+  double computeMinIntrinsicWidth(double height) => _minContent();
   @override
   double computeMaxIntrinsicWidth(double height) =>
       _widestRow((c) => c.getMaxIntrinsicWidth(double.infinity));

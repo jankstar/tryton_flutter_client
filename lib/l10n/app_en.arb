@@ -1070,5 +1070,21 @@
   "appDevelopment": "development",
   "@appDevelopment": {},
   "appPrerelease": "Test version",
-  "@appPrerelease": {}
+  "@appPrerelease": {},
+  "loginFailed": "Wrong user name or password.",
+  "@loginFailed": {},
+  "tooManyRequests": "Too many requests. Try again later.",
+  "@tooManyRequests": {},
+  "databaseNotFound": "Database not found.",
+  "@databaseNotFound": {},
+  "serverForbidden": "The server does not allow this.",
+  "@serverForbidden": {},
+  "resetPassword": "Reset forgotten password",
+  "@resetPassword": {},
+  "resetPasswordTooltip": "Send you an email to reset your password.",
+  "@resetPasswordTooltip": {},
+  "resetPasswordSent": "A request to reset your password has been sent.\nPlease check your mailbox.",
+  "@resetPasswordSent": {},
+  "resetPasswordNeedsUser": "Enter server, database and user name first.",
+  "@resetPasswordNeedsUser": {}
 }

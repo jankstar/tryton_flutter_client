@@ -580,5 +580,13 @@
   "aboutSeeLicense": "Szczegóły w {license}.",
   "aboutGplName": "GNU General Public License, wersja 3 lub późniejsza",
   "appDevelopment": "wersja rozwojowa",
-  "appPrerelease": "Wersja testowa"
+  "appPrerelease": "Wersja testowa",
+  "loginFailed": "Nieprawidłowa nazwa użytkownika lub hasło.",
+  "tooManyRequests": "Za dużo połączeń. Spróbuj później.",
+  "databaseNotFound": "Nie znaleziono bazy danych.",
+  "serverForbidden": "Serwer na to nie pozwala.",
+  "resetPassword": "Zresetuj hasło",
+  "resetPasswordTooltip": "Wyślij wiadomość, aby zresetować hasło.",
+  "resetPasswordSent": "Wysłano prośbę o zresetowanie hasła.\nSprawdź swoją skrzynkę pocztową.",
+  "resetPasswordNeedsUser": "Najpierw podaj serwer, bazę danych i nazwę użytkownika."
 }

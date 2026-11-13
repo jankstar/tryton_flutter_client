@@ -14,6 +14,7 @@ import 'package:tryton_flutter_client/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:tryton_flutter_client/features/auth/auth_provider.dart';
+import 'package:tryton_flutter_client/core/session/profiles.dart' show demoServer;
 import 'package:tryton_flutter_client/features/auth/login_screen.dart';
 import 'package:tryton_flutter_client/features/shell/about_dialog.dart';
 import 'package:tryton_flutter_client/features/auth/user_preferences_provider.dart';
@@ -184,7 +185,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'localhost:8000').first,
+          find.widgetWithText(TextFormField, demoServer).first,
           url.startsWith('https') ? 'erp.example.com' : 'localhost:8000');
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
