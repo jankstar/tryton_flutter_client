@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -349,10 +352,15 @@ class _WizardWidgetState extends ConsumerState<WizardWidget> {
         insetPadding: const EdgeInsets.all(24),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: _expand ? size.width * 0.9 : 640,
+            maxWidth: _expand ? size.width * 0.9 : math.min(size.width * 0.9, 960),
             maxHeight: size.height * (_expand ? 0.9 : 0.8),
           ),
-          child: SizedBox(
+          // without lists/text the width of the content (Python: the
+          // natural size of the dialog), at least 480 px
+          child: _ContentWidth(
+            enabled: !_expand,
+            minWidth: math.min(480, size.width * 0.9),
+            child: SizedBox(
             width: _expand ? size.width * 0.9 : null,
             height: _expand ? size.height * 0.9 : null,
             child: Column(
@@ -369,6 +377,7 @@ class _WizardWidgetState extends ConsumerState<WizardWidget> {
                 Flexible(child: shortcuts),
               ],
             ),
+          ),
           ),
         ),
       ),
@@ -415,5 +424,66 @@ class _WizardWidgetState extends ConsumerState<WizardWidget> {
         ],
       ),
     );
+  }
+}
+
+/// Lays out [child] in the width of its content (max intrinsic width)
+/// between [minWidth] and the incoming maximum; a child without intrinsic
+/// sizes (e.g. a LayoutBuilder) gets the maximum. Disabled: unchanged.
+class _ContentWidth extends SingleChildRenderObjectWidget {
+  final bool enabled;
+  final double minWidth;
+  const _ContentWidth(
+      {required this.enabled, required this.minWidth, super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderContentWidth(enabled, minWidth);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, _RenderContentWidth renderObject) {
+    renderObject
+      ..enabled = enabled
+      ..minWidth = minWidth;
+  }
+}
+
+class _RenderContentWidth extends RenderProxyBox {
+  _RenderContentWidth(this._enabled, this._minWidth);
+
+  bool _enabled;
+  set enabled(bool value) {
+    if (value == _enabled) return;
+    _enabled = value;
+    markNeedsLayout();
+  }
+
+  double _minWidth;
+  set minWidth(double value) {
+    if (value == _minWidth) return;
+    _minWidth = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null || !_enabled || !constraints.hasBoundedWidth) {
+      super.performLayout();
+      return;
+    }
+    double width;
+    try {
+      width = child.getMaxIntrinsicWidth(double.infinity);
+    } catch (_) {
+      width = constraints.maxWidth;
+    }
+    width = width
+        .clamp(math.max(_minWidth, constraints.minWidth), constraints.maxWidth)
+        .toDouble();
+    child.layout(constraints.copyWith(minWidth: width, maxWidth: width),
+        parentUsesSize: true);
+    size = constraints.constrain(child.size);
   }
 }

@@ -81,6 +81,69 @@ void main() {
     expect(w.done, isTrue);
   });
 
+  testWidgets('dialog by its content: the question icon takes its size, '
+      'the date beside a long label its natural width', (tester) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    // like account_payment's "Create Direct Debit"
+    final w = TrytonWizard(
+      action: 'test.wiz',
+      name: 'Create Direct Debit',
+      session: fakeSession(FakeRpc()),
+      rpc: (method, params, {context}) async => switch (method.split('.').last) {
+        'create' => [1, 'start', 'end'],
+        'execute' => {
+            'view': {
+              'fields_view': {
+                'model': 'test.wiz.start',
+                'type': 'form',
+                'arch': '<form col="2">'
+                    '<image name="tryton-question" xexpand="0" xfill="0"/>'
+                    '<group col="2" xexpand="1" id="create_date">'
+                    '<label string="Create Direct Debit for date" id="create"/>'
+                    '<field name="date"/></group></form>',
+                'fields': {
+                  'date': {'type': 'date', 'string': 'Date', 'required': true},
+                },
+              },
+              'buttons': [
+                {'state': 'end', 'string': 'Cancel'},
+                {'state': 'create_', 'string': 'Create', 'default': true},
+              ],
+              'state': 'start',
+            }
+          },
+        _ => null,
+      },
+    );
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => runWizardDialog(context, w),
+            child: const Text('Start'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    final date = tester.getSize(find.byType(InputDecorator).first);
+    expect(date.width, greaterThanOrEqualTo(150), reason: 'not squeezed');
+    final dialog = tester.getRect(find
+        .descendant(of: find.byType(Dialog), matching: find.byType(Material))
+        .first);
+    final label =
+        tester.getRect(find.textContaining('Create Direct Debit for date'));
+    expect(label.left - dialog.left, lessThan(150),
+        reason: 'the icon takes only its size');
+    expect(dialog.width, inInclusiveRange(480, 960));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('unused grid columns collapse: group in <form col="10">',
       (tester) async {
     tester.view.physicalSize = const Size(1400, 1000);

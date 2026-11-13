@@ -312,6 +312,48 @@ void main() {
         reason: 'the label stays on one line');
   });
 
+  testWidgets('a long label beside a date: the date keeps its natural '
+      'width', (tester) async {
+    final rpc = server(
+        '<form col="2"><label string="A rather long label for the date field" '
+        'id="l"/><field name="day"/></form>',
+        {'day': {'type': 'date', 'string': 'Day'}});
+    await pumpForm(tester, rpc,
+        model: 'test.form', recordId: 1, size: const Size(640, 600));
+    final date = tester.getSize(find.byType(InputDecorator).first);
+    expect(date.width, greaterThanOrEqualTo(150));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a list in a titled group (wizard of contract moves): no '
+      'intrinsic size asked of the list', (tester) async {
+    final rpc = server(
+        '<form col="10"><group col="4" id="g1" homogeneous="1" '
+        'string="Selection"><label name="name"/><field name="name" '
+        'colspan="1"/><newline/><label name="lines" string=" "/>'
+        '<field name="lines" colspan="1" width="200"/></group><newline/>'
+        '<group col="4" id="g2" string="Execution"><label name="day"/>'
+        '<field name="day"/><label name="tags"/><field name="tags"/></group>'
+        '</form>',
+        {
+          'name': char('Name'),
+          'lines': lines('Lines'),
+          'day': {'type': 'date', 'string': 'Day'},
+          'tags': {
+            'type': 'multiselection',
+            'string': 'Tags',
+            'selection': [
+              ['a', 'A'],
+              ['b', 'B'],
+            ],
+          },
+        });
+    await pumpForm(tester, rpc,
+        model: 'test.form', recordId: 1, size: const Size(1400, 900));
+    expect(tester.takeException(), isNull);
+    expect(list(tester, 'Lines').width, greaterThanOrEqualTo(200));
+  });
+
   testWidgets('narrow window (< 600 px): one column', (tester) async {
     final rpc = server('<form><field name="name"/><field name="code"/></form>',
         {'name': char('Name'), 'code': char('Code')});
