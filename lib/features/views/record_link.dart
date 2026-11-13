@@ -209,7 +209,9 @@ class RecordImage extends StatelessWidget {
       case 'rounded':
         image = ClipRRect(borderRadius: BorderRadius.circular(size / 8), child: image);
     }
-    return Align(alignment: Alignment.center, child: image);
+    // the image's own size (a grid would else measure the whole offered
+    // width, e.g. the question icon of a wizard taking half the dialog)
+    return Align(alignment: Alignment.center, widthFactor: 1, child: image);
   }
 
   /// `#rrggbb` / `#rgb` / `#rrggbbaa`.

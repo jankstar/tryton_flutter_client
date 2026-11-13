@@ -355,6 +355,15 @@ class _RecordFormState extends State<RecordForm> {
           ? FormGridNeed.natural
           : node is GroupNode
               ? FormGridNeed.content
+              // a field of natural width (date, number) keeps it: a long
+              // label beside it must not squeeze it
+              : node is FieldNode && naturalWidth != null
+                  ? FormGridNeed.natural
+              : node is FieldNode &&
+                      const {'many2one', 'one2one', 'reference'}.contains(
+                          widget.viewDef.fields[node.name]?.type) &&
+                      node.widget != 'selection'
+                  ? FormGridNeed.relation
               : node is FieldNode &&
                       naturalWidth == null &&
                       !const {'one2many', 'many2many'}.contains(
@@ -554,8 +563,14 @@ class _RecordFormState extends State<RecordForm> {
       onBlur: () => _left(node.name),
       onValue: (v) => widget.onChangedImmediate(node.name, v),
     );
-    final special = _recordWidget(fd, node, args);
+    var special = _recordWidget(fd, node, args);
     if (special != null) {
+      // scrolling lists, the PDF preview and the rich text editor have no
+      // intrinsic sizes (a group's minimum asks them; they expand anyway)
+      if (const {'image', 'document', 'richtext'}.contains(node.widget) ||
+          fd.type == 'multiselection') {
+        special = GridIntrinsicBarrier(child: special);
+      }
       return Padding(
           padding: const EdgeInsets.symmetric(vertical: _fieldGap), child: special);
     }

@@ -16,6 +16,7 @@ import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
 import 'form_dialog.dart';
 import 'form_edit_scope.dart';
+import 'form_grid.dart' show GridIntrinsicBarrier;
 import 'search_dialog.dart';
 import 'form_label_style.dart';
 
@@ -537,7 +538,8 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
           const SizedBox(height: 4),
         ],
         field,
-        if (_showCompletion) _completionList(l),
+        // (a list: no intrinsic sizes for the grid while typing)
+        if (_showCompletion) GridIntrinsicBarrier(child: _completionList(l)),
       ],
     );
   }
