@@ -904,7 +904,7 @@ class TrytonScreen extends ChangeNotifier {
               type == 'multiselection' ||
               type == 'reference') &&
           props['selection'] is String) {
-        all[name] = {...props, 'selection': await _selection(props)};
+        all[name] = {...props, 'selection': await selectionOptions(props)};
       }
     }
     final fields = <String, dynamic>{};
@@ -944,8 +944,14 @@ class TrytonScreen extends ChangeNotifier {
     return domainParser = DomainParser(fields, parserContext);
   }
 
-  /// `[[value, label], …]` of a selection method, sorted by label (SAO
-  /// `get_selection`); empty on error.
+  /// `[[value, label], …]` of the selection method of the field [props]
+  /// (`fields_view_get`), sorted by label (SAO `get_selection`); empty on
+  /// error. Loaded once per method for the screen: the search (domain
+  /// parser) and the list's reference columns share it.
+  Future<List<dynamic>> selectionOptions(Map<String, dynamic> props) =>
+      _selections.putIfAbsent('${props['selection']}', () => _selection(props));
+  final Map<String, Future<List<dynamic>>> _selections = {};
+
   Future<List<dynamic>> _selection(Map<String, dynamic> props) async {
     final changeWith = props['selection_change_with'];
     try {

@@ -153,6 +153,37 @@ void main() {
     expect(m2oText(tester), 'P7');
   });
 
+  testWidgets('search dialog with a single choice: a checkbox per row, the '
+      'tick moves, OK takes the ticked row', (tester) async {
+    final rpc = FakeFormRpc({
+      ...handlers(),
+      'model.test.party.autocomplete': (_) => <dynamic>[],
+      'model.test.party.search': (_) => [1, 2],
+      'model.test.party.search_count': (_) => 2,
+    });
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1, settle: false);
+    await tester.enterText(m2o(), 'P');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await pumpFrames(tester);
+    Checkbox box(int id) => tester.widget<Checkbox>(
+        find.byKey(ValueKey('search-dialog-check-$id')));
+    expect(box(1).value, isFalse);
+    expect(box(2).value, isFalse);
+
+    // the checkbox reacts at once (no double-tap wait)
+    await tester.tap(find.byKey(const ValueKey('search-dialog-check-1')));
+    await tester.pump();
+    expect(box(1).value, isTrue);
+    await tester.tap(find.byKey(const ValueKey('search-dialog-check-2')));
+    await tester.pump();
+    expect(box(1).value, isFalse, reason: 'single choice: the tick moves');
+    expect(box(2).value, isTrue);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+    await pumpFrames(tester);
+    expect(m2oText(tester), 'P2');
+  });
+
   testWidgets('F3 opens the form popup for a new record with the text',
       (tester) async {
     final rpc = FakeFormRpc({

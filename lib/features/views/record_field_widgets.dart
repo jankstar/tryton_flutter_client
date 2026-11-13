@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -529,46 +530,139 @@ class RecordTimeDeltaInput extends StatelessWidget {
 
 // ─── multiselection ──────────────────────────────────────────────────────────
 
-/// multiselection: the values of `selection` as chips; the sorted list is
-/// written at once.
-class RecordMultiSelection extends StatelessWidget {
+/// multiselection (Python `form_gtk.MultiSelection`): all options one
+/// below the other in a framed, scrollable list, a checkbox per row, the
+/// chosen rows tinted; the height of the view (`height`, Python
+/// `set_size_request`), else the content up to 8 rows, at least 100 px.
+/// From [searchFrom] options a search field filters the rows. The value is
+/// the sorted list of the chosen keys (`field.setClient` sorts).
+class RecordMultiSelection extends StatefulWidget {
   final RecordFieldArgs args;
   const RecordMultiSelection({super.key, required this.args});
 
+  /// Options from which the search field is shown.
+  static const searchFrom = 20;
+
+  @override
+  State<RecordMultiSelection> createState() => _RecordMultiSelectionState();
+}
+
+class _RecordMultiSelectionState extends State<RecordMultiSelection> {
+  static const _rowHeight = 32.0;
+  final _search = TextEditingController();
+  String _filter = '';
+
+  RecordFieldArgs get args => widget.args;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final value = args.field.get(args.record);
-    final selected = {for (final v in (value is List ? value : const [])) '$v'};
+    final values = value is List ? value : const [];
+    final selected = {for (final v in values) '$v'};
     final known = args.fd.selection ?? const [];
     // a stored value without option (e.g. options not loaded yet) stays
     // visible with its key
     final items = [
       ...known,
-      for (final v in (value is List ? value : const []))
+      for (final v in values)
         if (!known.any((i) => '${i[0]}' == '$v')) [v, '$v'],
     ];
+    final filter = _filter.trim().toLowerCase();
+    final shown = [
+      for (final item in items)
+        if (filter.isEmpty || '${item[1]}'.toLowerCase().contains(filter)) item
+    ];
+    final searchable = items.length >= RecordMultiSelection.searchFrom;
+    final height = args.node.height;
+    final listHeight = height != null && height > 0
+        ? math.max(height.toDouble() - (searchable ? 40 : 0), _rowHeight)
+        : math.max(math.min(items.length, 8) * _rowHeight, 100.0);
+
+    void toggle(dynamic key) {
+      if (args.readOnly) return;
+      final on = !selected.contains('$key');
+      args.onValue([
+        for (final i in items)
+          if ('${i[0]}' == '$key' ? on : selected.contains('${i[0]}')) i[0]
+      ]);
+    }
+
     return InputDecorator(
       decoration: args.decoration(context),
-      child: Wrap(spacing: 6, runSpacing: 4, children: [
-        for (final item in items)
-          FilterChip(
-            key: ValueKey('multi-${args.node.name}-${item[0]}'),
-            label: Text('${item[1]}'),
-            selected: selected.contains('${item[0]}'),
-            onSelected: args.readOnly
-                ? null
-                : (on) {
-                    final next = [
-                      for (final i in items)
-                        if (('${i[0]}' == '${item[0]}')
-                            ? on
-                            : selected.contains('${i[0]}'))
-                          i[0]
-                    ];
-                    args.onValue(next);
-                  },
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: cs.outlineVariant),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (searchable)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+              child: SizedBox(
+                height: 36,
+                child: TextField(
+                  key: ValueKey('multi-search-${args.node.name}'),
+                  controller: _search,
+                  onChanged: (text) => setState(() => _filter = text),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: context.l10n.search,
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    suffixIcon: _filter.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear, size: 16),
+                            onPressed: () => setState(() {
+                              _search.clear();
+                              _filter = '';
+                            }),
+                          ),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ),
+          SizedBox(
+            height: listHeight,
+            child: ListView.builder(
+              itemCount: shown.length,
+              itemExtent: _rowHeight,
+              itemBuilder: (context, i) {
+                final item = shown[i];
+                final on = selected.contains('${item[0]}');
+                return Material(
+                  color: on ? cs.primaryContainer.withAlpha(80) : Colors.transparent,
+                  child: InkWell(
+                    onTap: args.readOnly ? null : () => toggle(item[0]),
+                    child: Row(children: [
+                      Checkbox(
+                        key: ValueKey('multi-${args.node.name}-${item[0]}'),
+                        value: on,
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onChanged: args.readOnly ? null : (_) => toggle(item[0]),
+                      ),
+                      Expanded(
+                        child: Text('${item[1]}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13)),
+                      ),
+                    ]),
+                  ),
+                );
+              },
+            ),
           ),
-      ]),
+        ]),
+      ),
     );
   }
 }

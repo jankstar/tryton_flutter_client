@@ -8,6 +8,8 @@ import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 import 'package:tryton_flutter_client/features/views/record_form.dart';
 import 'package:tryton_flutter_client/features/views/tree_view.dart';
 
+import 'package:tryton_flutter_client/features/views/record_field_widgets.dart';
+
 import 'form_harness.dart';
 
 /// Form widgets on the record (E10, E11, E12, E13, D9, H4, H5).
@@ -163,7 +165,7 @@ void main() {
         },
       );
       await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
-      expect(tester.widget<FilterChip>(find.byKey(const ValueKey('multi-tags-c'))).selected, isTrue);
+      expect(tester.widget<Checkbox>(find.byKey(const ValueKey('multi-tags-c'))).value, isTrue);
       await tester.tap(find.text('Alpha'));
       await tester.pumpAndSettle();
       await save(tester);
@@ -256,16 +258,67 @@ void main() {
     await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
     final call = rpc.named('model.test.form.get_types').single;
     expect((call.params[0] as Map)['property'], 1);
-    FilterChip chip(String key) =>
-        tester.widget<FilterChip>(find.byKey(ValueKey('multi-types-$key')));
+    Checkbox box(String key) =>
+        tester.widget<Checkbox>(find.byKey(ValueKey('multi-types-$key')));
     expect(find.text('Operating costs'), findsOneWidget);
-    expect(chip('6').selected, isTrue);
-    expect(chip('7').selected, isFalse);
+    expect(box('6').value, isTrue);
+    expect(box('7').value, isFalse);
     await tester.tap(find.text('Heating costs'));
     await tester.pumpAndSettle();
     await save(tester);
     expect(rpc.named('model.test.form.write').single.params[1], {
       'types': ['6', '7']
+    });
+  });
+
+  group('multiselection as list (Python form_gtk.MultiSelection)', () {
+    Map<String, dynamic> types({bool readonly = false}) => {
+          'types': {
+            'type': 'multiselection',
+            'string': 'Types',
+            'selection': [
+              for (var i = 0; i < 25; i++) ['t$i', 'Type ${i.toString().padLeft(2, '0')}'],
+            ],
+            if (readonly) 'readonly': true,
+          },
+        };
+
+    testWidgets('the height of the view, a search field from 20 options, '
+        'checkbox and row toggle', (tester) async {
+      final rpc = server('<form><field name="types" height="200"/></form>',
+          types(), {'types': ['t1']});
+      await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+      final list = find.descendant(
+          of: find.byType(RecordMultiSelection), matching: find.byType(ListView));
+      expect(tester.getSize(list).height, 160, reason: '200 minus the search');
+      final search = find.byKey(const ValueKey('multi-search-types'));
+      expect(search, findsOneWidget);
+
+      await tester.enterText(search, 'type 2');
+      await tester.pumpAndSettle();
+      expect(find.text('Type 20'), findsOneWidget);
+      expect(find.text('Type 01'), findsNothing, reason: 'filtered');
+      await tester.tap(find.byKey(const ValueKey('multi-types-t21')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Type 22'));
+      await tester.pumpAndSettle();
+      await save(tester);
+      expect(rpc.named('model.test.form.write').single.params[1], {
+        'types': ['t1', 't21', 't22'],
+      });
+    });
+
+    testWidgets('read-only: the checkboxes cannot be changed', (tester) async {
+      final rpc = server('<form><field name="types"/></form>',
+          types(readonly: true), {'types': ['t0']});
+      await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+      final box = tester.widget<Checkbox>(find.byKey(const ValueKey('multi-types-t0')));
+      expect(box.value, isTrue);
+      expect(box.onChanged, isNull);
+      await tester.tap(find.text('Type 01'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Checkbox>(find.byKey(const ValueKey('multi-types-t1'))).value,
+          isFalse);
     });
   });
 
@@ -286,7 +339,7 @@ void main() {
     );
     await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
     expect(
-        tester.widget<FilterChip>(find.byKey(const ValueKey('multi-types-x'))).selected,
+        tester.widget<Checkbox>(find.byKey(const ValueKey('multi-types-x'))).value,
         isTrue);
   });
 

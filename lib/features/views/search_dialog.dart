@@ -11,6 +11,8 @@ import '../../core/screen/screen.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
 import '../model/field_support.dart';
+import '../model/model_service.dart';
+import 'column_selections.dart';
 import 'form_dialog.dart';
 import 'record_cells.dart';
 import 'record_menu.dart';
@@ -138,6 +140,14 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
   bool _busy = false;
 
   TrytonScreen get _screen => widget.screen;
+
+  /// Labels of method selections in the columns (like the lists).
+  late final ColumnSelections _columnSelections = ColumnSelections(
+      screen: _screen,
+      service: ref.read(modelServiceProvider),
+      onLoaded: () {
+        if (mounted) setState(() {});
+      });
 
   @override
   void initState() {
@@ -339,7 +349,7 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: Row(children: [
-          if (widget.multi) const SizedBox(width: 40),
+          const SizedBox(width: 40),
           for (final c in _columns)
             Expanded(
               child: Text(c.label,
@@ -350,36 +360,51 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
         ]),
       );
 
+  /// A row: the checkbox (also for a single choice: the tick moves) sits
+  /// outside the row's InkWell, whose double tap would hold the click.
   Widget _row(Record record) {
     _ensureLoaded(record);
     final selected = _selected.contains(record);
     final fields = _screen.currentView?.definition.fields ?? const {};
-    return InkWell(
-      onTap: () => _tap(record),
-      onDoubleTap: () => _ok(record),
-      child: Container(
-        color: selected
-            ? Theme.of(context).colorScheme.primaryContainer.withAlpha(80)
-            : null,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(children: [
-          if (widget.multi)
-            SizedBox(
-              width: 40,
-              child: Checkbox(value: selected, onChanged: (_) => _tap(record)),
+    return Container(
+      color: selected
+          ? Theme.of(context).colorScheme.primaryContainer.withAlpha(80)
+          : null,
+      padding: const EdgeInsets.only(left: 16),
+      child: Row(children: [
+        SizedBox(
+          width: 40,
+          child: Checkbox(
+            key: ValueKey('search-dialog-check-${record.id}'),
+            value: selected,
+            onChanged: (_) => _tap(record),
+          ),
+        ),
+        Expanded(
+          child: InkWell(
+            onTap: () => _tap(record),
+            onDoubleTap: () => _ok(record),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
+              child: Row(children: [
+                for (final c in _columns)
+                  Expanded(
+                    child: !record.isLoaded(c.name)
+                        ? const Text('')
+                        : isNumericField(fields[c.name])
+                            ? RecordNumericCell.of(record, c.name, fields[c.name]!,
+                                style: const TextStyle(fontSize: 13))
+                            : RecordTextCell(record, c.name,
+                                _columnSelections.field(
+                                    record, fields[c.name], fields),
+                                style: const TextStyle(fontSize: 13)),
+                  ),
+              ]),
             ),
-          for (final c in _columns)
-            Expanded(
-              child: !record.isLoaded(c.name)
-                  ? const Text('')
-                  : isNumericField(fields[c.name])
-                      ? RecordNumericCell.of(record, c.name, fields[c.name]!,
-                          style: const TextStyle(fontSize: 13))
-                      : RecordTextCell(record, c.name, fields[c.name],
-                          style: const TextStyle(fontSize: 13)),
-            ),
-        ]),
-      ),
+          ),
+        ),
+      ]),
     );
   }
+
 }

@@ -35,6 +35,8 @@ const _forms = [
   ('parties-list', 'party.party', null, <String, dynamic>{}, Size(1040, 900)),
   ('party', 'party.party', 44, <String, dynamic>{}, Size(1040, 1400)),
   ('party-narrow', 'party.party', 44, <String, dynamic>{}, Size(420, 1800)),
+  ('party-identifiers', 'party.party', 92, <String, dynamic>{}, Size(1040, 900)),
+  ('party-configuration', 'party.configuration', 1, <String, dynamic>{}, Size(1040, 900)),
   ('invoice', 'account.invoice', 1920, {'type': 'out'}, Size(1040, 1400)),
   ('invoice-medium', 'account.invoice', 1920, {'type': 'out'}, Size(760, 1400)),
   ('invoice-in-draft', 'account.invoice', 1927, {'type': 'in'}, Size(1040, 1400)),
@@ -169,15 +171,29 @@ void main() {
         }
         await settle(40);
       }
-      await tester.runAsync(() async {
-        final render =
-            boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-        final image = await render.toImage();
-        final png = await image.toByteData(format: ui.ImageByteFormat.png);
-        Directory(out).createSync(recursive: true);
-        File('$out/flutter-$name.png')
-            .writeAsBytesSync(png!.buffer.asUint8List());
-      });
+      Future<void> shoot(String file) => tester.runAsync(() async {
+            final render = boundary.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+            final image = await render.toImage();
+            final png = await image.toByteData(format: ui.ImageByteFormat.png);
+            Directory(out).createSync(recursive: true);
+            File('$out/flutter-$file.png')
+                .writeAsBytesSync(png!.buffer.asUint8List());
+          });
+      // the identifiers of the party: the list, then a row in the form
+      if (name == 'party-identifiers') {
+        await tester.tap(find.text('Identifikatoren'));
+        await settle(30);
+        await shoot(name);
+        // mark the row (its checkbox; the first one is the header's)
+        await tester.tap(find.byType(Checkbox).at(1));
+        await settle(5);
+        await tester.tap(find.byKey(const ValueKey('x2m-switch')));
+        await settle(30);
+        await shoot('$name-form');
+        return;
+      }
+      await shoot(name);
     });
   }
 }

@@ -88,6 +88,18 @@ class SelectionLoader {
     }
   }
 
+  /// The cached options of [fd] for the [record] values, null when not
+  /// loaded (yet).
+  List<List<dynamic>>? cached(
+    FieldDefinition fd,
+    Map<String, dynamic> record,
+    Map<String, FieldDefinition> fields,
+  ) {
+    final method = fd.selectionFunction;
+    if (method == null) return fd.selection;
+    return _cache[cacheKey(method, changeWithValues(fd, record, fields))];
+  }
+
   /// [viewDef] with the options of all method-based selections for the
   /// record [values] (FieldWidget format, `recordWidgetValues`).
   Future<ViewDefinition> applyTo(

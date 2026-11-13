@@ -12,6 +12,7 @@ import '../../shared/errors/error_dialogs.dart';
 import '../model/field_definition.dart';
 import '../model/field_support.dart';
 import '../model/model_service.dart';
+import '../model/selection_loader.dart';
 import 'fill_column.dart';
 import 'form_dialog.dart';
 import 'record_form.dart';
@@ -104,6 +105,14 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
   /// Inline form view (`form` in `mode`).
   ViewDefinition? _formView;
+
+  /// [_formView] with the options of its method selections for the
+  /// inline record [_optionsRecord] (like the form and the form dialog;
+  /// else a selection like `party.identifier.type` shows its key).
+  SelectionLoader? _selections;
+  ViewDefinition? _optionsView;
+  Record? _optionsRecord;
+  Record? _optionsLoading;
   FormRoot? _formRoot;
 
   /// The inline form is shown (else the table).
@@ -966,7 +975,43 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
   void _write(String name, dynamic value) {
     final record = _current;
     if (record == null) return;
-    _run(() => setRecordWidgetValue(record, name, value));
+    _run(() => setRecordWidgetValue(record, name, value)).then((_) {
+      // selections depending on the changed values (selection_change_with)
+      _reloadOptions();
+    });
+  }
+
+  /// The form view of [record] with the options of its method selections
+  /// (loaded in the background; meanwhile the last ones).
+  ViewDefinition _inlineView(Record record) {
+    final view = _formView!;
+    if (!view.fields.values.any(SelectionLoader.isDynamic)) return view;
+    if (!identical(_optionsRecord, record) &&
+        !identical(_optionsLoading, record)) {
+      _optionsLoading = record;
+      final svc = ref.read(modelServiceProvider);
+      final model = _relModel;
+      final loader = _selections ??= SelectionLoader((method, values) =>
+          svc.getSelectionOptions(model, method, values: values));
+      loader.applyTo(view, recordWidgetValues(record)).then((viewDef) {
+        if (!identical(_optionsLoading, record)) return;
+        _optionsLoading = null;
+        _optionsRecord = record;
+        _optionsView = viewDef;
+        if (mounted) setState(() {});
+      });
+    }
+    return _optionsView ?? view;
+  }
+
+  /// Options of `selection_change_with` selections again (the values of
+  /// the inline record changed or were loaded).
+  void _reloadOptions() {
+    final view = _formView;
+    if (view == null || !SelectionLoader.hasChangeWith(view)) return;
+    _optionsRecord = null;
+    _optionsLoading = null;
+    if (mounted) setState(() {});
   }
 
   Future<void> _move(int delta) async {
@@ -999,6 +1044,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     if (record.id < 0 || _formLoaded.contains(record)) return;
     _formLoaded.add(record);
     record.load('*', processException: false).catchError((Object _) {}).whenComplete(() {
+      _reloadOptions();
       if (mounted) setState(() {});
     });
   }
@@ -1031,7 +1077,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
             key: ObjectKey(current),
             model: _relModel,
             root: _formRoot!,
-            viewDef: _formView!,
+            viewDef: _inlineView(current),
             record: current,
             excludeField: widget.fieldDef.relationField,
             onTextChanged: (name, value) => _pending[name] = value,

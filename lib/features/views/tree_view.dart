@@ -29,6 +29,7 @@ import 'record_cells.dart';
 import 'form_edit_scope.dart';
 import 'record_form.dart';
 import 'record_link.dart' show parseHexColor;
+import 'column_selections.dart';
 import 'record_widget_values.dart';
 import 'tree_context_menu.dart';
 import '../../shared/dialogs/tryton_dialogs.dart';
@@ -173,6 +174,25 @@ class _TreeViewState extends ConsumerState<TreeView> {
 
   /// Text typed in the editable row, written on focus loss.
   final Map<String, dynamic> _pending = {};
+
+  /// Options of reference columns whose selection is a server method
+  /// (e.g. `instrument` → `get_instruments`; Python `_ReferenceSelection`),
+  /// from [TrytonScreen.selectionOptions].
+  final Map<String, List<List<dynamic>>> _referenceModels = {};
+  final Set<String> _referenceLoading = {};
+
+  /// Labels of method selections in selection/multiselection columns.
+  ColumnSelections? _selectionsOf;
+  ColumnSelections get _columnSelections {
+    final current = _selectionsOf;
+    if (current != null && identical(current.screen, _screen)) return current;
+    return _selectionsOf = ColumnSelections(
+        screen: _screen,
+        service: ref.read(modelServiceProvider),
+        onLoaded: () {
+          if (mounted) setState(() {});
+        });
+  }
 
   /// RPC cache (cleared after storing the tree state / resetting widths).
   RpcCache? _rpcCache;
@@ -550,7 +570,7 @@ class _TreeViewState extends ConsumerState<TreeView> {
 
   /// Text of [c] in the row of [r] as shown (numbers with the locale).
   String _cellText(Record r, TreeColumn c) {
-    final fd = _fields[c.name];
+    final fd = _columnSelections.field(r, _fields[c.name], _fields);
     if (isNumericField(fd)) {
       final field = r.model.fields[c.name];
       return formatNumericValue(field?.get(r),
@@ -1565,7 +1585,7 @@ class _TreeViewState extends ConsumerState<TreeView> {
             onPressed: (node) => _rowButton(record, node)),
       );
     }
-    final fd = _fields[c.name];
+    final fd = _columnSelections.field(record, _fields[c.name], _fields);
     final field = record.model.fields[c.name];
     if (editing && fd != null && field != null) {
       return _editor(record, c);
@@ -1692,17 +1712,44 @@ class _TreeViewState extends ConsumerState<TreeView> {
         ? value.split(',').first
         : (value is List && value.isNotEmpty ? '${value.first}' : null);
     if (model == null || model.isEmpty) return const [];
-    final selection = _fields[c.name]?.selection;
+    final fd = _fields[c.name];
+    final selection = fd?.selection ?? _referenceSelection(c.name, fd);
     final label = selection?.where((s) => '${s[0]}' == model).firstOrNull?[1] ??
-        ref.read(modelServiceProvider).metadata?.nameOf(model) ??
-        model;
+        ref.read(modelServiceProvider).metadata?.nameOf(model);
+    // no technical name while the options load
+    if (label == null && _referenceLoading.contains(c.name)) return const [];
     return [
       Padding(
         padding: const EdgeInsets.only(right: 6),
-        child: Text('$label:',
+        child: Text('${label ?? model}:',
             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
       ),
     ];
+  }
+
+  /// The options of the reference column [name] with a method selection:
+  /// null while they load (started on the first call; a failed call
+  /// leaves no options).
+  List<List<dynamic>>? _referenceSelection(String name, FieldDefinition? fd) {
+    final method = fd?.selectionFunction;
+    if (method == null) return null;
+    final loaded = _referenceModels[name];
+    if (loaded != null || _referenceLoading.contains(name)) return loaded;
+    final props = _view.definition.rawFields[name];
+    if (props is! Map) return null;
+    _referenceLoading.add(name);
+    // shared with the search of the screen (domain parser)
+    _screen
+        .selectionOptions(Map<String, dynamic>.from(props))
+        .then((options) {
+      _referenceLoading.remove(name);
+      _referenceModels[name] = [
+        for (final o in options)
+          if (o is List) o.cast<dynamic>()
+      ];
+      if (mounted) setState(() {});
+    });
+    return null;
   }
 
   /// `<prefix>`/`<suffix>`: icon (name or field value) or text.
