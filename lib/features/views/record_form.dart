@@ -10,6 +10,7 @@ import '../../shared/widgets/shrink_to_fit.dart';
 import '../model/field_definition.dart';
 import 'embedded_tree_widget.dart';
 import 'fill_column.dart';
+import 'form_edit_scope.dart';
 import 'form_grid.dart';
 import 'record_binary_widgets.dart';
 import 'record_field_widgets.dart';
@@ -72,8 +73,61 @@ class _RecordFormState extends State<RecordForm> {
 
   Record get _record => widget.record;
 
+  /// Fields whose typed text differs from the record, reported to the
+  /// [FormEditScope] (Python `widget.modified`).
+  final Set<String> _edited = {};
+  void Function(Object key, bool modified)? _report;
+
+  @override
+  void didUpdateWidget(RecordForm old) {
+    super.didUpdateWidget(old);
+    // the text typed belonged to the record shown before
+    if (!identical(old.record, widget.record)) _clearEdits();
+  }
+
+  @override
+  void dispose() {
+    _clearEdits();
+    super.dispose();
+  }
+
+  void _clearEdits() {
+    for (final name in _edited) {
+      _report?.call((this, name), false);
+    }
+    _edited.clear();
+  }
+
+  /// A keystroke in the text input of [name]: kept by the host until
+  /// focus loss; Save is enabled at once when the text differs from the
+  /// record (Python `send_modified`).
+  void _typed(String name, dynamic value) {
+    widget.onTextChanged(name, value);
+    final modified = !_sameValue(value, _record.fieldGetClient(name));
+    if (modified ? _edited.add(name) : _edited.remove(name)) {
+      _report?.call((this, name), modified);
+    }
+  }
+
+  /// Focus loss of the text input of [name]: the host writes the value.
+  void _left(String name) {
+    widget.onBlur(name);
+    if (_edited.remove(name)) {
+      _report?.call((this, name), false);
+    }
+  }
+
+  static bool _sameValue(dynamic a, dynamic b) {
+    bool empty(dynamic v) => v == null || v == '';
+    if (empty(a) || empty(b)) return empty(a) && empty(b);
+    if (a == b) return true;
+    if (a is num && b is num) return a == b;
+    return a.toString() == b.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
+    _report = FormEditScope.of(context);
     _values = recordWidgetValues(_record);
     final side = _sideLabels;
     return Theme(
@@ -496,8 +550,8 @@ class _RecordFormState extends State<RecordForm> {
       required: PYSONEvaluator.truthy(attrs['required']),
       invalid: invalid,
       autofocus: widget.root.cursor == node.name,
-      onText: (v) => widget.onTextChanged(node.name, v),
-      onBlur: () => widget.onBlur(node.name),
+      onText: (v) => _typed(node.name, v),
+      onBlur: () => _left(node.name),
       onValue: (v) => widget.onChangedImmediate(node.name, v),
     );
     final special = _recordWidget(fd, node, args);
@@ -532,9 +586,9 @@ class _RecordFormState extends State<RecordForm> {
         autofocus: widget.root.cursor == node.name,
         model: widget.model,
         onChanged: isTextInput
-            ? (v) => widget.onTextChanged(node.name, v)
+            ? (v) => _typed(node.name, v)
             : (v) => widget.onChangedImmediate(node.name, v),
-        onBlur: isTextInput ? () => widget.onBlur(node.name) : null,
+        onBlur: isTextInput ? () => _left(node.name) : null,
       );
     // Translation dialog of translatable char/text fields (spec 9.2.5).
     if (node.attrs['translate'] == true &&
@@ -558,7 +612,7 @@ class _RecordFormState extends State<RecordForm> {
 
   Future<void> _translate(FieldNode node, bool multiline) async {
     // pending text of the field first (Python `view.set_value`)
-    widget.onBlur(node.name);
+    _left(node.name);
     await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
     try {

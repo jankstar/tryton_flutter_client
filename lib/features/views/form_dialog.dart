@@ -11,6 +11,7 @@ import '../../core/screen/screen.dart';
 import '../../core/xml/view_definition.dart';
 import '../model/model_service.dart';
 import '../model/selection_loader.dart';
+import 'form_edit_scope.dart';
 import 'record_form.dart';
 import 'record_menu.dart';
 import 'record_widget_values.dart';
@@ -294,7 +295,10 @@ class _FormDialogState extends ConsumerState<FormDialog> {
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: RecordForm(
+            // the dialog has its own buttons: no reports to a form below
+            child: FormEditScope(
+              onEdit: null,
+              child: RecordForm(
               key: ObjectKey(record),
               model: _screen.model.name,
               root: view!.formRoot!,
@@ -309,6 +313,7 @@ class _FormDialogState extends ConsumerState<FormDialog> {
               onChangedImmediate: _write,
               isReadOnly: _readonly || record.readonly || record.deleted ||
                   record.removed,
+            ),
             ),
           );
 

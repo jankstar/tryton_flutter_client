@@ -15,6 +15,7 @@ import '../model/field_support.dart';
 import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
 import 'form_dialog.dart';
+import 'form_edit_scope.dart';
 import 'search_dialog.dart';
 import 'form_label_style.dart';
 
@@ -165,6 +166,7 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
   void initState() {
     super.initState();
     _ctrl.text = _recName;
+    _ctrl.addListener(_reportText);
     _focus.addListener(_onFocus);
     if (_isReference) _loadModels();
     _loadAccess();
@@ -186,14 +188,29 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
   void didUpdateWidget(RecordMany2One old) {
     super.didUpdateWidget(old);
     if (!_typed && _ctrl.text != _recName) _ctrl.text = _recName;
+    _reportText();
   }
 
   @override
   void dispose() {
+    if (_edited) _report?.call(this, false);
     _debounce?.cancel();
     _ctrl.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  /// [FormEditScope] of the form (kept from the build).
+  void Function(Object key, bool modified)? _report;
+  bool _edited = false;
+
+  /// Typed text that is not the shown name enables Save (Python
+  /// `Many2One.modified`: text ≠ `get_client`).
+  void _reportText() {
+    final edited = _ctrl.text != _recName;
+    if (edited == _edited) return;
+    _edited = edited;
+    _report?.call(this, edited);
   }
 
   void _onFocus() {
@@ -483,6 +500,7 @@ class _RecordMany2OneState extends ConsumerState<RecordMany2One> {
 
   @override
   Widget build(BuildContext context) {
+    _report = FormEditScope.of(context);
     final l = context.l10n;
     final label = widget.required ? '$_title *' : _title;
     final field = Focus(

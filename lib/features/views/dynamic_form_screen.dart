@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/icons/tryton_icon.dart';
@@ -23,6 +24,7 @@ import 'record_form.dart';
 import 'csv_dialogs.dart';
 import 'record_menu.dart';
 import 'resource_dialogs.dart';
+import 'form_edit_scope.dart';
 import 'record_widget_values.dart';
 import '../../core/l10n/locale_provider.dart';
 import 'email_dialog.dart';
@@ -98,7 +100,31 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
 
   bool get _isNew => (_record?.id ?? -1) < 0;
   int get _recordId => _record?.id ?? -1;
-  bool get _isDirty => (_record?.modified ?? false) || _pending.isNotEmpty;
+  bool get _isDirty => (_record?.modified ?? false) || _edits.isNotEmpty;
+
+  /// Inputs whose typed text differs from the record ([FormEditScope],
+  /// also of inline x2many forms): Save is enabled at the first
+  /// keystroke (Python `screen.modified()` with `view.modified`).
+  final Set<Object> _edits = {};
+
+  void _onEdit(Object key, bool modified) {
+    final before = _edits.isNotEmpty;
+    if (modified) {
+      _edits.add(key);
+    } else {
+      _edits.remove(key);
+    }
+    if (before == _edits.isNotEmpty || !mounted) return;
+    // reports also come while the tree is built or torn down
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
+  }
 
   /// Method-based selections incl. `selection_change_with`, cached per
   /// value combination for the lifetime of this form.
@@ -171,6 +197,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     _shown = record;
     setState(() {
       _pending.clear();
+      _edits.clear();
       _notifications = const [];
       _resources = null;
       _error = null;
@@ -488,6 +515,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     if (record == null) return;
     record.cancel();
     _pending.clear();
+    _edits.clear();
     try {
       if (record.id < 0) {
         await record.defaultGet();
@@ -635,7 +663,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// The save prompt of [_confirmDiscard]: `'clean'` (nothing to ask),
   /// `'yes'` (saved), `'no'` (discarded) or null (cancelled / not saved).
   Future<String?> _askSave() async {
-    if (!_screen.modified() && _pending.isEmpty) return 'clean';
+    if (!_screen.modified() && _edits.isEmpty) return 'clean';
     final result = switch (await showSur3(context, context.l10n.recordModified)) {
       Sur3Choice.yes => 'yes',
       Sur3Choice.no => 'no',
@@ -647,6 +675,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       if (!await _saveRecord()) return null;
     } else {
       _pending.clear();
+      _edits.clear();
       try {
         await _screen.cancelCurrent();
       } on HandledRpcError {
@@ -761,7 +790,9 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     final resources = _resources;
     final actions = _recordActions(buttons);
 
-    return PopScope(
+    return FormEditScope(
+      onEdit: _onEdit,
+      child: PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
@@ -1004,7 +1035,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
       body: _withPreview(_buildBody()),
     )), // Scaffold
     ), // RecordShortcuts
-    ); // PopScope
+    ), // PopScope
+    ); // FormEditScope
   }
 
   /// Info bar with the `on_change_notify` messages (spec 10.3), above the

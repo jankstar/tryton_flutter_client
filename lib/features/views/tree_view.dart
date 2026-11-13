@@ -26,6 +26,7 @@ import '../auth/user_preferences_provider.dart';
 import '../model/field_definition.dart';
 import '../model/model_service.dart';
 import 'record_cells.dart';
+import 'form_edit_scope.dart';
 import 'record_form.dart';
 import 'record_link.dart' show parseHexColor;
 import 'record_widget_values.dart';
@@ -1627,7 +1628,11 @@ class _TreeViewState extends ConsumerState<TreeView> {
 
   /// Editor of the edited row: the form widget of the field (one-cell
   /// form on the record, on_change and states like in forms).
-  Widget _editor(Record record, TreeColumn c) => RecordForm(
+  // a list is never „modified“ while a cell is typed in (Python
+  // `ListView.modified`): no reports to the form screen
+  Widget _editor(Record record, TreeColumn c) => FormEditScope(
+      onEdit: null,
+      child: RecordForm(
         key: ValueKey(_key('edit-${record.id}-${c.key}')),
         model: _model,
         // the edited cell gets the focus (`cursor`)
@@ -1649,7 +1654,7 @@ class _TreeViewState extends ConsumerState<TreeView> {
         },
         onChangedImmediate: (name, value) => _writeEdited(record, name, value),
         isReadOnly: false,
-      );
+      ));
 
   /// url/email/callto/sip: a link icon before the value.
   List<Widget> _linkPrefix(Record record, TreeColumn c) {

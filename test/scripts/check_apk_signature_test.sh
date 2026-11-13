@@ -39,7 +39,8 @@ $1 public key MD5 digest: 0123456789abcdef0123456789abcdef
 OUT
 }
 
-# run <name> <expected exit 0|1> <upload key> <summary must contain…>
+# run <name> <expected exit 0|1> <upload key> <summary/log must contain…>
+# (an argument "!text": must NOT contain text)
 run() {
   local name="$1" expect="$2" upload="$3"
   shift 3
@@ -54,7 +55,12 @@ run() {
   fi
   local want
   for want in "$@"; do
-    if ! grep -qF -- "$want" "$WORK/summary" "$WORK/log"; then
+    if [[ "$want" == '!'* ]]; then
+      if grep -qF -- "${want:1}" "$WORK/summary" "$WORK/log"; then
+        ok=0
+        echo "  must not contain: ${want:1}"
+      fi
+    elif ! grep -qF -- "$want" "$WORK/summary" "$WORK/log"; then
       ok=0
       echo "  missing: $want"
     fi
@@ -70,7 +76,7 @@ run() {
 
 { header; signer "Signer #1" "C=US, O=Android, CN=Android Debug" "$D1"; } >"$WORK/out"
 run "debug key, no upload key: passes with a note" 0 false \
-  "Owner (DN): C=US, O=Android, CN=Android Debug" "SHA-256:    $D1" \
+  "Key:        debug key (C=US, O=Android, CN=Android Debug)" "SHA-256:    $D1" \
   "keytool:    $K1" "**Debug key**" "Verified using v2 scheme (APK Signature Scheme v2): true"
 run "debug key although the upload key is set: fails" 1 true \
   "ANDROID_KEYSTORE is set, but the APK is signed with the debug key"
@@ -78,26 +84,29 @@ run "debug key although the upload key is set: fails" 1 true \
 { header false 2
   signer "Signer #1" "CN=Jan Kramer, O=jankstar, C=DE" "$D1"
   signer "Signer #2" "CN=Second, O=jankstar, C=DE" "$D2"; } >"$WORK/out"
-run "upload key, two signers: both listed" 0 true \
-  "Signer #1" "Owner (DN): CN=Jan Kramer, O=jankstar, C=DE" \
-  "Signer #2" "Owner (DN): CN=Second, O=jankstar, C=DE" "SHA-256:    $D2"
+run "upload key, two signers: both listed, no owner name" 0 true \
+  "Signer #1" "Key:        upload key (owner not shown)" \
+  "Signer #2" "SHA-256:    $D2" "Signer #1 certificate DN: (hidden)" \
+  "!Jan Kramer" "!CN=Second"
 
 { header true
   signer "Signer (minSdkVersion=33, maxSdkVersion=2147483647)" "CN=Rotated, C=DE" "$D2"
   signer "Signer (minSdkVersion=24, maxSdkVersion=32)" "CN=Jan Kramer, C=DE" "$D1"
   signer "Source Stamp Signer" "CN=Stamp, C=DE" "$D1"; } >"$WORK/out"
 run "v3.1 signer names and source stamp" 0 true \
-  "Signer (minSdkVersion=33, maxSdkVersion=2147483647)" "Owner (DN): CN=Rotated, C=DE" \
-  "Signer (minSdkVersion=24, maxSdkVersion=32)" "Source Stamp Signer"
+  "Signer (minSdkVersion=33, maxSdkVersion=2147483647)" \
+  "Signer (minSdkVersion=24, maxSdkVersion=32)" "Source Stamp Signer" \
+  "!CN=Rotated" "!Jan Kramer"
 
 { header; echo "Signer #1 certificate DN: CN=Jan Kramer, C=DE"; } >"$WORK/out"
-run "digest missing: fails" 1 false "DN or SHA-256 digest missing"
+run "digest missing: fails" 1 false "DN or SHA-256 digest missing" "!Jan Kramer"
 
 header >"$WORK/out"
 run "no signer printed: fails" 1 false "printed no signer certificate"
 
 { header; signer "Signer #1" "CN=Jan Kramer, C=DE" "$D1"; } | sed 's/$/\r/' >"$WORK/out"
-run "CRLF line ends" 0 true "Owner (DN): CN=Jan Kramer, C=DE" "keytool:    $K1"
+run "CRLF line ends" 0 true "Key:        upload key (owner not shown)" \
+  "keytool:    $K1" "!Jan Kramer"
 
 if [[ $fails -ne 0 ]]; then
   echo "$fails failed"

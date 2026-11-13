@@ -16,6 +16,10 @@
 # SHA-256 digest: <hex>" – <name> is "Signer #<n>", with v3.1 "Signer
 # (minSdkVersion=…, maxSdkVersion=…)", or "Source Stamp Signer"; the digest
 # is lower-case hex without separators.
+#
+# The DN of an upload key holds the owner's name: it is checked, but
+# never written to the log or the summary (public for a public
+# repository) – only the debug key (CN=Android Debug) is named.
 set -euo pipefail
 
 APK="${1:?usage: $0 <apk>}"
@@ -30,7 +34,8 @@ else
   out="$("$tools_dir/apksigner" verify --verbose --print-certs "$APK")"
 fi
 out="${out//$'\r'/}"
-echo "$out"
+# the log without the DN of the certificates
+sed -E 's/( certificate DN: ).*/\1(hidden)/' <<<"$out"
 
 # keytool format of a hex digest: upper case, pairs separated by ":"
 keytool_format() {
@@ -75,6 +80,18 @@ while IFS= read -r line; do
   fi
 done <<<"$out"
 
+# the kind of key instead of the DN (the DN of an upload key names the
+# owner)
+key_kind() {
+  if [[ "$1" == *"CN=Android Debug"* ]]; then
+    echo "debug key ($1)"
+  elif [[ -z "$1" ]]; then
+    echo "(no DN)"
+  else
+    echo "upload key (owner not shown)"
+  fi
+}
+
 failed=""
 debug=""
 {
@@ -83,7 +100,7 @@ debug=""
   grep -E '^Verified using v' <<<"$out" || true
   for ((i = 0; i < n; i++)); do
     echo "${names[$i]}"
-    echo "  Owner (DN): ${dns[$i]}"
+    echo "  Key:        $(key_kind "${dns[$i]}")"
     echo "  SHA-256:    ${digests[$i]}"
     echo "  keytool:    $(keytool_format "${digests[$i]}")"
   done

@@ -114,13 +114,23 @@ jobs:
           done < <(security list-keychains -d user)
           security list-keychains -d user -s "$keychain" "${existing[@]}"
           rm "$RUNNER_TEMP/cert.p12"
-          identity="$(security find-identity -v -p codesigning "$keychain" \
-            | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -1)"
-          if [[ -z "$identity" ]]; then
+          # `  1) <SHA-1> "Developer ID Application: <name> (<team>)"`; the
+          # name is masked before anything could print it and codesign
+          # gets the SHA-1 hash: GitHub shows $GITHUB_ENV in the header
+          # of every later step, the log is public (specs/RELEASE.md)
+          line="$(security find-identity -v -p codesigning "$keychain" \
+            | grep '"Developer ID Application: ' | head -1 || true)"
+          name="$(sed -n 's/.*"Developer ID Application: \(.*\) ([A-Z0-9]*)"$/\1/p' <<<"$line")"
+          # (not the account name of the repository, see Windows)
+          owner="$(tr '[:upper:]' '[:lower:]' <<<"$GITHUB_REPOSITORY_OWNER")"
+          [[ -n "$name" && "$(tr '[:upper:]' '[:lower:]' <<<"$name")" != "$owner" ]] &&
+            echo "::add-mask::$name"
+          hash="$(sed -nE 's/^ *[0-9]+\) ([0-9A-F]{40}) .*/\1/p' <<<"$line")"
+          if [[ -z "$hash" ]]; then
             echo "::error::No 'Developer ID Application' identity in the certificate"
             exit 1
           fi
-          echo "MACOS_SIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "MACOS_SIGN_IDENTITY=$hash" >> "$GITHUB_ENV"
       - name: Build, sign, notarize and pack the DMG
         env:
           BUILD_NAME: ${{ needs.version.outputs.build_name }}
@@ -137,11 +147,26 @@ jobs:
         run: |
           dmg="build/dist/TrytonFlutterClient-$LABEL-macos.dmg"
           app="build/macos/Build/Products/Release/Tryton Flutter Client.app"
+          # the certificate names the owner (Authority=, spctl origin=): log
+          # and summary show its kind and SHA-256 fingerprint instead
+          hide() { sed -E 's/^(Authority|origin)=.*/\1=(hidden, see the certificate below)/'; }
           sign="$(codesign -dv --verbose=2 "$app" 2>&1 || true)"
-          dmg_check="$(spctl -a -vv -t open --context context:primary-signature "$dmg" 2>&1 || true)"
-          app_check="$(spctl -a -vv "$app" 2>&1 || true)"
+          dmg_check="$(spctl -a -vv -t open --context context:primary-signature "$dmg" 2>&1 | hide || true)"
+          app_check="$(spctl -a -vv "$app" 2>&1 | hide || true)"
           staple="$(xcrun stapler validate "$dmg" 2>&1 || true)"
-          echo "$sign"; echo "$dmg_check"; echo "$app_check"; echo "$staple"
+          certs="$RUNNER_TEMP/certs"
+          mkdir -p "$certs"
+          certificate="(none)"
+          if codesign -d --extract-certificates="$certs/cert" "$app" 2>/dev/null &&
+             [[ -f "$certs/cert0" ]]; then
+            kind="other certificate"
+            openssl x509 -inform DER -in "$certs/cert0" -noout -subject 2>/dev/null \
+              | grep -q 'CN *= *Developer ID Application:' && kind="Developer ID Application"
+            certificate="$kind, SHA-256 $(shasum -a 256 "$certs/cert0" | cut -d' ' -f1 | tr '[:lower:]' '[:upper:]')"
+          fi
+          rm -rf "$certs"
+          hide <<<"$sign"; echo "Certificate: $certificate"
+          echo "$dmg_check"; echo "$app_check"; echo "$staple"
           {
             echo "### macOS: signature"
             if [[ "$SIGNED" == "true" ]]; then
@@ -150,7 +175,8 @@ jobs:
               echo "**Not signed** (no MACOS_CERTIFICATE_P12) – Gatekeeper warns."
             fi
             echo '```'
-            grep -E '^(Authority|TeamIdentifier|Timestamp|Identifier)=' <<<"$sign" || true
+            grep -E '^(TeamIdentifier|Timestamp|Identifier)=' <<<"$sign" || true
+            echo "Certificate: $certificate"
             echo "DMG: $dmg_check"
             echo "App: $app_check"
             echo "Stapler: $staple"
@@ -204,12 +230,37 @@ jobs:
       - name: Prepare signing (when set)
         env:
           WINDOWS_CERTIFICATE_PFX: ${{ secrets.WINDOWS_CERTIFICATE_PFX }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           if [[ -z "$WINDOWS_CERTIFICATE_PFX" ]]; then
             echo "::warning::No WINDOWS_CERTIFICATE_PFX – unsigned installer (SmartScreen warns)."
             exit 0
           fi
           echo "$WINDOWS_CERTIFICATE_PFX" | base64 --decode > "$RUNNER_TEMP/cert.pfx"
+          # the owner's name (subject CN/O) is masked in the public log; the
+          # summary shows the issuer and the SHA-256 fingerprint
+          # (specs/RELEASE.md)
+          pem="$(openssl pkcs12 -in "$RUNNER_TEMP/cert.pfx" -nokeys -clcerts \
+                   -passin env:WINDOWS_CERTIFICATE_PASSWORD 2>/dev/null ||
+                 openssl pkcs12 -legacy -in "$RUNNER_TEMP/cert.pfx" -nokeys -clcerts \
+                   -passin env:WINDOWS_CERTIFICATE_PASSWORD 2>/dev/null || true)"
+          if [[ -n "$pem" ]]; then
+            subject="$(openssl x509 -noout -subject -nameopt multiline <<<"$pem" 2>/dev/null || true)"
+            # (not the account name of the repository: it may appear, and
+            # a mask would hide it in every URL of the log)
+            owner="$(tr '[:upper:]' '[:lower:]' <<<"$GITHUB_REPOSITORY_OWNER")"
+            while IFS= read -r value; do
+              [[ -n "$value" && "$(tr '[:upper:]' '[:lower:]' <<<"$value")" != "$owner" ]] &&
+                echo "::add-mask::$value"
+            done < <(sed -nE 's/^ *(commonName|organizationName) *= *(.*)$/\2/p' <<<"$subject")
+            fingerprint="$(openssl x509 -noout -fingerprint -sha256 <<<"$pem" | sed 's/.*=//')"
+            issuer="$(openssl x509 -noout -issuer -nameopt multiline <<<"$pem" \
+              | sed -nE 's/^ *commonName *= *(.*)$/\1/p' | head -1)"
+            echo "WINDOWS_CERT_SHA256=$fingerprint" >> "$GITHUB_ENV"
+            echo "WINDOWS_CERT_ISSUER=$issuer" >> "$GITHUB_ENV"
+          else
+            echo "::warning::The certificate could not be read with openssl – no fingerprint in the summary."
+          fi
           signtool="$(find "/c/Program Files (x86)/Windows Kits/10/bin" \
             -path '*/x64/signtool.exe' | sort -V | tail -1)"
           echo "SIGNTOOL=$signtool" >> "$GITHUB_ENV"
@@ -249,7 +300,9 @@ jobs:
             if [[ "${WINDOWS_SIGN:-}" == "1" ]]; then
               echo "Application and installer signed (Authenticode)."
               echo '```'
-              "$SIGNTOOL" verify /pa /v "$setup" 2>&1 | grep -E 'Issued to|Issued by|SHA1 hash|Successfully verified|Number of' || true
+              # without „Issued to“: the certificate names the owner
+              echo "Certificate: issued by ${WINDOWS_CERT_ISSUER:-?}, SHA-256 ${WINDOWS_CERT_SHA256:-?}"
+              "$SIGNTOOL" verify /pa "$setup" 2>&1 | grep -E 'Successfully verified|Number of' || true
               echo '```'
             else
               echo "**Not signed** (no WINDOWS_CERTIFICATE_PFX) – SmartScreen warns."

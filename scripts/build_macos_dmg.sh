@@ -11,7 +11,10 @@
 #   TRYTON_SERIES              server series, --dart-define (default: code)
 #   APP_LABEL                  release label for About (e.g. 8.0.0-beta.1)
 #   SKIP_BUILD=1               package an existing release build
-#   MACOS_SIGN_IDENTITY        "Developer ID Application: …" – signs app and DMG
+#   MACOS_SIGN_IDENTITY        signing identity: the SHA-1 hash of the
+#                              certificate (release workflow, keeps the
+#                              owner's name out of the log) or its name
+#                              "Developer ID Application: …" – signs app and DMG
 #   APPLE_ID, APPLE_APP_PASSWORD, APPLE_TEAM_ID
 #                              with the identity: notarize and staple the DMG
 set -euo pipefail
@@ -39,7 +42,8 @@ fi
 
 IDENTITY="${MACOS_SIGN_IDENTITY:-}"
 if [[ -n "$IDENTITY" ]]; then
-  echo "Signing the app with: $IDENTITY"
+  # (the identity is not printed: its name is the owner's name)
+  echo "Signing the app"
   codesign --force --deep --options runtime --timestamp \
     --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$APP"
   codesign --verify --deep --strict --verbose=2 "$APP"
