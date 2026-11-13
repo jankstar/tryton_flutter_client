@@ -14,6 +14,22 @@ struct _MyApplication {
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+// Name of the app in the title bar.
+static const char* kAppTitle = "Tryton Flutter Client";
+
+// The window icon: assets/app_icon.png of the bundle
+// (<executable dir>/data/flutter_assets/assets/app_icon.png).
+static void set_window_icon(GtkWindow* window) {
+  g_autofree gchar* exe = g_file_read_link("/proc/self/exe", nullptr);
+  if (exe == nullptr) return;
+  g_autofree gchar* dir = g_path_get_dirname(exe);
+  g_autofree gchar* icon = g_build_filename(
+      dir, "data", "flutter_assets", "assets", "app_icon.png", nullptr);
+  if (g_file_test(icon, G_FILE_TEST_EXISTS)) {
+    gtk_window_set_icon_from_file(window, icon, nullptr);
+  }
+}
+
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
@@ -45,12 +61,13 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "tryton_flutter_client");
+    gtk_header_bar_set_title(header_bar, kAppTitle);
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "tryton_flutter_client");
+    gtk_window_set_title(window, kAppTitle);
   }
+  set_window_icon(window);
 
   gtk_window_set_default_size(window, 1280, 720);
 

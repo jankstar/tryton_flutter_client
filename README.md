@@ -55,7 +55,9 @@ A native cross-platform client for the [Tryton ERP system](https://www.tryton.or
 |---|---|
 | macOS (≥ 12) | primary development platform |
 | iOS (≥ 15), Android | supported, acceptance tests in progress |
-| Windows, Linux, Web | configured, not tested |
+| Windows | builds available (installer), not tested |
+| Linux | builds available (tarball, AppImage), not tested |
+| Web | configured, not tested |
 
 ## Getting started
 
