@@ -22,10 +22,18 @@ enum FormGridNeed {
   /// [formGridInputWidth] (an input that reports no width of its own,
   /// e.g. a selection – GTK: the size request of an entry).
   input,
+
+  /// [formGridRelationWidth] (many2one/reference: buttons beside the
+  /// text).
+  relation,
 }
 
 /// The least width of an input ([FormGridNeed.input]).
 const formGridInputWidth = 80.0;
+
+/// The least width of a many2one/reference ([FormGridNeed.relation]): its
+/// open/clear buttons and a few characters.
+const formGridRelationWidth = 110.0;
 
 /// Position and behaviour of a child of [FormGrid].
 class FormGridCell extends ParentDataWidget<_GridParentData> {
@@ -107,9 +115,11 @@ class _GridParentData extends ContainerBoxParentData<RenderBox> {
   FormGridNeed need = FormGridNeed.none;
 }
 
-/// Answers 0 for the intrinsic widths of [child] and does not ask it: a
-/// list (x2many) contains a LayoutBuilder, which has no intrinsic sizes,
-/// and needs no minimum width in the grid.
+/// Answers 0 for the intrinsic sizes of [child] (widths and heights) and
+/// the smallest size for a dry layout, without asking it: a list (x2many)
+/// contains a LayoutBuilder, which has none, and needs no minimum in the
+/// grid. (A group's minimum width asks its column, which asks the heights
+/// of its children – e.g. a many2many in a titled group of a wizard.)
 class GridIntrinsicBarrier extends SingleChildRenderObjectWidget {
   const GridIntrinsicBarrier({super.key, super.child});
 
@@ -123,6 +133,12 @@ class _RenderIntrinsicBarrier extends RenderProxyBox {
   double computeMinIntrinsicWidth(double height) => 0;
   @override
   double computeMaxIntrinsicWidth(double height) => 0;
+  @override
+  double computeMinIntrinsicHeight(double width) => 0;
+  @override
+  double computeMaxIntrinsicHeight(double width) => 0;
+  @override
+  Size computeDryLayout(BoxConstraints constraints) => constraints.smallest;
 }
 
 /// Cells ([FormGridCell]) in [columns] columns (spec 9.2.2):
@@ -263,6 +279,33 @@ class _RenderFormGrid extends RenderBox
       }
       used = width;
     }
+    // the needs of the expanding columns (e.g. a date beside a long
+    // label) before the fixed columns' full line: a fixed column gives
+    // width down to its longest word (the label wraps)
+    final deficit = [for (var c = 0; c < n; c++) if (expand[c]) minimum[c]]
+            .fold(0.0, (a, b) => a + b) -
+        (width - used);
+    if (deficit > 0) {
+      final least = List.filled(n, 0.0);
+      for (final child in fixed) {
+        final d = _data(child);
+        if (d.colspan != 1) continue;
+        least[d.column] = math.max(
+            least[d.column], child.getMinIntrinsicWidth(double.infinity));
+      }
+      final spare = [
+        for (var c = 0; c < n; c++)
+          expand[c] ? 0.0 : math.max(0.0, widths[c] - least[c])
+      ];
+      final total = spare.fold(0.0, (a, b) => a + b);
+      if (total > 0) {
+        final take = math.min(deficit, total);
+        for (var c = 0; c < n; c++) {
+          widths[c] -= spare[c] * take / total;
+        }
+        used -= take;
+      }
+    }
     // the expanding columns share the rest equally; a column whose minimum
     // is larger keeps its minimum and leaves the others the remainder
     final pool = {for (var c = 0; c < n; c++) if (expand[c]) c};
@@ -271,10 +314,37 @@ class _RenderFormGrid extends RenderBox
     if (needed > rest) {
       final single = pool.fold(0.0, (a, c) => a + minimum[c] - multi[c]);
       final extra = needed - single;
-      for (final c in pool) {
-        minimum[c] = single <= rest
-            ? minimum[c] - multi[c] + (extra > 0 ? multi[c] * (rest - single) / extra : 0)
-            : (minimum[c] - multi[c]) * (single > 0 ? rest / single : 0);
+      if (single <= rest) {
+        for (final c in pool) {
+          minimum[c] = minimum[c] -
+              multi[c] +
+              (extra > 0 ? multi[c] * (rest - single) / extra : 0);
+        }
+      } else {
+        // too little for the single needs: first the floor of each column
+        // (the longest word of a label, the width of a date/number), the
+        // rest in proportion – a label does not break inside a word
+        final floor = List.filled(n, 0.0);
+        for (final child in _cells) {
+          final d = _data(child);
+          if (d.colspan != 1 || d.need != FormGridNeed.natural ||
+              !pool.contains(d.column)) {
+            continue;
+          }
+          floor[d.column] = math.min(
+              math.max(floor[d.column],
+                  child.getMinIntrinsicWidth(double.infinity)),
+              minimum[d.column] - multi[d.column]);
+        }
+        final floors = pool.fold(0.0, (a, c) => a + floor[c]);
+        final above = single - floors;
+        for (final c in pool) {
+          final own = minimum[c] - multi[c];
+          minimum[c] = floors <= rest
+              ? floor[c] +
+                  (above > 0 ? (own - floor[c]) * (rest - floors) / above : 0)
+              : floor[c] * (floors > 0 ? rest / floors : 0);
+        }
       }
     }
     while (pool.isNotEmpty) {
@@ -317,6 +387,7 @@ class _RenderFormGrid extends RenderBox
       final need = switch (d.need) {
         FormGridNeed.natural => natural(child),
         FormGridNeed.content => content(child),
+        FormGridNeed.relation => formGridRelationWidth,
         _ => formGridInputWidth,
       };
       final have = columns.fold(
