@@ -1092,4 +1092,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get resetPasswordNeedsUser =>
       'Enter server, database and user name first.';
+
+  @override
+  String get openReport => 'Open report';
+
+  @override
+  String get printReport => 'Print report';
 }

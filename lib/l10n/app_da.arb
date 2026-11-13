@@ -588,5 +588,7 @@
   "resetPassword": "Nulstil glemt adgangskode",
   "resetPasswordTooltip": "Send dig en e-mail for at nulstille din adgangskode.",
   "resetPasswordSent": "En anmodning om at nulstille din adgangskode er sendt.\nTjek venligst din indbakke.",
-  "resetPasswordNeedsUser": "Angiv først server, database og brugernavn."
+  "resetPasswordNeedsUser": "Angiv først server, database og brugernavn.",
+  "openReport": "Åbn rapport",
+  "printReport": "Udskriv rapport"
 }

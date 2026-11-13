@@ -1094,4 +1094,10 @@ class AppLocalizationsFi extends AppLocalizations {
   @override
   String get resetPasswordNeedsUser =>
       'Anna ensin palvelin, tietokanta ja käyttäjätunnus.';
+
+  @override
+  String get openReport => 'Avaa raportti';
+
+  @override
+  String get printReport => 'Tulosta raportti';
 }

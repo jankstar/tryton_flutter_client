@@ -48,7 +48,9 @@ void main() {
 
   testWidgets('wide tab: all buttons', (tester) async {
     await pumpForm(tester, server(), model: 'test.form', recordId: 1);
-    for (final t in ['Previous', 'Save', 'Duplicate', 'Reports', 'Close']) {
+    for (final t in [
+      'Previous', 'Save', 'Duplicate', 'Open report', 'Print report', 'Close'
+    ]) {
       expect(shown(t), isTrue, reason: t);
     }
     expect(find.byKey(const ValueKey('toolbar-hidden')), findsNothing);
@@ -61,7 +63,9 @@ void main() {
     for (final t in ['Save', 'Reload', 'Close']) {
       expect(shown(t), isTrue, reason: t);
     }
-    for (final t in ['Previous', 'Duplicate', 'Reports', 'Launch actions']) {
+    for (final t in [
+      'Previous', 'Duplicate', 'Open report', 'Print report', 'Launch actions'
+    ]) {
       expect(shown(t), isFalse, reason: t);
     }
     expect(tester.takeException(), isNull, reason: 'no overflow');

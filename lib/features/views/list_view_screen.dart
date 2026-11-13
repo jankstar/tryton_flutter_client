@@ -278,6 +278,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   final _actionKey = GlobalKey();
   final _relateKey = GlobalKey();
   final _printKey = GlobalKey();
+  final _printDirectKey = GlobalKey();
   final _emailKey = GlobalKey();
 
   /// Previous/next row becomes the selection (Python `display_prev/next`
@@ -376,6 +377,10 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           hasSelection &&
                   (_toolbar.print.isNotEmpty || _keywordButtons('print').isNotEmpty) ||
               _toolbar.exports.isNotEmpty),
+      RecordAction.printDirect: menu(
+          _printDirectKey,
+          hasSelection &&
+              (_toolbar.print.isNotEmpty || _keywordButtons('print').isNotEmpty)),
       RecordAction.email: single ? _email : null,
       RecordAction.export: () => showCsvExport(context,
           screen: _screen,
@@ -618,8 +623,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           ToolbarSlot(2, ToolbarDropdownButton(
             key: _printKey,
             screen: _screen,
-            icon: Icons.print_outlined,
-            tooltip: l.reports,
+            icon: Icons.open_in_new,            // tryton-open
+            tooltip: l.openReport,
             items: _toolbar.print,
             model: _model,
             selectedIds: selectedIds,
@@ -631,6 +636,22 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
             exports: _toolbar.exports,
             onExport: (export) => runPredefinedExport(context, _screen, export,
                 listed: _listed),
+          )),
+          // the same reports straight to the printer (Python „Print“)
+          ToolbarSlot(2, ToolbarDropdownButton(
+            key: _printDirectKey,
+            screen: _screen,
+            icon: Icons.print_outlined,         // tryton-print
+            tooltip: l.printReport,
+            items: _toolbar.print,
+            model: _model,
+            selectedIds: selectedIds,
+            listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
+            enabled: hasSelection,
+            beforeExecute: _confirmSave,
+            buttons: _keywordButtons('print'),
+            onButton: _runButton,
+            directPrint: true,
           )),
           ToolbarSlot(2, IconButton(
             key: _emailKey,

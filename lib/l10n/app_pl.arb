@@ -588,5 +588,7 @@
   "resetPassword": "Zresetuj hasło",
   "resetPasswordTooltip": "Wyślij wiadomość, aby zresetować hasło.",
   "resetPasswordSent": "Wysłano prośbę o zresetowanie hasła.\nSprawdź swoją skrzynkę pocztową.",
-  "resetPasswordNeedsUser": "Najpierw podaj serwer, bazę danych i nazwę użytkownika."
+  "resetPasswordNeedsUser": "Najpierw podaj serwer, bazę danych i nazwę użytkownika.",
+  "openReport": "Otwórz raport",
+  "printReport": "Drukuj raport"
 }

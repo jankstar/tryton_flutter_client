@@ -588,5 +588,7 @@
   "resetPassword": "Passwort zurücksetzen",
   "resetPasswordTooltip": "E-Mail zum Zurücksetzen des Passworts senden.",
   "resetPasswordSent": "Eine Anfrage zum Zurücksetzen Ihres Passworts wurde gesendet.\nBitte prüfen Sie Ihr Postfach.",
-  "resetPasswordNeedsUser": "Bitte zuerst Server, Datenbank und Benutzername angeben."
+  "resetPasswordNeedsUser": "Bitte zuerst Server, Datenbank und Benutzername angeben.",
+  "openReport": "Bericht öffnen",
+  "printReport": "Bericht drucken"
 }

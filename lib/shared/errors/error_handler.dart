@@ -69,13 +69,19 @@ class ErrorHandler implements RpcErrorProcessor {
   }
 
   /// Runs [call]; an error is shown and rethrown as [HandledRpcError]
-  /// (also when the user cancels a UserWarning).
+  /// (also when the user cancels a UserWarning) – except a
+  /// [ConcurrencyException], which goes unchanged to the caller.
   @override
   Future<T> process<T>(Future<T> Function() call) async {
     while (true) {
       try {
         return await call();
       } on HandledRpcError {
+        rethrow;
+      } on ConcurrencyException {
+        // resolved by the caller (Python `process_exception`: the
+        // concurrency dialog of a write/delete, `runWithConcurrencyCheck`);
+        // unresolved it reaches [run]/[show]
         rethrow;
       } on UserWarning catch (w) {
         final choice = await presenter.userWarning(w.message, w.description);

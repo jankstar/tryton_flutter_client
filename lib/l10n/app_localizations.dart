@@ -2125,6 +2125,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter server, database and user name first.'**
   String get resetPasswordNeedsUser;
+
+  /// No description provided for @openReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Open report'**
+  String get openReport;
+
+  /// No description provided for @printReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Print report'**
+  String get printReport;
 }
 
 class _AppLocalizationsDelegate

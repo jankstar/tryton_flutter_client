@@ -1093,4 +1093,10 @@ class AppLocalizationsDa extends AppLocalizations {
   @override
   String get resetPasswordNeedsUser =>
       'Angiv først server, database og brugernavn.';
+
+  @override
+  String get openReport => 'Åbn rapport';
+
+  @override
+  String get printReport => 'Udskriv rapport';
 }

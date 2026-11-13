@@ -588,5 +588,7 @@
   "resetPassword": "Palauta unohtunut salasana",
   "resetPasswordTooltip": "Lähetä sähköposti salasanan palauttamiseksi.",
   "resetPasswordSent": "Salasanan palautuspyyntö on lähetetty.\nTarkista sähköpostisi.",
-  "resetPasswordNeedsUser": "Anna ensin palvelin, tietokanta ja käyttäjätunnus."
+  "resetPasswordNeedsUser": "Anna ensin palvelin, tietokanta ja käyttäjätunnus.",
+  "openReport": "Avaa raportti",
+  "printReport": "Tulosta raportti"
 }

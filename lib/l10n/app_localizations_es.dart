@@ -1094,4 +1094,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get resetPasswordNeedsUser =>
       'Indica primero el servidor, la base de datos y el usuario.';
+
+  @override
+  String get openReport => 'Abrir informe';
+
+  @override
+  String get printReport => 'Imprimir informe';
 }

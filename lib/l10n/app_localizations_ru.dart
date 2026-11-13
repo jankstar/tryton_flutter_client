@@ -1094,4 +1094,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get resetPasswordNeedsUser =>
       'Сначала укажите сервер, базу данных и имя пользователя.';
+
+  @override
+  String get openReport => 'Открыть отчет';
+
+  @override
+  String get printReport => 'Печать отчета';
 }

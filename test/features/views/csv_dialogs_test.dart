@@ -338,7 +338,7 @@ void main() {
     });
     await pumpScreen(tester, rpc, const ScreenAttributes('test.form', mode: ['tree']),
         metadata: true);
-    await tester.tap(find.byIcon(Icons.print_outlined));
+    await tester.tap(find.byIcon(Icons.open_in_new));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('export-7')));
     await tester.pumpAndSettle();

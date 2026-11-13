@@ -6,8 +6,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/model/model.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
+import 'package:tryton_flutter_client/features/model/concurrency.dart';
 import 'package:tryton_flutter_client/features/model/model_rpc.dart';
 import 'package:tryton_flutter_client/features/model/model_service.dart';
+import 'package:tryton_flutter_client/shared/errors/error_handler.dart';
 
 /// Data layer against the Tryton test server (not part of `flutter test`,
 /// the tag `integration` is skipped in dart_test.yaml).
@@ -16,9 +18,10 @@ import 'package:tryton_flutter_client/features/model/model_service.dart';
 ///
 ///     TRYTON_PASSWORD=… flutter test --run-skipped -t integration
 ///
-/// The writing test additionally needs `TRYTON_WRITE_TEST=1`; it creates
-/// a party `CLAUDE-TEST …` with an address, changes and deletes it, and
-/// removes leftovers with that prefix.
+/// The writing tests additionally need `TRYTON_WRITE_TEST=1`; they create
+/// a party `CLAUDE-TEST …` (with an address; a second one for the
+/// concurrency conflict), change and delete it, and remove leftovers with
+/// that prefix.
 const _server = 'http://127.0.0.1:8000';
 const _database = 'tryton';
 const _prefix = 'CLAUDE-TEST';
@@ -58,8 +61,8 @@ void main() {
     } catch (_) {}
   });
 
-  Future<TrytonModel> partyModel() async {
-    final session = modelSessionFor(svc);
+  Future<TrytonModel> partyModel([ModelSession? session]) async {
+    session ??= modelSessionFor(svc);
     final model = TrytonModel('party.party', session: session);
     model.addFields(Map<String, dynamic>.from(await svc
         .execute<Map>('party.party', 'fields_get', [<String>[]])));
@@ -193,4 +196,105 @@ void main() {
       }
     }
   });
+
+  test('write: concurrency – a party changed meanwhile by someone else',
+      () async {
+    if (password == null || env['TRYTON_WRITE_TEST'] != '1') {
+      markTestSkipped('TRYTON_PASSWORD / TRYTON_WRITE_TEST=1 not set');
+      return;
+    }
+    final name = '$_prefix Konflikt ${DateTime.now().toIso8601String()}';
+    // the screen's session: error dialogs (ErrorHandler) and the
+    // concurrency dialog, here answered by the test
+    final shown = <String>[];
+    final answers = <ConcurrencyChoice>[];
+    final session = modelSessionFor(svc,
+        processor: ErrorHandler(
+            presenter: _Presenter(shown), skipWarning: (_, _) async {}),
+        concurrencyRunner: concurrencyRunner(
+          ask: () async {
+            shown.add('dialog');
+            return answers.removeAt(0);
+          },
+          onCompare: (_, _) async => shown.add('compare'),
+          onMessage: () async => shown.add('message'),
+        ));
+    Future<String> serverName(int id) async =>
+        ((await svc.execute<List>('party.party', 'read', [
+          [id],
+          ['name']
+        ]))
+            .first as Map)['name'] as String;
+    try {
+      final id = ((await svc.execute<List>('party.party', 'create', [
+        [
+          {'name': name}
+        ]
+      ]))
+          .first as int);
+      // this client loads the party (with its _timestamp) …
+      final group = RecordGroup(await partyModel(session))..load([id]);
+      final party = group.first;
+      await party.load('name');
+      expect(party.fieldGet('name'), name);
+      // … someone else saves it meanwhile …
+      await svc.execute<dynamic>('party.party', 'write', [
+        [id],
+        {'name': '$name anders'}
+      ]);
+      // … and this client saves its own change: the dialog, no error
+      await party.fieldSetClient('name', '$name meins');
+      await party.idle;
+
+      answers.add(ConcurrencyChoice.cancel);
+      expect(await party.save(), isFalse);
+      expect(shown, ['dialog'], reason: 'the dialog, not the error message');
+      expect(await serverName(id), '$name anders', reason: 'Cancel: kept');
+      expect(party.modified, isTrue, reason: 'the change stays');
+
+      shown.clear();
+      answers.add(ConcurrencyChoice.compare);
+      expect(await party.save(), isFalse);
+      expect(shown, ['dialog', 'compare']);
+
+      shown.clear();
+      answers.add(ConcurrencyChoice.writeAnyway);
+      expect(await party.save(), isTrue);
+      expect(shown, ['dialog']);
+      expect(await serverName(id), '$name meins', reason: 'Write Anyway');
+    } finally {
+      final leftovers = await svc.execute<List>('party.party', 'search', [
+        [
+          ['name', 'like', '$_prefix%']
+        ]
+      ]);
+      if (leftovers.isNotEmpty) {
+        await svc.execute<dynamic>('party.party', 'delete', [leftovers]);
+      }
+    }
+  });
+}
+
+/// The dialogs of the error handler as log entries.
+class _Presenter implements ErrorPresenter {
+  final List<String> log;
+  _Presenter(this.log);
+
+  @override
+  Future<void> userError(String message, String description) async =>
+      log.add('userError:$message');
+  @override
+  Future<WarningChoice> userWarning(String message, String description) async {
+    log.add('warning:$message');
+    return WarningChoice.cancel;
+  }
+
+  @override
+  Future<void> applicationError(String title, String details) async =>
+      log.add('app:$title');
+  @override
+  Future<void> httpError(int? code, String text) async =>
+      log.add('http:$code');
+  @override
+  Future<void> concurrency() async => log.add('error:concurrency');
 }

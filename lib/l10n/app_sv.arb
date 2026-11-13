@@ -588,5 +588,7 @@
   "resetPassword": "Återställ glömt lösenord",
   "resetPasswordTooltip": "Skicka ett e-postmeddelande för att återställa ditt lösenord.",
   "resetPasswordSent": "En begäran om att återställa ditt lösenord har skickats.\nKontrollera din inkorg.",
-  "resetPasswordNeedsUser": "Ange först server, databas och användarnamn."
+  "resetPasswordNeedsUser": "Ange först server, databas och användarnamn.",
+  "openReport": "Öppna rapport",
+  "printReport": "Skriv ut rapport"
 }

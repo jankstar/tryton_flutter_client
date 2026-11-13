@@ -1094,4 +1094,10 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get resetPasswordNeedsUser =>
       'Vul eerst server, database en gebruikersnaam in.';
+
+  @override
+  String get openReport => 'Open rapport';
+
+  @override
+  String get printReport => 'Rapport afdrukken';
 }

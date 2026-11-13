@@ -32,6 +32,7 @@ enum RecordAction {
   action,
   relate,
   print,
+  printDirect,
   email,
   export,
   import,
@@ -45,7 +46,7 @@ const recordMenuGroups = [
   [RecordAction.newRecord, RecordAction.save, RecordAction.reload, RecordAction.copy, RecordAction.delete],
   [RecordAction.logs, RecordAction.revision],
   [RecordAction.attach, RecordAction.note, RecordAction.chat, RecordAction.action, RecordAction.relate],
-  [RecordAction.print, RecordAction.email],
+  [RecordAction.print, RecordAction.printDirect, RecordAction.email],
   [RecordAction.export, RecordAction.import, RecordAction.copyUrl],
   [RecordAction.close],
 ];
@@ -77,6 +78,7 @@ SingleActivator? recordShortcut(RecordAction action) => switch (action) {
       RecordAction.print => primaryShortcut(LogicalKeyboardKey.keyP),
       RecordAction.email => primaryShortcut(LogicalKeyboardKey.keyE, shift: true),
       RecordAction.close => primaryShortcut(LogicalKeyboardKey.keyW),
+      RecordAction.printDirect ||
       RecordAction.logs ||
       RecordAction.revision ||
       RecordAction.export ||
@@ -104,6 +106,7 @@ String recordActionLabel(AppLocalizations l, RecordAction action) =>
       RecordAction.action => l.menuActions,
       RecordAction.relate => l.menuRelate,
       RecordAction.print => l.menuReport,
+      RecordAction.printDirect => l.ctxPrint,
       RecordAction.email => l.menuEmail,
       RecordAction.export => l.exportData,
       RecordAction.import => l.importData,
@@ -129,7 +132,8 @@ String recordActionLabel(AppLocalizations l, RecordAction action) =>
       RecordAction.note => ('tryton-note', Icons.sticky_note_2_outlined),
       RecordAction.action => ('tryton-launch', Icons.rocket_launch_outlined),
       RecordAction.relate => ('tryton-link', Icons.link),
-      RecordAction.print => ('tryton-print', Icons.print_outlined),
+      RecordAction.print => ('tryton-open', Icons.open_in_new),
+      RecordAction.printDirect => ('tryton-print', Icons.print_outlined),
       RecordAction.email => ('tryton-email', Icons.email_outlined),
       RecordAction.export => ('tryton-export', Icons.file_download_outlined),
       RecordAction.import => ('tryton-import', Icons.file_upload_outlined),

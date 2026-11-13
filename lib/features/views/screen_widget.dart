@@ -109,20 +109,42 @@ class _ScreenWidgetState extends ConsumerState<ScreenWidget> {
           ask: () async => mounted
               ? showConcurrencyDialog(context)
               : ConcurrencyChoice.cancel,
-          onCompare: (model, id) async =>
-              ref.read(tabsProvider.notifier).openTab(
-                    title: context.l10n.compareTabTitle('$id'),
-                    model: model,
-                    initialDomain: [
-                      ['id', '=', id]
-                    ],
-                    resId: id,
-                  ),
+          onCompare: (model, id) => _compare(svc, model, id),
           onMessage: () async {
             if (mounted) await showConcurrencyMessage(context);
           },
         ),
       );
+
+  /// „Compare“ of the concurrency dialog (Python `ConcurrencyDialog`):
+  /// the server version of the record in a new form tab „Compare:
+  /// `rec_name`“.
+  Future<void> _compare(ModelService svc, String model, int id) async {
+    final context = _screen?.attributes.context ?? const <String, dynamic>{};
+    var name = '$id';
+    try {
+      final rows = await svc.execute<dynamic>(model, 'read', [
+        [id],
+        ['rec_name'],
+      ], context: context, processException: false);
+      name = '${((rows as List).first as Map)['rec_name'] ?? id}';
+    } catch (_) {
+      // the id as title
+    }
+    if (!mounted) return;
+    ref.read(tabsProvider.notifier).openTab(
+          title: this.context.l10n.compareTabTitle(name),
+          attributes: ScreenAttributes(
+            model,
+            mode: const ['form'],
+            domain: [
+              ['id', '=', id]
+            ],
+            context: context,
+            resId: id,
+          ),
+        );
+  }
 
   /// Logical size of the window (`screen_size`), without depending on an
   /// inherited widget (the first view is loaded from initState).

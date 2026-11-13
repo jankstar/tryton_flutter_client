@@ -1094,4 +1094,10 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get resetPasswordNeedsUser =>
       'Ange först server, databas och användarnamn.';
+
+  @override
+  String get openReport => 'Öppna rapport';
+
+  @override
+  String get printReport => 'Skriv ut rapport';
 }

@@ -588,5 +588,7 @@
   "resetPassword": "Reset vergeten wachtwoord",
   "resetPasswordTooltip": "Stuurt u een email om het wachtwoord te resetten.",
   "resetPasswordSent": "Een verzoek om uw wachtwoord te resetten is verzonden.\nControleer uw mailbox.",
-  "resetPasswordNeedsUser": "Vul eerst server, database en gebruikersnaam in."
+  "resetPasswordNeedsUser": "Vul eerst server, database en gebruikersnaam in.",
+  "openReport": "Open rapport",
+  "printReport": "Rapport afdrukken"
 }

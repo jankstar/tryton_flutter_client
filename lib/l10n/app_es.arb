@@ -588,5 +588,7 @@
   "resetPassword": "Restablecer la contraseña olvidada",
   "resetPasswordTooltip": "Enviarte un correo para restablecer tu contraseña.",
   "resetPasswordSent": "Se ha enviado una solicitud para restablecer tu contraseña.\nRevisa tu buzón de correo.",
-  "resetPasswordNeedsUser": "Indica primero el servidor, la base de datos y el usuario."
+  "resetPasswordNeedsUser": "Indica primero el servidor, la base de datos y el usuario.",
+  "openReport": "Abrir informe",
+  "printReport": "Imprimir informe"
 }

@@ -588,5 +588,7 @@
   "resetPassword": "Réinitialiser le mot de passe oublié",
   "resetPasswordTooltip": "Envoyez-vous un courriel pour réinitialiser votre mot de passe.",
   "resetPasswordSent": "Une demande de réinitialisation de votre mot de passe a été envoyée.\nVeuillez consulter votre boîte aux lettres.",
-  "resetPasswordNeedsUser": "Indiquez d'abord le serveur, la base de données et l'utilisateur."
+  "resetPasswordNeedsUser": "Indiquez d'abord le serveur, la base de données et l'utilisateur.",
+  "openReport": "Ouvrir un rapport",
+  "printReport": "Imprimer un rapport"
 }

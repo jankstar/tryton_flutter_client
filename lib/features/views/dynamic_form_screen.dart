@@ -671,6 +671,7 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   final _actionKey = GlobalKey();
   final _relateKey = GlobalKey();
   final _printKey = GlobalKey();
+  final _printDirectKey = GlobalKey();
   final _emailKey = GlobalKey();
 
   /// Email (spec 11.10, Python `Form.sig_email`): save prompt, template,
@@ -734,6 +735,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
           _printKey,
           saved && (_toolbar.print.isNotEmpty || keyword('print').isNotEmpty) ||
               _toolbar.exports.isNotEmpty),
+      RecordAction.printDirect: menu(_printDirectKey,
+          saved && (_toolbar.print.isNotEmpty || keyword('print').isNotEmpty)),
       RecordAction.email: idle && saved ? _email : null,
       RecordAction.export: idle ? _exportCsv : null,
       RecordAction.import: idle && _screen.canCreate ? _importCsv : null,
@@ -945,8 +948,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
             ToolbarSlot(2, ToolbarDropdownButton(
               key: _printKey,
               screen: _screen,
-              icon: Icons.print_outlined,         // tryton-print
-              tooltip: l.reports,
+              icon: Icons.open_in_new,            // tryton-open
+              tooltip: l.openReport,
               items: _toolbar.print,
               model: _model,
               selectedIds: _isNew ? [] : [_recordId],
@@ -959,6 +962,24 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
               onButton: _executeButton,
               exports: _toolbar.exports,
               onExport: _predefinedExport,
+            )),
+            // the same reports straight to the printer (Python „Print“)
+            ToolbarSlot(2, ToolbarDropdownButton(
+              key: _printDirectKey,
+              screen: _screen,
+              icon: Icons.print_outlined,         // tryton-print
+              tooltip: l.printReport,
+              items: _toolbar.print,
+              model: _model,
+              selectedIds: _isNew ? [] : [_recordId],
+              enabled: !_isNew && !_saving,
+              beforeExecute: _confirmDiscard,
+              buttons: [
+                for (final b in buttons)
+                  if ((b.keyword ?? 'action') == 'print') b
+              ],
+              onButton: _executeButton,
+              directPrint: true,
             )),
             ToolbarSlot(2, IconButton(
               key: _emailKey,

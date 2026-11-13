@@ -42,6 +42,10 @@ class ToolbarDropdownButton extends ConsumerWidget {
   final List<Map<String, dynamic>> exports;
   final Future<void> Function(Map<String, dynamic> export)? onExport;
 
+  /// Reports go straight to the printer (`direct_print`, Python toolbar
+  /// button „Print“ beside „Report“).
+  final bool directPrint;
+
   const ToolbarDropdownButton({
     super.key,
     required this.icon,
@@ -57,6 +61,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
     this.screen,
     this.exports = const [],
     this.onExport,
+    this.directPrint = false,
   });
 
   Future<void> _execute(
@@ -74,7 +79,11 @@ class ToolbarDropdownButton extends ConsumerWidget {
         : selectedIds;
     try {
       await ref.read(actionServiceProvider).execute(
-            {'res_model': action.resModel, ...action.raw},
+            {
+              'res_model': action.resModel,
+              ...action.raw,
+              if (directPrint) 'direct_print': true,
+            },
             data: {
               'model': model,
               'model_context': screen?.contextScreen?.model.name,
