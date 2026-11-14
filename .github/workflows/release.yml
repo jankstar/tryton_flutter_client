@@ -56,7 +56,7 @@ jobs:
           if [[ -n "$suffix" ]]; then
             prerelease=true
             title="Tryton Flutter Client ${build_name} – ${suffix}"
-            [[ "$suffix" == "beta.1" ]] && title="${title} (erste Testversion)"
+            [[ "$suffix" == "beta.1" ]] && title="${title} (first test version)"
           else
             prerelease=false
             title="Tryton Flutter Client ${build_name}"
@@ -300,7 +300,7 @@ jobs:
             if [[ "${WINDOWS_SIGN:-}" == "1" ]]; then
               echo "Application and installer signed (Authenticode)."
               echo '```'
-              # without „Issued to“: the certificate names the owner
+              # without "Issued to": the certificate names the owner
               echo "Certificate: issued by ${WINDOWS_CERT_ISSUER:-?}, SHA-256 ${WINDOWS_CERT_SHA256:-?}"
               "$SIGNTOOL" verify /pa "$setup" 2>&1 | grep -E 'Successfully verified|Number of' || true
               echo '```'
@@ -458,19 +458,32 @@ jobs:
           path: dist
           merge-multiple: true
       - name: Notes
+        env:
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
         run: |
-          cat > notes.md <<'NOTES'
-          > **Testversion** – nur für **Tryton-Server 8.0**. iOS ist nicht enthalten.
-          >
-          > Unsignierte Builds: macOS (Gatekeeper) meldet „App kann nicht geöffnet werden“ – im Finder
-          > Rechtsklick → „Öffnen“ bzw. Systemeinstellungen → Datenschutz & Sicherheit → „Trotzdem öffnen“.
-          > Windows (SmartScreen) meldet „Der Computer wurde durch Windows geschützt“ – „Weitere
-          > Informationen“ → „Trotzdem ausführen“. Android: Installation aus unbekannten Quellen erlauben.
-          >
-          > Linux (Tarball bzw. AppImage, x64; arm64 falls vorhanden – ungetestet): benötigt GTK 3 und
-          > einen laufenden Schlüsselbund (gnome-keyring bzw. KWallet) für die gespeicherte Anmeldung.
-          > Der Kamera-Scanner fehlt unter Linux; Codes per Tastatur oder Hand-Scanner eingeben.
+          {
+            if [[ "$PRERELEASE" == "true" ]]; then
+              cat <<'NOTES'
+          > [!WARNING]
+          > **Test version** – use only with test or copy databases, not in production.
+          > Please report bugs as GitHub issues.
+
           NOTES
+            fi
+            cat <<'NOTES'
+          Requires a **Tryton server 8.0** (the client checks the server series at login).
+          iOS is not included.
+
+          | Platform | File | Notes |
+          |---|---|---|
+          | macOS 12+ | `…-macos.dmg` | signed and notarized; drag the app to *Applications* |
+          | Windows 10/11 | `…-windows-setup.exe` | not signed: SmartScreen shows "Windows protected your PC" → *More info* → *Run anyway* |
+          | Android | `…-android.apk` | allow installation from unknown sources |
+          | Linux x64 / arm64 | `…-linux-*.AppImage`, `…-linux-*.tar.gz` | not tested yet; needs GTK 3 and a running keyring (gnome-keyring or KWallet) for the saved login; no camera scanner – enter codes by keyboard or hand scanner |
+
+          License: GPL-3.0-or-later – see LICENSE and COPYRIGHT.
+          NOTES
+          } > notes.md
       - name: Create the draft
         env:
           GH_TOKEN: ${{ github.token }}
