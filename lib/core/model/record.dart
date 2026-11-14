@@ -100,6 +100,19 @@ class Record {
   /// Completes when all queued on_change tasks have finished.
   Future<void> get idle => _queue;
 
+  /// Idle including the loaded x2many children (their on_change and the
+  /// on_change of this record they trigger).
+  Future<void> get treeIdle async {
+    await idle;
+    for (final value in _values.values.toList()) {
+      if (value is! RecordGroup) continue;
+      for (final child in value.toList()) {
+        await child.treeIdle;
+      }
+    }
+    await idle;
+  }
+
   // ── Setting / getting ─────────────────────────────────────────────────────
 
   /// Takes server values (SAO `set`): keeps the oldest `_timestamp`, sets
@@ -639,7 +652,10 @@ class Record {
   Future<bool> _save(bool forceReload) async {
     final parent = group.parent;
     if (parent != null) return parent.save(forceReload: forceReload);
-    await idle; // pending on_change results belong to the saved values
+    // pending on_change results belong to the saved values – also those
+    // of the children (a child marks this record modified only after its
+    // on_change)
+    await treeIdle;
     if (id >= 0 && !modified) return true;
     final values = get();
     if (id < 0) {

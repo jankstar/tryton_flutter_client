@@ -190,7 +190,8 @@ class _WizardWidgetState extends ConsumerState<WizardWidget> {
     for (final MapEntry(key: name, value: value) in pending.entries) {
       await setRecordWidgetValue(record, name, value);
     }
-    await record.idle;
+    // also the inline x2many forms (their on_change marks the record)
+    await recordTreeIdle(record);
   }
 
   Future<void> _write(String name, dynamic value) async {

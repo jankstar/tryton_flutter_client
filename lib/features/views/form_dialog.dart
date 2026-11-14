@@ -191,7 +191,8 @@ class _FormDialogState extends ConsumerState<FormDialog> {
     for (final MapEntry(key: name, value: value) in pending.entries) {
       await setRecordWidgetValue(record, name, value);
     }
-    await record.idle;
+    // also the inline x2many forms (their text was written on focus loss)
+    await recordTreeIdle(record);
   }
 
   /// Valid record of the view, else the message in the info bar.

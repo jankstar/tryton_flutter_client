@@ -113,6 +113,20 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   final Set<Object> _edits = {};
 
   void _onEdit(Object key, bool modified) {
+    final record = _record;
+    if (!modified && _edits.contains(key) && record != null) {
+      // The input was left (its value written): it stays an open edit
+      // until the record and its children are idle – a child marks the
+      // parent modified only after its on_change. Else Save is disabled
+      // in between, e.g. while the mouse button is still down on it (the
+      // press itself takes the focus), and the click is lost.
+      recordTreeIdle(record).whenComplete(() => _updateEdits(key, false));
+      return;
+    }
+    _updateEdits(key, modified);
+  }
+
+  void _updateEdits(Object key, bool modified) {
     final before = _edits.isNotEmpty;
     if (modified) {
       _edits.add(key);
@@ -404,7 +418,8 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
     for (final MapEntry(key: name, value: value) in pending.entries) {
       await setRecordWidgetValue(record, name, value);
     }
-    await record.idle;
+    // also the inline x2many forms (their text was written on focus loss)
+    await recordTreeIdle(record);
   }
 
   // ─── Save ────────────────────────────────────────────────────────────────
@@ -421,7 +436,13 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// Validates and saves the record (spec 5.4.4/5.5). Returns true when it
   /// was written. Invalid fields block saving and are listed in a dialog;
   /// server errors are shown by the form's error handler.
-  Future<bool> _saveRecord() async {
+  /// The running save: a second click (button, Ctrl+S) joins it.
+  Future<bool>? _running;
+
+  Future<bool> _saveRecord() =>
+      _running ??= _saveRecordOnce().whenComplete(() => _running = null);
+
+  Future<bool> _saveRecordOnce() async {
     final record = _record;
     if (record == null) return false;
     try {
@@ -668,7 +689,11 @@ class _DynamicFormScreenState extends ConsumerState<DynamicFormScreen>
   /// The save prompt of [_confirmDiscard]: `'clean'` (nothing to ask),
   /// `'yes'` (saved), `'no'` (discarded) or null (cancelled / not saved).
   Future<String?> _askSave() async {
+    // the focused input and the pending on_change first (also of the
+    // children): only then is it known whether the record is modified
+    if (_screen.modified() || _edits.isNotEmpty) await _flushPending();
     if (!_screen.modified() && _edits.isEmpty) return 'clean';
+    if (!mounted) return null;
     final result = switch (await showSur3(context, context.l10n.recordModified)) {
       Sur3Choice.yes => 'yes',
       Sur3Choice.no => 'no',

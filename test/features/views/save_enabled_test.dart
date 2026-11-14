@@ -6,8 +6,7 @@ import 'form_harness.dart';
 /// Save is enabled at the first keystroke, not only when the input
 /// writes its value on focus loss (Python `send_modified` →
 /// `screen.modified()` with `view.modified`) – also in an inline x2many
-/// form and a many2one; not in an editable list (Python
-/// `ListView.modified` is false).
+/// form, a many2one and a cell of an editable x2many list.
 void main() {
   final desktop = TargetPlatformVariant.only(TargetPlatform.macOS);
 
@@ -101,6 +100,37 @@ void main() {
     expect(saveEnabled(tester), isFalse, reason: 'saved');
   }, variant: desktop);
 
+  testWidgets('one Save right after typing in an inline form writes, also '
+      'when the child has an on_change that takes time', (tester) async {
+    final base = server('form');
+    final rpc = FakeFormRpc({
+      ...base.handlers,
+      'model.test.line.fields_view_get': (p) => p[1] == 'tree'
+          ? {
+              'type': 'tree',
+              'arch': '<tree><field name="desc"/></tree>',
+              'fields': {
+                'desc': {'type': 'char', 'string': 'Desc', 'on_change': ['desc']}
+              },
+            }
+          : formView('<form><label name="desc"/><field name="desc"/></form>', {
+              'desc': {'type': 'char', 'string': 'Desc', 'on_change': ['desc']}
+            }),
+      // like party.address: the server answers after a while
+      'model.test.line.on_change_desc': (_) => Future<dynamic>.delayed(
+          const Duration(milliseconds: 100), () => <String, dynamic>{}),
+      'model.test.line.on_change_notify': (_) => <dynamic>[],
+    });
+    await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
+    await tester.enterText(textFieldOf('Desc'), 'Neu');
+    await tester.pump();
+    await tester.tap(find.byTooltip('Save'));
+    await pumpFrames(tester, 30);
+    final writes = rpc.named('model.test.form.write');
+    expect(writes, hasLength(1), reason: 'saved with the first click');
+    expect('${writes.single.params[1]}', contains('Neu'));
+  }, variant: desktop);
+
   testWidgets('a many2one with typed text: enabled at once', (tester) async {
     await pumpForm(tester, server('form'), model: 'test.form', recordId: 1);
     await tester.enterText(textFieldOf('Partner'), 'abc');
@@ -108,8 +138,8 @@ void main() {
     expect(saveEnabled(tester), isTrue);
   }, variant: desktop);
 
-  testWidgets('a cell of an editable x2many list: only when the cell is '
-      'left (like Python)', (tester) async {
+  testWidgets('a cell of an editable x2many list: enabled at once (saved '
+      'with one click, ABNAHME F02/D06)', (tester) async {
     await pumpForm(tester, server('tree'), model: 'test.form', recordId: 1);
     await tester.tap(find.text('L11'));
     await pumpFrames(tester, 20);
@@ -117,6 +147,6 @@ void main() {
     expect(cell, findsOneWidget, reason: 'the cell is edited');
     await tester.enterText(cell, 'Neu');
     await tester.pump();
-    expect(saveEnabled(tester), isFalse);
+    expect(saveEnabled(tester), isTrue);
   }, variant: desktop);
 }

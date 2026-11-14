@@ -39,3 +39,8 @@ Future<void> setRecordWidgetValue(Record record, String name, dynamic value,
   if (field is Many2OneField && value is List && value.isEmpty) value = null;
   return field.setClient(record, value, forceChange: forceChange);
 }
+
+/// Waits until [record] and its loaded x2many child records are idle
+/// ([Record.treeIdle]): a child marks itself (and so the parent) modified
+/// only after its on_change.
+Future<void> recordTreeIdle(Record record) => record.treeIdle;
