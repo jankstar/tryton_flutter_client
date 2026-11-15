@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/session/session.dart';
@@ -54,6 +56,8 @@ void main() {
   late _Metadata metadata;
   late SessionBootstrap bootstrap;
   late List<Map<String, dynamic>?> published;
+  late List<Object> shownErrors;
+  late Completer<bool> shell;
   final preferences = {
     'status_bar': 'Administrator [EUR]',
     'actions': [7, 8],
@@ -66,6 +70,8 @@ void main() {
   setUp(() {
     log = [];
     published = [];
+    shownErrors = [];
+    shell = Completer<bool>();
     rpc = FakeFormRpc({
       'model.res.user.get_preferences': (p) {
         log.add('get_preferences(${p.single})');
@@ -83,35 +89,69 @@ void main() {
         log.add('action $id');
         if (id == 7) throw StateError('failing start action');
       },
+      shellReady: () {
+        log.add('wait for shell');
+        return shell.future;
+      },
+      showError: (e) async {
+        log.add('error dialog');
+        shownErrors.add(e);
+      },
       applyLanguage: (language, direction) async =>
           log.add('language $language $direction'),
       publish: (p) {
         log.add(p == null ? 'publish null' : 'publish');
         published.add(p);
       },
+      log: (_) {},
     );
   });
 
-  test('run: context, preferences, metadata, actions, language, menu/chip',
+  test('run: menu/chip first, the start actions on the built shell',
       () async {
-    final result = await bootstrap.run();
+    final running = bootstrap.run();
+    await pumpEventQueue();
+    // published, but the shell is not built yet: no start action
     expect(log, [
       'reload_context',
       'get_preferences(false)',
       'metadata',
-      'action 7', // its error does not stop the start
-      'action 8',
       'language de rtl',
       'clear names',
       'publish',
+      'wait for shell',
     ]);
+    shell.complete(true);
+    final result = await running;
+    expect(log.sublist(7), [
+      'action 7',
+      'error dialog', // shown, the start goes on
+      'action 8',
+    ]);
+    expect(shownErrors.single, isA<StateError>());
     expect(metadata.loadedLocale, {'date': '%d.%m.%Y'});
     expect(result, preferences);
     expect(published.single, preferences);
+    // exactly once
+    expect(log.where((e) => e.startsWith('action ')).length, 2);
+  });
+
+  test('run without shell: the start actions are skipped', () async {
+    shell.complete(false);
+    await bootstrap.run();
+    expect(log.where((e) => e.startsWith('action ')), isEmpty);
+  });
+
+  test('run without start actions does not wait for the shell', () async {
+    preferences['actions'] = const [];
+    addTearDown(() => preferences['actions'] = [7, 8]);
+    await bootstrap.run();
+    expect(log, isNot(contains('wait for shell')));
   });
 
   test('reload after a context change: no metadata or start actions',
       () async {
+    shell.complete(true);
     await bootstrap.reload();
     expect(log, [
       'reload_context',

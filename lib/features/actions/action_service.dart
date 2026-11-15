@@ -192,7 +192,11 @@ class ActionService {
               method, params,
               context: context, processException: false)),
     )
-      ..onAction = (a, d, c) => execute(a, data: d, context: c, ui: ui);
+      // actions of `execute` (e.g. the next step of the module
+      // configuration): their errors are shown like the wizard's own
+      ..onAction = (a, d, c) => processor == null
+          ? execute(a, data: d, context: c, ui: ui)
+          : processor.process(() => execute(a, data: d, context: c, ui: ui));
     wizard.onScreen = (s) =>
         s.onViewAdded = (v) => markUnsupportedFields(s.model, v);
     try {

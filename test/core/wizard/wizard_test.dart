@@ -170,6 +170,74 @@ void main() {
     expect(w.done, isTrue);
   });
 
+  test('actions of a state with view run at once, the wizard stays open',
+      () async {
+    // module configuration: `action` answers with the view `other` and
+    // the action of the next config item (e.g. „Configure Company“)
+    final events = <String>[];
+    late TrytonWizard w;
+    w = wizard({
+      'start': (_) => view('first', buttons: [
+            cancel,
+            {'state': 'action', 'string': 'OK', 'default': true},
+          ]),
+      'action': (_) => {
+            ...view('other', buttons: [
+              cancel,
+              {'state': 'action', 'string': 'Next', 'default': true},
+            ]),
+            'actions': [
+              [
+                {'type': 'ir.action.wizard', 'name': 'Configure Company'},
+                <String, dynamic>{}
+              ]
+            ],
+          },
+    }, delete: () {
+      events.add('delete');
+      return 'reload menu';
+    });
+    w.onAction = (action, data, context) async {
+      events.add('action ${(action as Map)['name']}');
+      expect(context, {'company': 1}, reason: 'without active_* and action_id');
+      expect(w.processing, isFalse, reason: 'the view stays usable');
+      expect(w.screenState, 'other');
+      expect(w.done, isFalse);
+    };
+    await w.run();
+    await w.response(w.buttons.last);
+    expect(events, ['action Configure Company']);
+    expect(w.done, isFalse);
+    expect(w.buttons.last.string, 'Next');
+
+    await w.cancel();
+    expect(events.last, 'delete');
+    expect(await w.finished, 'reload menu');
+  });
+
+  test('at the end: finished before the actions; a failing action does not '
+      'stop the next', () async {
+    final events = <String>[];
+    final w = wizard({
+      'start': (_) => {
+            'actions': [
+              [{'type': 'ir.action.wizard', 'name': 'A'}, <String, dynamic>{}],
+              [{'type': 'ir.action.wizard', 'name': 'B'}, <String, dynamic>{}],
+            ]
+          },
+    }, delete: () {
+      events.add('delete');
+      return null;
+    });
+    w.onAction = (action, data, context) async {
+      final name = (action as Map)['name'];
+      events.add('action $name (done: ${w.done})');
+      if (name == 'A') throw StateError('A failed');
+    };
+    await expectLater(w.run(), throwsStateError);
+    expect(events, ['delete', 'action A (done: true)', 'action B (done: true)']);
+  });
+
   test('the result of delete is returned (client action)', () async {
     final w = wizard({'start': (_) => <String, dynamic>{}},
         delete: () => 'reload context');

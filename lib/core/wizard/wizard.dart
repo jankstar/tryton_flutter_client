@@ -155,7 +155,9 @@ class TrytonWizard extends ChangeNotifier {
   /// Executes [state] (SAO `process`): the end state ends the session;
   /// otherwise `execute(session, {view state: values}, state)`. A result
   /// with `view` shows it and waits for a button, without → end state;
-  /// `actions` run (after the end when the wizard ends). On error the
+  /// `actions` run after the processing (after the end when the wizard
+  /// ends, Python `wizard.py` `process`), with the context without
+  /// `active_id`, `active_ids`, `active_model`, `action_id`. On error the
   /// wizard ends without a screen, else it stays in the current state;
   /// the error is rethrown.
   Future<void> process(String state) async {
@@ -164,6 +166,7 @@ class TrytonWizard extends ChangeNotifier {
     _notify();
     final currentState = this.state;
     this.state = state;
+    dynamic actions;
     try {
       if (state == endState) {
         _complete(await _end());
@@ -196,17 +199,17 @@ class TrytonWizard extends ChangeNotifier {
       } else {
         this.state = endState;
       }
-      if (this.state == endState) {
-        final end = await _end();
-        await _executeActions(map['actions']);
-        _complete(end);
-      } else {
-        await _executeActions(map['actions']);
-      }
+      // Python `process`: at the end state first `end` (delete; the
+      // dialog/tab closes), then the actions; else the actions at once –
+      // the view stays usable meanwhile (a wizard started from this one
+      // does not block its buttons).
+      if (this.state == endState) _complete(await _end());
+      actions = map['actions'];
     } finally {
       _processing = false;
       _notify();
     }
+    await _executeActions(actions);
   }
 
   /// A new screen with exactly the view of [view] (no `fields_view_get`),
@@ -248,14 +251,24 @@ class TrytonWizard extends ChangeNotifier {
       ..remove('active_ids')
       ..remove('active_model')
       ..remove('action_id');
+    // one after another; a failing action does not stop the others, the
+    // first error is rethrown at the end
+    Object? error;
+    StackTrace? stack;
     for (final a in actions) {
       if (a is List && a.isNotEmpty) {
         final data = a.length > 1 && a[1] is Map
             ? Map<String, dynamic>.from(a[1] as Map)
             : <String, dynamic>{};
-        await onAction?.call(a[0], data, ctx);
+        try {
+          await onAction?.call(a[0], data, {...ctx});
+        } catch (e, s) {
+          error ??= e;
+          stack ??= s;
+        }
       }
     }
+    if (error != null) Error.throwWithStackTrace(error, stack!);
   }
 
   /// `delete(session)`; returns its result (client action or null).

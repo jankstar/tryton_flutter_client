@@ -18,6 +18,7 @@ import '../views/screen_widget.dart';
 import '../views/wizard_widget.dart';
 import '../actions/url_opener.dart';
 import 'menu_width.dart';
+import 'shell_context.dart';
 import 'tab_manager.dart';
 import 'tab_strip.dart';
 
@@ -36,11 +37,19 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.initState();
     // a tryton:// URL waiting for this login (profile switched, E7)
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // the shell is built: the start actions may run (spec 3.2 step 4)
+      if (mounted) shellContext.value = context;
       final url = ref.read(pendingTrytonUrlProvider);
       if (url == null || !mounted) return;
       ref.read(pendingTrytonUrlProvider.notifier).state = null;
       openTrytonUrl(context, ref, url);
     });
+  }
+
+  @override
+  void dispose() {
+    if (identical(shellContext.value, context)) shellContext.value = null;
+    super.dispose();
   }
 
   @override
