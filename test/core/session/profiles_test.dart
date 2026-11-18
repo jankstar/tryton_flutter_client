@@ -4,7 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tryton_flutter_client/core/session/profiles.dart';
-import 'package:tryton_flutter_client/core/session/session.dart' show kClientVersion;
+import 'package:tryton_flutter_client/core/session/session.dart'
+    show kAppVersion, kClientVersion;
 import 'package:tryton_flutter_client/core/session/session_store.dart';
 
 /// Connection profiles (spec 3.1, 16; H6) and the stored sessions per
@@ -34,29 +35,110 @@ void main() {
       expect(jsonDecode(prefs.getString(ProfileStore.profilesKey)!), hasLength(1));
     });
 
-    test('first start without saved values: „Standard“ = the Tryton demo '
-        'of the series, no localhost', () async {
+    test('empty profile list (new installation): the demo profile of the '
+        'series, no password, no localhost', () async {
       SharedPreferences.setMockInitialValues({});
-      final profiles = await ProfileStore().load();
+      final store = ProfileStore();
+      final profiles = await store.load();
       expect(profiles, [
         const ConnectionProfile(
-            name: 'Standard',
-            serverUrl: 'demo$kClientVersion.tryton.org',
-            database: 'demo$kClientVersion',
+            name: 'demo8.0.tryton.org',
+            serverUrl: 'https://demo8.0.tryton.org',
+            database: 'demo8.0',
             login: 'demo'),
       ]);
-      expect(demoServer, 'demo8.0.tryton.org');
-      expect(demoDatabase, 'demo8.0');
+      expect(isDemoProfile(profiles.single), isTrue);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString(ProfileStore.profilesKey), isNot(contains('localhost')));
-      expect(prefs.getString(ProfileStore.profilesKey), isNot(contains('password')),
-          reason: 'the password is not stored');
+      final raw = prefs.getString(ProfileStore.profilesKey)!;
+      expect(raw, isNot(contains('localhost')));
+      expect(raw, isNot(contains('password')), reason: 'the password is not stored');
+      // no profile used last: the demo profile is preselected
+      expect(await store.last(), isNull);
+      expect(ProfileStore.preselected(profiles, null), profiles.single);
+    });
+
+    test('a stored empty list (all deleted) gives the demo profile again',
+        () async {
+      SharedPreferences.setMockInitialValues({ProfileStore.profilesKey: '[]'});
+      expect((await ProfileStore().load()).single.name, 'demo8.0.tryton.org');
+    });
+
+    test('existing profiles: no demo profile (also after deleting it)',
+        () async {
+      const firma = ConnectionProfile(
+          name: 'Firma', serverUrl: 'erp.example.com', database: 'f', login: 'jan');
+      SharedPreferences.setMockInitialValues({
+        ProfileStore.profilesKey: jsonEncode([firma.toJson()]),
+      });
+      expect(await ProfileStore().load(), [firma]);
+      expect(ProfileStore.preselected([firma], null), firma);
+    });
+
+    test('old demo7.6.tryton.org is removed, demo8.0 added; others stay',
+        () async {
+      const firma = ConnectionProfile(
+          name: 'Firma', serverUrl: 'erp.example.com', database: 'f', login: 'jan');
+      const old = ConnectionProfile(
+          name: 'demo7.6.tryton.org',
+          serverUrl: 'demo7.6.tryton.org',
+          database: 'demo7.6',
+          login: 'demo');
+      const oldHttps = ConnectionProfile(
+          name: 'Alte Demo', serverUrl: 'https://demo6.0.tryton.org:443', database: 'demo6.0');
+      SharedPreferences.setMockInitialValues({
+        ProfileStore.profilesKey:
+            jsonEncode([old.toJson(), firma.toJson(), oldHttps.toJson()]),
+        ProfileStore.lastKey: 'demo7.6.tryton.org',
+      });
+      final store = ProfileStore();
+      final profiles = await store.load();
+      expect(profiles.map((p) => p.name), ['Firma', 'demo8.0.tryton.org']);
+      expect(profiles.last, demoProfile('8.0'));
+      // saved: the next start reads the cleaned list
+      final raw = (await SharedPreferences.getInstance())
+          .getString(ProfileStore.profilesKey)!;
+      expect(raw, isNot(contains('demo7.6')));
+      // the profile used last is gone: the demo profile is preselected
+      expect(ProfileStore.preselected(profiles, await store.last()), profiles.last);
+    });
+
+    test('nothing removed: the deleted demo profile is not added again',
+        () {
+      const firma = ConnectionProfile(name: 'Firma', serverUrl: 'erp.example.com');
+      const other = ConnectionProfile(name: 'Test', serverUrl: 'demo.example.org');
+      expect(ProfileStore.withDemo([firma, other], '8.0'), [firma, other]);
+      // the current demo kept under another name: no second one
+      const renamed = ConnectionProfile(
+          name: 'Meine Demo', serverUrl: 'demo8.0.tryton.org', database: 'demo8.0');
+      const old = ConnectionProfile(name: 'x', serverUrl: 'demo7.6.tryton.org');
+      expect(ProfileStore.withDemo([renamed, old], '8.0'), [renamed]);
+    });
+
+    test('the series comes from the app version (TRYTON_SERIES / pubspec)',
+        () async {
+      expect(demoServer, 'demo$kClientVersion.tryton.org');
+      expect(demoDatabase, 'demo$kClientVersion');
+      expect(demoProfile(), demoProfile(kClientVersion));
+      expect(kAppVersion, startsWith('$kClientVersion.'));
+      // another series: demo8.2, and the 8.0 demo is an old one then
+      SharedPreferences.setMockInitialValues({
+        ProfileStore.profilesKey: jsonEncode([demoProfile('8.0').toJson()]),
+      });
+      final profiles = await ProfileStore(series: '8.2').load();
+      expect(profiles, [
+        const ConnectionProfile(
+            name: 'demo8.2.tryton.org',
+            serverUrl: 'https://demo8.2.tryton.org',
+            database: 'demo8.2',
+            login: 'demo'),
+      ]);
     });
 
     test('create, rename, delete; no passwords stored', () async {
       SharedPreferences.setMockInitialValues({});
       final store = ProfileStore();
       var profiles = await store.load();
+      profiles = ProfileStore.rename(profiles, demoProfile().name, 'Standard')!;
       profiles = ProfileStore.put(
           profiles,
           ConnectionProfile(

@@ -591,5 +591,6 @@
   "resetPasswordNeedsUser": "Angiv først server, database og brugernavn.",
   "openReport": "Åbn rapport",
   "printReport": "Udskriv rapport",
-  "aboutTranslationsTryton": "Mange tekster fra Tryton-projektets oversættelser"
+  "aboutTranslationsTryton": "Mange tekster fra Tryton-projektets oversættelser",
+  "demoPasswordHint": "Demoserver: adgangskode »demo«"
 }

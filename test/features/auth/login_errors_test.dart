@@ -146,6 +146,10 @@ void main() {
       child: const TrytonFlutterClientApp(),
     ));
     await tester.pumpAndSettle();
+    // the demo password is not prefilled
+    await tester.enterText(
+        find.ancestor(of: find.text('Password'), matching: find.byType(TextField)),
+        'wrong');
     await tester.ensureVisible(find.text('Sign in'));
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();

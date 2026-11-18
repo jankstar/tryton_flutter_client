@@ -1102,4 +1102,7 @@ class AppLocalizationsDa extends AppLocalizations {
   @override
   String get aboutTranslationsTryton =>
       'Mange tekster fra Tryton-projektets oversættelser';
+
+  @override
+  String get demoPasswordHint => 'Demoserver: adgangskode »demo«';
 }

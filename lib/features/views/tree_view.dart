@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +26,7 @@ import '../auth/auth_provider.dart';
 import '../auth/user_preferences_provider.dart';
 import '../model/field_definition.dart';
 import '../model/model_service.dart';
+import '../shell/tab_manager.dart';
 import 'record_cells.dart';
 import 'record_form.dart';
 import 'record_link.dart' show parseHexColor;
@@ -44,11 +46,32 @@ final Map<String, Map<String, List<int?>>> _treeColumnWidth = {};
 /// Hidden optional columns per view id (Python `tree_column_optional`).
 final Map<int?, Map<String, bool>> _treeColumnOptional = {};
 
-/// Clears the column widths/optional columns of the session (logout).
+/// Column order per view moved by dragging the headers (column keys;
+/// only for the session).
+final Map<String, List<String>> _treeColumnOrder = {};
+
+/// Clears the column widths/optional columns/order of the session (logout).
 void clearListCaches() {
   _treeColumnWidth.clear();
   _treeColumnOptional.clear();
+  _treeColumnOrder.clear();
 }
+
+/// The computed widths ([_defaultWidths], 80 without field, +20 with
+/// symbol) are GTK pixels of the Python client. SAO turns them into `em`
+/// 1:10 (100 px → 10 em, `_set_column_width`); our list text is 13 px, so
+/// one GTK pixel is 1.3 px here. Widths of the view (`width`, also the
+/// stored ones the server puts there) and dragged widths are real pixels
+/// like in SAO and stay as they are.
+const treeWidthFactor = 1.3;
+
+/// Horizontal mouse movement before dragging a column header moves the
+/// column; below it a click sorts (Flutter's own drag starts after 1 px of
+/// a mouse, so a slightly shaky click did not sort).
+const treeHeaderDragThreshold = 4.0;
+
+/// Upper limit of the width a double click on a column separator gives.
+const treeAutoWidthMax = 600.0;
 
 /// Default column widths per field type (Python `_set_column_width`).
 const _defaultWidths = {
@@ -354,7 +377,7 @@ class _TreeViewState extends ConsumerState<TreeView> {
       }
     }
 
-    return [
+    return _inColumnOrder([
       for (final c in _allColumns)
         if (c.isButton)
           if (!invisible(c)) c else ...[]
@@ -363,7 +386,78 @@ class _TreeViewState extends ConsumerState<TreeView> {
             c.name != screen.attributes.excludeField &&
             !_uniqueByDomain(c.name, domain))
           c
-    ];
+    ]);
+  }
+
+  /// Key of the column order of this view in [_treeColumnOrder].
+  String get _orderKey => '$_model:${_view.viewId}';
+
+  /// [columns] in the order moved by the user (new columns keep their
+  /// place after the known ones).
+  List<TreeColumn> _inColumnOrder(List<TreeColumn> columns) {
+    final order = _treeColumnOrder[_orderKey];
+    if (order == null) return columns;
+    int pos(TreeColumn c) {
+      final i = order.indexOf(c.key);
+      return i < 0 ? order.length + columns.indexOf(c) : i;
+    }
+
+    return [...columns]..sort((a, b) => pos(a).compareTo(pos(b)));
+  }
+
+  /// Moves the column [key] to the place of [target] (dragging the header;
+  /// Python/GTK `set_reorderable`, for the session).
+  void _moveColumn(String key, String target) {
+    if (key == target) return;
+    final keys = [for (final c in _inColumnOrder(_allColumns)) c.key];
+    final to = keys.indexOf(target);
+    if (!keys.remove(key) || to < 0) return;
+    keys.insert(to, key);
+    setState(() => _treeColumnOrder[_orderKey] = keys);
+  }
+
+  /// Width of [c] for its longest loaded value and its header (double click
+  /// on the separator), at most [treeAutoWidthMax].
+  double _contentWidth(TreeColumn c) {
+    final scaler = MediaQuery.textScalerOf(context);
+    double measure(String text, TextStyle style) {
+      if (text.isEmpty) return 0;
+      final painter = TextPainter(
+          text: TextSpan(text: text, style: DefaultTextStyle.of(context).style.merge(style)),
+          textDirection: Directionality.of(context),
+          textScaler: scaler,
+          maxLines: 1)
+        ..layout();
+      final w = painter.width;
+      painter.dispose();
+      return w;
+    }
+
+    // header: bold label, sort arrow, separator
+    var width = measure(c.label, _HeaderCell.labelStyle) +
+        (_sortDirection(c) != null ? 14 : 0) +
+        8;
+    if (!c.isButton) {
+      const cellStyle = TextStyle(fontSize: 13);
+      final first = _columns.where((e) => !e.isButton).firstOrNull;
+      final indent = _isHierarchical && identical(first, c);
+      for (final row in _rows) {
+        final r = row.record;
+        if (!r.isLoaded(c.name) && r.id >= 0) continue;
+        var w = measure(_cellText(r, c), cellStyle);
+        if (indent) w += row.depth * 20.0 + 24;
+        if (w > width) width = w;
+      }
+    }
+    // cell padding (6 on both sides) and a little room
+    return (width + 12 + 4).clamp(30.0, treeAutoWidthMax).ceilToDouble();
+  }
+
+  /// Double click on the separator right of [c]: [_contentWidth], saved
+  /// like a dragged width.
+  void _autoWidth(TreeColumn c) {
+    setState(() => _resized[c.key] = _contentWidth(c));
+    _saveWidths();
   }
 
   /// [name] has one value by [domain] (the column says nothing).
@@ -402,14 +496,12 @@ class _TreeViewState extends ConsumerState<TreeView> {
     return _computedWidth(c);
   }
 
+  /// Python `computed_width` (GTK pixels) × [treeWidthFactor].
   double _computedWidth(TreeColumn c) {
-    if (c.isButton) return 80;
-    final type = _fields[c.name]?.type;
-    if (type == null) return 80;
-    var w = _defaultWidths[type] ?? 100;
-    if (c.symbol != null) w += 20;
-    // headers of narrow types need some room for their label
-    return w < 30 ? 30 : w;
+    final type = c.isButton ? null : _fields[c.name]?.type;
+    var w = type == null ? 80.0 : _defaultWidths[type] ?? 100;
+    if (type != null && c.symbol != null) w += 20;
+    return w * treeWidthFactor;
   }
 
   /// `ir.ui.view_tree_width.set_width` with the changed widths (per
@@ -421,8 +513,12 @@ class _TreeViewState extends ConsumerState<TreeView> {
     for (final c in _allColumns) {
       if (c.isButton) continue;
       final w = _resized[c.key];
-      fields.putIfAbsent(c.name, () => []).add(
-          w == null || !visible.contains(c) || c.expand > 0 ? null : w.round());
+      final list = fields.putIfAbsent(c.name, () => []);
+      while (list.length <= c.occurrence) {
+        list.add(null);
+      }
+      list[c.occurrence] =
+          w == null || !visible.contains(c) || c.expand > 0 ? null : w.round();
     }
     if (visible.isNotEmpty) {
       final last = visible.last;
@@ -1182,11 +1278,17 @@ class _TreeViewState extends ConsumerState<TreeView> {
       final lead = _selectionWidth + (reorderable ? _handleWidth : 0);
       var total = lead + _menuWidth + widths.values.fold(0.0, (a, b) => a + b);
       final free = constraints.maxWidth - total;
+      // the expanding columns share the free space, without any the last
+      // column takes it (GTK `set_expand`, the last column of a TreeView)
       final expanding = [for (final c in columns) if (c.expand > 0) c];
-      if (free > 0 && expanding.isNotEmpty) {
-        final weights = expanding.fold(0, (a, c) => a + c.expand);
-        for (final c in expanding) {
-          widths[c.key] = widths[c.key]! + free * c.expand / weights;
+      if (free > 0 && constraints.maxWidth.isFinite && columns.isNotEmpty) {
+        if (expanding.isNotEmpty) {
+          final weights = expanding.fold(0, (a, c) => a + c.expand);
+          for (final c in expanding) {
+            widths[c.key] = widths[c.key]! + free * c.expand / weights;
+          }
+        } else {
+          widths[columns.last.key] = widths[columns.last.key]! + free;
         }
         total = constraints.maxWidth;
       }
@@ -1269,6 +1371,11 @@ class _TreeViewState extends ConsumerState<TreeView> {
             width: widths[c.key],
             child: _HeaderCell(
               key: ValueKey(_key('header-${c.key}')),
+              columnKey: c.key,
+              width: widths[c.key]!,
+              touch: _touch,
+              onMove: _moveColumn,
+              onAutoWidth: () => _autoWidth(c),
               label: c.label,
               help: c.help,
               numeric: isNumericField(_fields[c.name]),
@@ -1401,19 +1508,33 @@ class _TreeViewState extends ConsumerState<TreeView> {
           ),
         );
       }
-      return InkWell(
-        onTapDown: (d) {
-          _cursorColumn = c;
-          _lastPointer = d.globalPosition;
+      // a press on a relation link (dispatched to the link first) neither
+      // selects nor opens the row (SAO stopPropagation)
+      return Listener(
+        onPointerDown: (_) {
+          _downOnLink = _linkHit;
+          _linkHit = false;
         },
-        onTap: () => _tapCell(record, c),
-        onDoubleTap: _touch ? null : () => widget.onActivate(record),
-        // touch: a long press selects the row and opens the context menu
-        onLongPress: _touch
-            ? () => _openContextMenu(record, c, _lastPointer ?? Offset.zero)
-            : null,
-        onSecondaryTapDown: (d) => _openContextMenu(record, c, d.globalPosition),
-        child: box,
+        child: InkWell(
+          onTapDown: (d) {
+            _cursorColumn = c;
+            _lastPointer = d.globalPosition;
+          },
+          onTap: () {
+            if (!_downOnLink) _tapCell(record, c);
+          },
+          onDoubleTap: _touch
+              ? null
+              : () {
+                  if (!_downOnLink) widget.onActivate(record);
+                },
+          // touch: a long press selects the row and opens the context menu
+          onLongPress: _touch
+              ? () => _openContextMenu(record, c, _lastPointer ?? Offset.zero)
+              : null,
+          onSecondaryTapDown: (d) => _openContextMenu(record, c, d.globalPosition),
+          child: box,
+        ),
       );
     }
 
@@ -1636,7 +1757,8 @@ class _TreeViewState extends ConsumerState<TreeView> {
                 factor: c.factor,
                 grouping: c.grouping,
                 symbol: c.symbol)
-            : RecordTextCell(record, c.name, fd, style: textStyle, widget: c.widget);
+            : _relationLink(record, c, marked, textStyle) ??
+                RecordTextCell(record, c.name, fd, style: textStyle, widget: c.widget);
     }
     final prefixes = [
       ..._linkPrefix(record, c),
@@ -1679,6 +1801,99 @@ class _TreeViewState extends ConsumerState<TreeView> {
         onChangedImmediate: (name, value) => _writeEdited(record, name, value),
         isReadOnly: false,
       );
+
+  // ─── Relation links (SAO Many2OneColumn / ReferenceColumn) ─────────────
+
+  /// The pointer went down on a relation link (set by the link, read by
+  /// the cell around it).
+  bool _linkHit = false;
+
+  /// The last press of a cell was on a relation link: its tap and double
+  /// tap neither select nor open the row.
+  bool _downOnLink = false;
+
+  /// Models whose access rights are being loaded for the links.
+  final Set<String> _linkAccessLoading = {};
+
+  /// Model and id a many2one/one2one/reference cell links to: null in
+  /// editable lists, without value and without read access to the model.
+  (String, int)? _linkTarget(Record record, TreeColumn c) {
+    if (_editableView) return null;
+    final field = record.model.fields[c.name];
+    String? model;
+    dynamic id;
+    if (field is Many2OneField) {
+      model = _fields[c.name]?.relation ?? field.description['relation'] as String?;
+      id = field.get(record);
+    } else if (field is ReferenceField) {
+      final value = record.values[c.name];
+      if (value is List && value.length > 1) {
+        model = value[0] is String ? value[0] as String : null;
+        id = value[1];
+      }
+    }
+    if (model == null || model.isEmpty || id is! int || id < 0) return null;
+    final session = record.model.session;
+    if (session.accessOf != null && session.accessOf!(model) == null) {
+      final load = session.loadAccess;
+      if (load != null && _linkAccessLoading.add(model)) {
+        load([model]).catchError((_) {}).whenComplete(() {
+          if (mounted) setState(() {});
+        });
+      }
+      return null;
+    }
+    if (!TrytonModel(model, session: session).access.read) return null;
+    return (model, id);
+  }
+
+  /// The value of a relation cell as link (null: no link).
+  Widget? _relationLink(
+      Record record, TreeColumn c, bool marked, TextStyle style) {
+    if (marked) return null;
+    final target = _linkTarget(record, c);
+    if (target == null) return null;
+    final fd = _fields[c.name];
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: _CellLink(
+        key: ValueKey(_key('link-${record.id}-${c.key}')),
+        onDown: () => _linkHit = true,
+        onOpen: () => _openLink(record, c, target),
+        builder: (hover) => RecordTextCell(record, c.name, fd,
+            widget: c.widget,
+            style: style.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              decoration: hover ? TextDecoration.underline : null,
+            )),
+      ),
+    );
+  }
+
+  /// Opens the linked record in a new tab (SAO `Sao.Tab.create`): the form
+  /// only, the field's view ids without the first (tree) one, the column's
+  /// label as name and the field's context.
+  void _openLink(Record record, TreeColumn c, (String, int) target) {
+    final field = record.model.fields[c.name]!;
+    final viewIds = <int?>[];
+    if (field is! ReferenceField) {
+      viewIds.addAll([
+        for (final part in '${c.attrs['view_ids'] ?? ''}'.split(','))
+          if (part.trim().isNotEmpty) int.tryParse(part.trim())
+      ]);
+      if (viewIds.isNotEmpty) viewIds.removeAt(0);
+    }
+    ref.read(tabsProvider.notifier).openTab(
+          title: c.label,
+          attributes: ScreenAttributes(
+            target.$1,
+            mode: const ['form'],
+            viewIds: viewIds,
+            context: field.getContext(record),
+            resId: target.$2,
+          ),
+        );
+  }
 
   /// url/email/callto/sip: a link icon before the value.
   List<Widget> _linkPrefix(Record record, TreeColumn c) {
@@ -1891,6 +2106,19 @@ class _TreeViewState extends ConsumerState<TreeView> {
 
 /// Header of a column: label (tooltip `help`), sort arrow, resize handle.
 class _HeaderCell extends StatelessWidget {
+  /// Style of the label (also measured by the double click on the
+  /// separator).
+  static const labelStyle = TextStyle(fontWeight: FontWeight.bold, fontSize: 12);
+
+  final String columnKey;
+  final double width;
+  final bool touch;
+
+  /// Dropping the header of another column on this one.
+  final void Function(String key, String target) onMove;
+
+  /// Double click on the separator.
+  final VoidCallback onAutoWidth;
   final String label;
   final String? help;
   final bool numeric;
@@ -1902,6 +2130,11 @@ class _HeaderCell extends StatelessWidget {
 
   const _HeaderCell({
     super.key,
+    required this.columnKey,
+    required this.width,
+    required this.touch,
+    required this.onMove,
+    required this.onAutoWidth,
     required this.label,
     this.help,
     this.numeric = false,
@@ -1914,26 +2147,65 @@ class _HeaderCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     Widget text = Text(label,
         overflow: TextOverflow.ellipsis,
         textAlign: numeric ? TextAlign.end : TextAlign.start,
-        style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
+        style: labelStyle.copyWith(
             decoration: required ? TextDecoration.underline : null));
     if (help != null) text = Tooltip(message: help!, child: text);
+    final header = InkWell(
+      onTap: onSort,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(children: [
+          Expanded(child: text),
+          if (sortDirection != null)
+            Icon(sortDirection == 'ASC' ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 14),
+        ]),
+      ),
+    );
+    // dragging the header moves the column (touch: after a long press, a
+    // plain drag scrolls the table)
+    final feedback = Material(
+      elevation: 4,
+      color: cs.surfaceContainerHighest,
+      child: SizedBox(
+        width: width,
+        height: 34,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(label, overflow: TextOverflow.ellipsis, style: labelStyle)),
+        ),
+      ),
+    );
+    final dragging = Opacity(opacity: 0.4, child: header);
+    final draggable = touch
+        ? LongPressDraggable<String>(
+            data: columnKey,
+            feedback: feedback,
+            childWhenDragging: dragging,
+            child: header)
+        : _HeaderDraggable(
+            data: columnKey,
+            feedback: feedback,
+            childWhenDragging: dragging,
+            child: header);
     return Stack(children: [
       Positioned.fill(
-        child: InkWell(
-          onTap: onSort,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Row(children: [
-              Expanded(child: text),
-              if (sortDirection != null)
-                Icon(sortDirection == 'ASC' ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 14),
-            ]),
+        child: DragTarget<String>(
+          onWillAcceptWithDetails: (d) => d.data != columnKey,
+          onAcceptWithDetails: (d) => onMove(d.data, columnKey),
+          builder: (context, candidates, _) => DecoratedBox(
+            decoration: BoxDecoration(
+              border: candidates.isEmpty
+                  ? null
+                  : Border(left: BorderSide(color: cs.primary, width: 2)),
+            ),
+            child: draggable,
           ),
         ),
       ),
@@ -1947,6 +2219,8 @@ class _HeaderCell extends StatelessWidget {
           cursor: SystemMouseCursors.resizeColumn,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            // the column left of the separator fits its content
+            onDoubleTap: onAutoWidth,
             onHorizontalDragUpdate: (d) => onResize(d.delta.dx),
             onHorizontalDragEnd: (_) => onResizeEnd(),
             child: Center(
@@ -1958,4 +2232,89 @@ class _HeaderCell extends StatelessWidget {
       ),
     ]);
   }
+}
+
+/// [Draggable] of a column header: starts only after
+/// [treeHeaderDragThreshold] px of horizontal movement.
+class _HeaderDraggable extends Draggable<String> {
+  const _HeaderDraggable({
+    required super.child,
+    required super.feedback,
+    super.data,
+    super.childWhenDragging,
+  }) : super(affinity: Axis.horizontal);
+
+  @override
+  MultiDragGestureRecognizer createRecognizer(GestureMultiDragStartCallback onStart) =>
+      _HeaderDragRecognizer(allowedButtonsFilter: allowedButtonsFilter)
+        ..onStart = onStart;
+}
+
+class _HeaderDragRecognizer extends MultiDragGestureRecognizer {
+  _HeaderDragRecognizer({super.allowedButtonsFilter}) : super(debugOwner: null);
+
+  @override
+  MultiDragPointerState createNewPointerState(PointerDownEvent event) =>
+      _HeaderDragPointerState(event.position, event.kind, gestureSettings);
+
+  @override
+  String get debugDescription => 'header drag';
+}
+
+class _HeaderDragPointerState extends MultiDragPointerState {
+  _HeaderDragPointerState(super.initialPosition, super.kind, super.gestureSettings);
+
+  @override
+  void checkForResolutionAfterMove() {
+    if (pendingDelta!.dx.abs() > treeHeaderDragThreshold) {
+      resolve(GestureDisposition.accepted);
+    }
+  }
+
+  @override
+  void accepted(GestureMultiDragStartCallback starter) => starter(initialPosition);
+}
+
+/// The text of a relation cell as link: hand cursor, underlined while
+/// hovered; a primary press and release on it opens [onOpen] at once.
+class _CellLink extends StatefulWidget {
+  final VoidCallback onDown;
+  final VoidCallback onOpen;
+  final Widget Function(bool hover) builder;
+
+  const _CellLink(
+      {super.key, required this.onDown, required this.onOpen, required this.builder});
+
+  @override
+  State<_CellLink> createState() => _CellLinkState();
+}
+
+class _CellLinkState extends State<_CellLink> {
+  bool _hover = false;
+  int? _pointer;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) {
+            if (e.buttons != kPrimaryButton) return;
+            _pointer = e.pointer;
+            widget.onDown();
+          },
+          onPointerCancel: (_) => _pointer = null,
+          onPointerUp: (e) {
+            final down = _pointer == e.pointer;
+            _pointer = null;
+            final size = context.size;
+            if (down && size != null && (Offset.zero & size).contains(e.localPosition)) {
+              widget.onOpen();
+            }
+          },
+          child: widget.builder(_hover),
+        ),
+      );
 }

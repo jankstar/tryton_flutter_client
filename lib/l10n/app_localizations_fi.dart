@@ -1102,4 +1102,7 @@ class AppLocalizationsFi extends AppLocalizations {
   @override
   String get aboutTranslationsTryton =>
       'Monet tekstit Tryton-projektin käännöksistä';
+
+  @override
+  String get demoPasswordHint => 'Demopalvelin: salasana ”demo”';
 }

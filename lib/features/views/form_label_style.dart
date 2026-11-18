@@ -30,6 +30,13 @@ class FormLabelScope extends InheritedWidget {
       old.side != side || old.underline != underline;
 }
 
+/// Background of an input in a header or toolbar (x2many search entry,
+/// search bar of the list): the background of the form like the other
+/// inputs (they are not filled and stand on it), so it stands out from
+/// the grey bar in the light and the dark theme.
+Color toolbarInputFill(BuildContext context) =>
+    Theme.of(context).colorScheme.surface;
+
 /// The border of a form field: an underline in forms (dotted when
 /// [readOnly]), a box elsewhere.
 InputBorder formBorder(BuildContext context, {bool readOnly = false}) =>

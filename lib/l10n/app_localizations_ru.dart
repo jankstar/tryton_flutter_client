@@ -1103,4 +1103,7 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get aboutTranslationsTryton =>
       'Многие тексты из переводов проекта Tryton';
+
+  @override
+  String get demoPasswordHint => 'Демо-сервер: пароль «demo»';
 }

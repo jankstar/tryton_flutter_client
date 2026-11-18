@@ -591,5 +591,6 @@
   "resetPasswordNeedsUser": "Сначала укажите сервер, базу данных и имя пользователя.",
   "openReport": "Открыть отчет",
   "printReport": "Печать отчета",
-  "aboutTranslationsTryton": "Многие тексты из переводов проекта Tryton"
+  "aboutTranslationsTryton": "Многие тексты из переводов проекта Tryton",
+  "demoPasswordHint": "Демо-сервер: пароль «demo»"
 }

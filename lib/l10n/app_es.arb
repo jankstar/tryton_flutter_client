@@ -591,5 +591,6 @@
   "resetPasswordNeedsUser": "Indica primero el servidor, la base de datos y el usuario.",
   "openReport": "Abrir informe",
   "printReport": "Imprimir informe",
-  "aboutTranslationsTryton": "Muchos textos de las traducciones del proyecto Tryton"
+  "aboutTranslationsTryton": "Muchos textos de las traducciones del proyecto Tryton",
+  "demoPasswordHint": "Servidor de demostración: contraseña «demo»"
 }

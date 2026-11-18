@@ -12,6 +12,7 @@ import '../../core/screen/screen.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../model/model_service.dart';
 import '../../shared/dialogs/tryton_dialogs.dart';
+import 'form_label_style.dart' show toolbarInputFill;
 
 /// Search bar of a list (spec 8.4, SAO `ScreenContainer`): text with the
 /// DomainParser syntax and completions, filter dialog, bookmarks (star +
@@ -246,6 +247,8 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
           button(Icons.search, l.search, _search, color: primary),
         ]),
         isDense: true,
+        filled: true,
+        fillColor: toolbarInputFill(context),
         border: const OutlineInputBorder(),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

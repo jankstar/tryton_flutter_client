@@ -591,5 +591,6 @@
   "resetPasswordNeedsUser": "Vul eerst server, database en gebruikersnaam in.",
   "openReport": "Open rapport",
   "printReport": "Rapport afdrukken",
-  "aboutTranslationsTryton": "Veel teksten uit de vertalingen van het Tryton-project"
+  "aboutTranslationsTryton": "Veel teksten uit de vertalingen van het Tryton-project",
+  "demoPasswordHint": "Demoserver: wachtwoord ‘demo’"
 }

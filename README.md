@@ -69,7 +69,7 @@ flutter gen-l10n          # after changing lib/l10n/app_*.arb
 flutter run -d macos      # or: -d ios, -d android
 ```
 
-On first start enter the server URL (e.g. `http://localhost:8000`), choose the database and log in.
+On first start a profile for the public Tryton demo server of the series is preselected (`demo8.0.tryton.org`, user and password `demo`); for your own server add a profile with its URL (e.g. `http://localhost:8000`), choose the database and log in.
 
 Build:
 

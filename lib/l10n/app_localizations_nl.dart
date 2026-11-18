@@ -1105,4 +1105,7 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get aboutTranslationsTryton =>
       'Veel teksten uit de vertalingen van het Tryton-project';
+
+  @override
+  String get demoPasswordHint => 'Demoserver: wachtwoord ‘demo’';
 }

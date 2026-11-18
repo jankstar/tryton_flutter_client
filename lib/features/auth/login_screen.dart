@@ -25,11 +25,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  // the Tryton demo until the saved profile is applied
-  final _serverCtrl = TextEditingController(text: demoServer);
+  // the Tryton demo until the saved profile is applied; the password is
+  // never prefilled (the demo's is shown as a hint)
+  final _serverCtrl = TextEditingController(text: demoProfile().serverUrl);
   final _dbCtrl = TextEditingController(text: demoDatabase);
   final _userCtrl = TextEditingController(text: demoLogin);
-  final _passCtrl = TextEditingController(text: demoPassword);
+  final _passCtrl = TextEditingController();
   final _mfaCtrl = TextEditingController();
 
   bool _passwordObscured = true;
@@ -66,9 +67,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final last = await _profileStore.last();
     if (!mounted) return;
     setState(() => _profiles = profiles);
-    final profile = _profileForPendingUrl() ??
-        profiles.where((p) => p.name == last).firstOrNull ??
-        profiles.firstOrNull;
+    final profile =
+        _profileForPendingUrl() ?? ProfileStore.preselected(profiles, last);
     if (profile != null) _apply(profile);
   }
 
@@ -92,12 +92,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _serverCtrl.text = profile.serverUrl;
     _dbCtrl.text = profile.database;
     _userCtrl.text = profile.login;
-    // only the public demo gets its (public) password
-    _passCtrl.text = profile.serverUrl == demoServer &&
-            profile.database == demoDatabase &&
-            profile.login == demoLogin
-        ? demoPassword
-        : '';
+    _passCtrl.text = '';
+  }
+
+  /// The selected profile is the Tryton demo of the series (hint with its
+  /// password below the password field).
+  bool get _demoSelected {
+    final profile = _profile;
+    return profile != null && isDemoProfile(profile);
   }
 
   /// The session of [profile] (`login@host:port/db`, A8) is resumed.
@@ -234,6 +236,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           obscureText: _passwordObscured,
                           decoration: InputDecoration(
                             labelText: localizedCtx.l10n.password,
+                            helperText: _demoSelected
+                                ? localizedCtx.l10n.demoPasswordHint
+                                : null,
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(_passwordObscured

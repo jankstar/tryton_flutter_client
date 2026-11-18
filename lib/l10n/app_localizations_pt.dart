@@ -1103,4 +1103,7 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get aboutTranslationsTryton =>
       'Muitos textos das traduções do projeto Tryton';
+
+  @override
+  String get demoPasswordHint => 'Servidor de demonstração: senha “demo”';
 }

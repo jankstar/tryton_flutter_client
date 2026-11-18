@@ -21,6 +21,7 @@ import 'search_dialog.dart';
 import 'tree_view.dart';
 import 'wizard_widget.dart' show wizardInvalidTexts;
 import '../../shared/dialogs/tryton_dialogs.dart';
+import 'form_label_style.dart' show toolbarInputFill;
 
 /// Views of x2many relations (`fields_view_get`), loaded once per
 /// relation and view type (values, not futures: a cached future would be
@@ -610,6 +611,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                 hintText: context.l10n.search,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                // like the other inputs, not the grey of the bar
+                filled: true,
+                fillColor: toolbarInputFill(context),
                 border: const OutlineInputBorder(),
               ),
               onSubmitted: (text) {

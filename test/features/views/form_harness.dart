@@ -64,7 +64,8 @@ Future<void> pumpForm(WidgetTester tester, FakeFormRpc rpc,
         bool metadata = false,
         Map<String, dynamic>? preferences,
         Map<String, dynamic> context = const {},
-        Size size = const Size(1400, 1000)}) =>
+        Size size = const Size(1400, 1000),
+        ThemeData? theme}) =>
     pumpScreen(
         tester,
         rpc,
@@ -75,7 +76,8 @@ Future<void> pumpForm(WidgetTester tester, FakeFormRpc rpc,
         settle: settle,
         metadata: metadata,
         preferences: preferences,
-        size: size);
+        size: size,
+        theme: theme);
 
 /// Pumps a [ScreenWidget] with [attributes] on [rpc] (English texts).
 Future<void> pumpScreen(
@@ -83,12 +85,14 @@ Future<void> pumpScreen(
         {bool settle = true,
         bool metadata = false,
         Map<String, dynamic>? preferences,
-        Size size = const Size(1400, 1000)}) =>
+        Size size = const Size(1400, 1000),
+        ThemeData? theme}) =>
     pumpApp(tester, rpc, ScreenWidget(attributes: attributes, title: 'Form'),
         settle: settle,
         metadata: metadata,
         preferences: preferences,
-        size: size);
+        size: size,
+        theme: theme);
 
 /// Pumps [home] in the app setup of the tests (providers on [rpc],
 /// English texts).
@@ -97,7 +101,8 @@ Future<void> pumpApp(WidgetTester tester, FakeFormRpc rpc, Widget home,
     bool metadata = false,
     Map<String, dynamic>? preferences,
     Size size = const Size(1400, 1000),
-    List<Override> overrides = const []}) async {
+    List<Override> overrides = const [],
+    ThemeData? theme}) async {
   // digits/symbols are cached per session
   FloatField.clearCaches();
   clearMany2OneSelectionCache();
@@ -123,6 +128,7 @@ Future<void> pumpApp(WidgetTester tester, FakeFormRpc rpc, Widget home,
       ...overrides,
     ],
     child: MaterialApp(
+      theme: theme,
       locale: const Locale('en'),
       localizationsDelegates: const [
         ...AppLocalizations.localizationsDelegates,

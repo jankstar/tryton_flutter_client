@@ -591,5 +591,6 @@
   "resetPasswordNeedsUser": "Anna ensin palvelin, tietokanta ja käyttäjätunnus.",
   "openReport": "Avaa raportti",
   "printReport": "Tulosta raportti",
-  "aboutTranslationsTryton": "Monet tekstit Tryton-projektin käännöksistä"
+  "aboutTranslationsTryton": "Monet tekstit Tryton-projektin käännöksistä",
+  "demoPasswordHint": "Demopalvelin: salasana ”demo”"
 }

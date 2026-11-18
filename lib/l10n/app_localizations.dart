@@ -2143,6 +2143,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Many texts from the translations of the Tryton project'**
   String get aboutTranslationsTryton;
+
+  /// Login screen: hint below the password field while the profile of the public Tryton demo server is selected
+  ///
+  /// In en, this message translates to:
+  /// **'Demo server: password “demo”'**
+  String get demoPasswordHint;
 }
 
 class _AppLocalizationsDelegate

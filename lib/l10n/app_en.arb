@@ -1089,5 +1089,9 @@
   "aboutTranslationsTryton": "Many texts from the translations of the Tryton project",
   "@aboutTranslationsTryton": {
     "description": "About dialog: the translations partly come from Tryton"
+  },
+  "demoPasswordHint": "Demo server: password “demo”",
+  "@demoPasswordHint": {
+    "description": "Login screen: hint below the password field while the profile of the public Tryton demo server is selected"
   }
 }
