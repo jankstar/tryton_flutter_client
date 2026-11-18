@@ -427,6 +427,29 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
     return added;
   }
 
+  /// Adds fields like [addFieldsWithDefaults] for synchronous callers (a
+  /// screen adding its view, an x2many widget): the `default_get` of the
+  /// added fields runs in the queue of each new record (Python
+  /// `Group.add_fields`), so a save waits for it (`Record.treeIdle`).
+  List<String> addFieldsQueued(Map<String, dynamic> fields) {
+    final added = model.addFields(fields);
+    final newRecords = [for (final r in _records) if (r.id < 0) r];
+    if (newRecords.isEmpty || added.isEmpty) return added;
+    final values = model
+        .execute('default_get', [added], context: context)
+        .then((v) => v is Map ? v.cast<String, dynamic>() : <String, dynamic>{});
+    for (final r in newRecords) {
+      r._enqueue(() async {
+        final v = await values;
+        if (v.isNotEmpty) await r.setDefault(v, modified: false);
+      }).catchError((Object _) {});
+    }
+    values.then((v) {
+      if (v.isNotEmpty) recordModified();
+    }, onError: (Object _) {});
+    return added;
+  }
+
   void destroy() {
     parent?.group.children.remove(this);
     parent = null;

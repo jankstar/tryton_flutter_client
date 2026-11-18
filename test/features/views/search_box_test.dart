@@ -7,7 +7,11 @@ import 'form_harness.dart';
 
 /// Search bar (spec 8.4) with DomainParser syntax (7.3) and a fake RPC.
 void main() {
-  FakeFormRpc server({List<dynamic> searchValue = const []}) => FakeFormRpc({
+  FakeFormRpc server(
+          {List<dynamic> searchValue = const [],
+          Map<String, dynamic> extraFields = const {},
+          String extraArch = ''}) =>
+      FakeFormRpc({
         'model.ir.model.list_models': (_) => ['test.form'],
         'model.ir.model.access.get_access': (p) => {
               for (final m in p[0] as List)
@@ -39,7 +43,8 @@ void main() {
               'type': 'tree',
               'view_id': 3,
               'arch': '<tree><field name="name"/><field name="state"/>'
-                  '<field name="amount"/><field name="active"/></tree>',
+                  '<field name="amount"/><field name="active"/>$extraArch'
+                  '</tree>',
               'fields': {
                 'name': {'type': 'char', 'string': 'Name'},
                 'state': {
@@ -52,8 +57,15 @@ void main() {
                 },
                 'amount': {'type': 'float', 'string': 'Amount'},
                 'active': {'type': 'boolean', 'string': 'Active'},
+                ...extraFields,
               },
             },
+        'model.test.form.get_kinds': (_) => [
+              [null, ''],
+              ['z', 'Zulu'],
+              ['a', 'Alpha'],
+              ['m', 'Mike Two'],
+            ],
         'model.test.form.search': (_) => [1],
         'model.test.form.read': (p) => [
               for (final id in p[0] as List)
@@ -168,7 +180,7 @@ void main() {
     await tester.enterText(find.byKey(const ValueKey('filter-name')), 'Doe');
     await tester.enterText(find.byKey(const ValueKey('filter-from-amount')), '1');
     await tester.enterText(find.byKey(const ValueKey('filter-to-amount')), '5');
-    await tester.tap(find.widgetWithText(FilterChip, 'Done'));
+    await tester.tap(find.byKey(const ValueKey('filter-state-Done')));
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Find'));
     await pumpFrames(tester);
@@ -195,5 +207,106 @@ void main() {
     await tester.pump();
     expect(shown(tester), 'State:');
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+  });
+
+  Future<void> openFilter(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('search-filter')));
+    await pumpFrames(tester, 5);
+  }
+
+  Future<void> find_(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('filter-find')));
+    await pumpFrames(tester);
+  }
+
+  bool checked(WidgetTester tester, String key) => tester
+      .widget<Checkbox>(find.descendant(
+          of: find.byKey(ValueKey(key)), matching: find.byType(Checkbox)))
+      .value!;
+
+  testWidgets(
+      'filter: static selection is a sorted check list, several values '
+      '→ "A;B" → in', (tester) async {
+    final rpc = server();
+    await pumpScreen(tester, rpc, const ScreenAttributes('test.form'),
+        settle: false, metadata: true);
+    await openFilter(tester);
+    // a row per option with a check box, sorted by label
+    final rows = tester
+        .widgetList<Text>(find.descendant(
+            of: find.byKey(const ValueKey('filter-state')),
+            matching: find.byType(Text)))
+        .map((t) => t.data)
+        .toList();
+    expect(rows, ['Done', 'Draft']);
+    expect(checked(tester, 'filter-state-Draft'), isFalse);
+    await tester.tap(find.byKey(const ValueKey('filter-state-Draft')));
+    await tester.pump();
+    await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey('filter-state-Done')),
+        matching: find.byType(Checkbox)));
+    await tester.pump();
+    expect(checked(tester, 'filter-state-Draft'), isTrue);
+    expect(checked(tester, 'filter-state-Done'), isTrue);
+    await find_(tester);
+    expect(shown(tester), 'State: Done;Draft');
+    expect(lastSearch(rpc).params[0], [
+      ['state', 'in', ['done', 'draft']]
+    ]);
+
+    // reopened after the search: the choice is kept; Clear empties it
+    await openFilter(tester);
+    expect(checked(tester, 'filter-state-Done'), isTrue);
+    await tester.tap(find.byKey(const ValueKey('filter-clear')));
+    await tester.pump();
+    expect(checked(tester, 'filter-state-Done'), isFalse);
+    expect(checked(tester, 'filter-state-Draft'), isFalse);
+    await tester.tap(find.byKey(const ValueKey('filter-state-Draft')));
+    await tester.pump();
+    await find_(tester);
+    expect(lastSearch(rpc).params[0], [
+      ['state', '=', 'draft']
+    ]);
+
+    // another search text (cleared): the dialog starts empty
+    await tester.tap(find.byTooltip('Clear'));
+    await pumpFrames(tester);
+    await openFilter(tester);
+    expect(checked(tester, 'filter-state-Draft'), isFalse);
+  });
+
+  testWidgets(
+      'filter: method selection is loaded (sort=False keeps the order), '
+      'labels with spaces quoted', (tester) async {
+    final rpc = server(extraFields: {
+      'kind': {
+        'type': 'selection',
+        'string': 'Kind',
+        'selection': 'get_kinds',
+        'sort': false,
+        'readonly': true,
+      },
+    }, extraArch: '<field name="kind"/>');
+    await pumpScreen(tester, rpc, const ScreenAttributes('test.form'),
+        settle: false, metadata: true);
+    expect(rpc.named('model.test.form.get_kinds'), hasLength(1));
+    await openFilter(tester);
+    final rows = tester
+        .widgetList<Text>(find.descendant(
+            of: find.byKey(const ValueKey('filter-kind')),
+            matching: find.byType(Text)))
+        .map((t) => t.data)
+        .toList();
+    // (the screen sorts the method selection by label like Python
+    // `Screen.get_selection`; `sort` False keeps that order)
+    expect(rows, ['""', 'Alpha', 'Mike Two', 'Zulu']);
+    await tester.tap(find.byKey(const ValueKey('filter-kind-Mike Two')));
+    await tester.tap(find.byKey(const ValueKey('filter-kind-Alpha')));
+    await tester.pump();
+    await find_(tester);
+    expect(shown(tester), 'Kind: Alpha;"Mike Two"');
+    expect(lastSearch(rpc).params[0], [
+      ['kind', 'in', ['a', 'm']]
+    ]);
   });
 }

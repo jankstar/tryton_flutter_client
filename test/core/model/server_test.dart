@@ -377,8 +377,12 @@ void main() {
       final root = RecordGroup(saleModel(modelSession: fakeSession(rpc)));
       final sale =
           await root.newRecordWithDefaults(defaults: {'name': 'Vorgabe'});
-      final call = rpc.calls.single;
+      final call = rpc.named('sale.sale.default_get').single;
       expect(call.params[0], containsAll(['name', 'state', 'lines']));
+      // the new line gets the defaults of the view fields that the value
+      // dict does not give (Python `Group.add_fields`); quantity stays
+      final lineDefaults = rpc.named('sale.line.default_get').single;
+      expect(lineDefaults.params[0], unorderedEquals(['sale', 'product', 'details']));
       expect(call.context['default_name'], 'Vorgabe');
       expect(sale.fieldGet('state'), 'draft');
       expect(sale.fieldGetClient('party'), 'Jan');

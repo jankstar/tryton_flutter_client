@@ -13,6 +13,7 @@ import '../../shared/dialogs/tryton_dialogs.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../shared/widgets/toolbar_dropdown_button.dart';
 import '../model/model_service.dart';
+import '../model/selection_loader.dart';
 import '../model/toolbar_data.dart';
 import '../actions/action_service.dart';
 import 'csv_dialogs.dart';
@@ -82,6 +83,13 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   /// Text of the context form not yet written (on focus loss).
   final Map<String, dynamic> _ctxPending = {};
 
+  /// View of the context form with the options of its method selections
+  /// (e.g. `state` with `get_state`), for [_ctxViewRecord]; null while not
+  /// loaded – the form then uses the view as given.
+  ViewDefinition? _ctxViewDef;
+  Record? _ctxViewRecord;
+  SelectionLoader? _ctxSelections;
+
   TrytonScreen get _screen => widget.screen;
   String get _model => _screen.model.name;
   List<TreeRow> get _rows => _table.rows;
@@ -131,7 +139,38 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   }
 
   void _onScreenChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    final record = _screen.contextScreen?.currentRecord;
+    if (record != null && !identical(record, _ctxViewRecord)) {
+      _ctxViewRecord = record;
+      _ctxViewDef = null;
+      _loadContextSelections();
+    }
+  }
+
+  /// Options of the method selections of the context form (like the form,
+  /// Python `SelectionMixin.init_selection`): without them the field had no
+  /// choice. Again after a change for `selection_change_with`.
+  Future<void> _loadContextSelections({bool changed = false}) async {
+    final cs = _screen.contextScreen;
+    final view = cs?.currentView;
+    final record = cs?.currentRecord;
+    if (cs == null || view == null || record == null) return;
+    final def = view.definition;
+    if (!def.fields.values.any(SelectionLoader.isDynamic)) return;
+    if (changed && !SelectionLoader.hasChangeWith(def)) return;
+    final svc = ref.read(modelServiceProvider);
+    final model = cs.model.name;
+    final loader = _ctxSelections ??= SelectionLoader((method, values) =>
+        svc.getSelectionOptions(model, method, values: values));
+    final updated = await loader.applyTo(def, recordWidgetValues(record));
+    if (mounted && identical(cs.currentRecord, record)) {
+      setState(() {
+        _ctxViewRecord = record;
+        _ctxViewDef = updated;
+      });
+    }
   }
 
   /// End of the shown rows: the next search page.
@@ -154,6 +193,11 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final screen = _screen;
     screen.addListener(_onScreenChanged);
     screen.contextScreen?.addListener(_onScreenChanged);
+    final ctxRecord = screen.contextScreen?.currentRecord;
+    if (ctxRecord != null) {
+      _ctxViewRecord = ctxRecord;
+      _loadContextSelections();
+    }
     // Search text of the screen (normalized, or the action's search_value).
     _searchCtrl.text = screen.searchText;
     // „Search“ of the form (spec 10.3): focus into the search entry
@@ -516,6 +560,7 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     final record = _screen.contextScreen?.currentRecord;
     if (record == null) return;
     await _run(() => setRecordWidgetValue(record, name, value));
+    await _loadContextSelections(changed: true);
     await _search();
   }
 
@@ -737,7 +782,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           key: ObjectKey(record),
           model: cs.model.name,
           root: view!.formRoot!,
-          viewDef: view.definition,
+          viewDef: identical(_ctxViewRecord, record)
+              ? _ctxViewDef ?? view.definition
+              : view.definition,
           record: record,
           onTextChanged: (name, value) => _ctxPending[name] = value,
           onBlur: (name) {

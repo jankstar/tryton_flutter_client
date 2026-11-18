@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/core/model/model.dart';
 import 'package:tryton_flutter_client/core/wizard/wizard.dart';
 
 import '../model/fake_rpc.dart';
@@ -37,12 +38,12 @@ void main() {
 
   /// A wizard whose `execute` answers with [execute] per state.
   TrytonWizard wizard(Map<String, Object? Function(List<dynamic> params)> execute,
-      {Object? Function()? delete}) {
+      {Object? Function()? delete, FakeRpc? models}) {
     calls = [];
     return TrytonWizard(
       action: 'test.wiz',
       name: 'Test',
-      session: fakeSession(FakeRpc()),
+      session: fakeSession(models ?? FakeRpc()),
       data: const {
         'model': 'party.party',
         'id': 3,
@@ -114,6 +115,58 @@ void main() {
     expect(methods().last, 'wizard.test.wiz.delete');
     expect(w.done, isTrue);
     expect(await w.finished, isNull);
+  });
+
+  test('x2many default [{}] in a wizard: a new child with its view '
+      'defaults in the data of the button (issue #6)', () async {
+    final models = FakeRpc({
+      'test.wiz.line.default_get': (c) => {
+            for (final n in c.params[0] as List)
+              if (n == 'active') n: true
+          },
+    });
+    final w = wizard({
+      'start': (_) => view('start',
+          fields: {
+            'lines': {
+              'type': 'one2many',
+              'string': 'Lines',
+              'relation': 'test.wiz.line',
+              'views': {
+                'form': {
+                  'fields': {
+                    'name': {'type': 'char', 'string': 'Name'},
+                    'active': {'type': 'boolean', 'string': 'Active'},
+                  }
+                }
+              },
+            }
+          },
+          defaults: {
+            'lines': [<String, dynamic>{}]
+          },
+          buttons: [
+            cancel,
+            {'state': 'go', 'string': 'Go', 'default': true},
+          ]),
+      'go': (_) => <String, dynamic>{},
+    }, models: models);
+    await w.run();
+    final lines =
+        w.screen!.currentRecord!.fieldGetClient('lines') as RecordGroup;
+    expect(lines, hasLength(1));
+    expect(lines.single.id, isNegative);
+    expect(models.named('test.wiz.line.default_get').single.params[0],
+        unorderedEquals(['name', 'active']));
+    expect(lines.single.fieldGet('active'), isTrue);
+
+    await w.response(w.buttons.last);
+    final go = calls.lastWhere((c) =>
+        c.$1.endsWith('.execute') && c.$2.length > 2 && c.$2[2] == 'go');
+    // (wizard data = Python `get_on_change_value`: the values with id)
+    expect((go.$2[1] as Map)['start']['lines'], [
+      {'name': '', 'active': true, 'id': lines.single.id}
+    ]);
   });
 
   test('a validate button with an invalid record shows the message',

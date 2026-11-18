@@ -228,7 +228,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
         .every((name) => fields[name]?.views.contains(key) ?? false)) {
       return;
     }
-    group.model.addFields(view.rawFields);
+    // new children get the defaults of the added fields (Python
+    // Screen.add_view → Group.add_fields)
+    group.addFieldsQueued(view.rawFields);
     for (final name in view.rawFields.keys) {
       fields[name]!.views.add(key);
     }

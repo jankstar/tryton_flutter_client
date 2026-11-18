@@ -651,7 +651,9 @@ class TrytonScreen extends ChangeNotifier {
           : existing.description['loading'] ?? loading;
       fields[name] = d;
     }
-    group.addFields(fields);
+    // new records get the defaults of the added fields (Python add_view →
+    // Group.add_fields)
+    group.addFieldsQueued(fields);
     for (final name in fields.keys) {
       model.fields[name]!.views.add(definition.viewId ?? definition.type);
     }

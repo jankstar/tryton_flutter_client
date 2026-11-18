@@ -928,6 +928,7 @@ class One2ManyField extends Field {
       return;
     }
     await _fetchFields(record, group, list);
+    final created = <Record>[];
     for (final vals in list.cast<Map>()) {
       final values = vals.cast<String, dynamic>();
       final record2 = _recordFor(group, values);
@@ -935,13 +936,55 @@ class One2ManyField extends Field {
         // Don't validate as parent will validate
         await record2.setDefault(values, validate: false, modified: false);
         group.add(record2, modified: false);
+        if (record2.id < 0) created.add(record2);
       } else {
         record2.set(values, modified: false);
         if (!group.contains(record2)) group._records.add(record2);
       }
     }
+    if (created.isNotEmpty) await _viewDefaults(group, created, list);
     // Trigger modified only once
     group.recordModified();
+  }
+
+  /// Defaults of the fields the views add to the child group, for the new
+  /// records of a default value. Python and SAO start the child group
+  /// without fields: the widget's screen adds the view fields later and
+  /// `Group.add_fields` runs `default_get` for them on the new records
+  /// (e.g. party `addresses` `[{}]` → `active` True, else every address
+  /// field is readonly by `~Eval('active')`). Here the group knows the
+  /// view fields from the start, so that step runs now; fields of the
+  /// value dicts keep their value.
+  Future<void> _viewDefaults(
+      RecordGroup group, List<Record> created, List<dynamic> list) async {
+    final given = {
+      for (final v in list)
+        if (v is Map) ...v.keys.cast<String>(),
+    };
+    final names = [
+      for (final n in group.model.fields.keys)
+        if (!given.contains(n) && n != 'id') n
+    ];
+    if (names.isEmpty) return;
+    final dynamic result;
+    try {
+      result = await group.model
+          .execute('default_get', [names], context: group.context);
+    } catch (_) {
+      // Python `add_fields`: on an RPC error the records stay as they are
+      return;
+    }
+    if (result is! Map) return;
+    final values = {
+      for (final n in names)
+        if (result.containsKey(n)) n: result[n],
+      for (final n in names)
+        if (result.containsKey('$n.')) '$n.': result['$n.'],
+    };
+    if (values.isEmpty) return;
+    for (final r in created) {
+      await r.setDefault(values, validate: false, modified: false);
+    }
   }
 
   static Record _recordFor(RecordGroup group, Map<String, dynamic> values) {

@@ -802,7 +802,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Latin (inactive)'), findsOneWidget);
       // change the domain before the first answer arrived
-      final kind = find.byType(DropdownButtonFormField<String>);
+      // (selection dropdowns are indexed by position: keys keep their type)
+      final kind = find.byType(DropdownButtonFormField<int>);
       await tester.tap(kind);
       await tester.pumpAndSettle(const Duration(milliseconds: 50));
       await tester.tap(find.text('B').last);

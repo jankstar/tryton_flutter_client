@@ -443,7 +443,9 @@ class _SelectionField extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = field.selection ?? [];
     final rawKey = (value == null || value == false) ? null : value.toString();
-    final selValue = (rawKey != null && items.any((e) => e[0].toString() == rawKey)) ? rawKey : null;
+    // Items by position: the keys keep their type (a `None` key stays
+    // null, an integer key an int) – `toString` made `(None, '')` "null".
+    final index = selectionIndex(items, value);
 
     // If options unavailable but value is set, show as read-only text.
     if (items.isEmpty && rawKey != null) {
@@ -456,24 +458,42 @@ class _SelectionField extends StatelessWidget {
       );
     }
 
-    return DropdownButtonFormField<String>(
-      initialValue: selValue,
+    return DropdownButtonFormField<int>(
+      key: ValueKey((Object.hashAll([for (final e in items) e[0]]), index)),
+      initialValue: index,
       // (the dense dropdown line is 24 px, a text line 20: less padding
       // keeps the field as high as a text field)
       decoration: decoration.copyWith(
           contentPadding: const EdgeInsets.fromLTRB(10, 7, 10, 6)),
       isExpanded: true,
-      items: items
-          .map(
-            (e) => DropdownMenuItem<String>(
-              value: e[0].toString(),
-              child: Text(e[1].toString(), overflow: TextOverflow.ellipsis),
-            ),
-          )
-          .toList(),
-      onChanged: readOnly ? null : (v) => onChanged?.call(v),
+      items: [
+        for (var i = 0; i < items.length; i++)
+          DropdownMenuItem<int>(
+            value: i,
+            child: Text('${items[i][1] ?? ''}', overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: readOnly
+          ? null
+          : (i) => onChanged?.call(i == null ? null : items[i][0]),
     );
   }
+}
+
+/// Position of [value] among the selection [items] (`[key, label]`):
+/// same key, else same text (a key read as text), empty value (null or
+/// false) → the item with key null or ''; null when not found.
+int? selectionIndex(List<List<dynamic>> items, dynamic value) {
+  final empty = value == null || value == false;
+  for (var i = 0; i < items.length; i++) {
+    final key = items[i][0];
+    if (empty ? (key == null || key == '') : key == value) return i;
+  }
+  if (empty) return null;
+  for (var i = 0; i < items.length; i++) {
+    if ('${items[i][0]}' == '$value') return i;
+  }
+  return null;
 }
 
 // ─── Placeholder for unsupported field types / widgets ──────────────────────

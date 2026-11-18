@@ -9,6 +9,9 @@ import '../../core/model/model.dart';
 import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
 import '../../core/xml/view_definition.dart';
+import '../../shared/dialogs/tryton_dialogs.dart';
+import '../../shared/errors/error_dialogs.dart';
+import '../actions/action_service.dart';
 import '../model/model_service.dart';
 import '../model/selection_loader.dart';
 import 'form_edit_scope.dart';
@@ -76,6 +79,9 @@ String breadcrumbTitle(List<String> breadcrumb, String? title) {
   return parts.length > 3 ? '… › $shown' : shown;
 }
 
+/// Below this window width the form popup is full screen.
+const double formDialogFullscreenWidth = 600;
+
 class FormDialog extends ConsumerStatefulWidget {
   final TrytonScreen screen;
   final bool newRecord;
@@ -112,7 +118,10 @@ class _FormDialogState extends ConsumerState<FormDialog> {
   late int _many = widget.many;
 
   TrytonScreen get _screen => widget.screen;
-  bool get _readonly => _screen.group.readonly;
+  /// Python `screen.group.readonly`; an x2many popup on the child group
+  /// takes the parent's state from its screen (Python: the child screen is
+  /// created with `readonly` = the parent group's).
+  bool get _readonly => _screen.screenReadonly || _screen.group.readonly;
 
   @override
   void initState() {
@@ -283,6 +292,37 @@ class _FormDialogState extends ConsumerState<FormDialog> {
     await _screen.newRecord();
   }
 
+  /// A `<button>` of the form (Python: the form view of the dialog's
+  /// screen runs `screen.button`); the dialog gives the screen the hooks
+  /// a [ScreenWidget] sets for its own screens, unless it has them.
+  Future<void> _button(ButtonNode node) async {
+    if (_busy || _record == null) return;
+    final screen = _screen;
+    screen.onConfirm ??= (text) => showSur(context, text);
+    screen.onPreValidationFailed ??= (message) =>
+        showWarning(context, context.l10n.preValidation, message);
+    screen.invalidTexts ??= () => wizardInvalidTexts(context);
+    screen.onAction ??= (action, data, actionContext) => ref
+        .read(actionServiceProvider)
+        .execute(action,
+            data: data,
+            context: actionContext,
+            keyword: true,
+            ui: DialogActionUi(context),
+            screen: screen);
+    setState(() => _busy = true);
+    try {
+      await _flushPending();
+      await screen.button(node);
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await showErrorDialog(context, e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
@@ -293,7 +333,8 @@ class _FormDialogState extends ConsumerState<FormDialog> {
     final title = breadcrumbTitle(widget.breadcrumb, widget.title);
 
     final Widget body = record == null || view?.formRoot == null
-        ? const Center(child: CircularProgressIndicator())
+        ? const SizedBox(
+            height: 120, child: Center(child: CircularProgressIndicator()))
         : SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             // the dialog has its own buttons: no reports to a form below
@@ -312,6 +353,7 @@ class _FormDialogState extends ConsumerState<FormDialog> {
                 }
               },
               onChangedImmediate: _write,
+              onButton: _button,
               isReadOnly: _readonly || record.readonly || record.deleted ||
                   record.removed,
             ),
@@ -339,12 +381,10 @@ class _FormDialogState extends ConsumerState<FormDialog> {
           const SingleActivator(LogicalKeyboardKey.escape): _cancel,
           ..._shortcuts(),
         },
-        child: Dialog(
-          insetPadding: const EdgeInsets.all(24),
-          child: SizedBox(
-            width: math.min(size.width * 0.9, 960),
-            height: size.height * 0.85,
-            child: Column(
+        child: _frame(
+          size,
+          Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
@@ -364,7 +404,7 @@ class _FormDialogState extends ConsumerState<FormDialog> {
                     child: Text(_message!,
                         style: TextStyle(color: cs.onErrorContainer)),
                   ),
-                Expanded(child: body),
+                Flexible(child: body),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                   child: Wrap(
@@ -396,10 +436,55 @@ class _FormDialogState extends ConsumerState<FormDialog> {
                 ),
               ],
             ),
-          ),
         ),
       ),
     );
+  }
+
+  /// At least 90 % of the window's width, as high as the content up to
+  /// 90 % of its height; narrow windows (< 600 px) full screen.
+  static Widget _frame(Size size, Widget child) {
+    if (size.width < formDialogFullscreenWidth) {
+      return Dialog.fullscreen(child: SafeArea(child: child));
+    }
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+          horizontal: size.width * 0.05, vertical: size.height * 0.05),
+      child: SizedBox(
+        key: const ValueKey('form-dialog-frame'),
+        width: size.width * 0.9,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: size.height * 0.9),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  /// Activation of the mini toolbar (Python/SAO `WinForm`
+  /// `_set_button_sensitive`): New with create right, Delete with delete
+  /// right on a deletable record (many2many Remove: write and read right),
+  /// Undelete on a marked record; nothing while read only. New also stops
+  /// at the `size` limit of „… and New“.
+  bool get _canNew =>
+      !_readonly &&
+      _screen.model.access.create &&
+      !(_many == 0 && widget.many != 0);
+
+  bool get _canDelete {
+    final record = _record;
+    if (_readonly || record == null || record.deleted || record.removed) {
+      return false;
+    }
+    final access = _screen.model.access;
+    return widget.removeOnDelete
+        ? access.write && access.read
+        : access.delete && record.deletable;
+  }
+
+  bool get _canUndelete {
+    final record = _record;
+    return !_readonly && record != null && (record.deleted || record.removed);
   }
 
   /// The record shortcuts on the dialog's buttons (spec 10.3, SAO
@@ -410,7 +495,6 @@ class _FormDialogState extends ConsumerState<FormDialog> {
     final record = _record;
     final group = _screen.group;
     final index = record == null ? -1 : group.indexOf(record);
-    final marked = record != null && (record.deleted || record.removed);
     return {
       recordShortcut(RecordAction.save)!: _accept,
       if (widget.x2many) ...{
@@ -418,9 +502,8 @@ class _FormDialogState extends ConsumerState<FormDialog> {
           recordShortcut(RecordAction.previous)!: () => _navigate(next: false),
         if (index >= 0 && index < group.length - 1)
           recordShortcut(RecordAction.next)!: () => _navigate(next: true),
-        if (!_readonly && !(_many == 0 && widget.many != 0))
-          recordShortcut(RecordAction.newRecord)!: _newInGroup,
-        if (!_readonly && record != null && !marked)
+        if (_canNew) recordShortcut(RecordAction.newRecord)!: _newInGroup,
+        if (_canDelete && record != null)
           recordShortcut(RecordAction.delete)!: () => _screen.remove(
               records: [record], remove: widget.removeOnDelete),
       },
@@ -434,10 +517,10 @@ class _FormDialogState extends ConsumerState<FormDialog> {
     final record = _record;
     final group = _screen.group;
     final index = record == null ? -1 : group.indexOf(record);
-    final marked = record != null && (record.deleted || record.removed);
-    final readonly = _readonly;
-    Widget button(IconData icon, String tip, VoidCallback? onPressed) =>
+    Widget button(IconData icon, String tip, VoidCallback? onPressed,
+            {Key? key}) =>
         IconButton(
+          key: key,
           icon: Icon(icon, size: 18),
           tooltip: tip,
           onPressed: _busy ? null : onPressed,
@@ -446,24 +529,28 @@ class _FormDialogState extends ConsumerState<FormDialog> {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(children: [
         button(Icons.arrow_back_ios, l.previousRecord,
-            index > 0 ? () => _navigate(next: false) : null),
+            index > 0 ? () => _navigate(next: false) : null,
+            key: const ValueKey('form-dialog-previous')),
         Text(index < 0 ? '_/${group.length}' : '${index + 1}/${group.length}',
             style: const TextStyle(fontSize: 12)),
         button(Icons.arrow_forward_ios, l.nextRecord,
             index >= 0 && index < group.length - 1
                 ? () => _navigate(next: true)
-                : null),
+                : null,
+            key: const ValueKey('form-dialog-next')),
         const SizedBox(width: 8),
-        button(Icons.add, l.createNew,
-            readonly || _many == 0 && widget.many != 0 ? null : _newInGroup),
+        button(Icons.add, l.createNew, _canNew ? _newInGroup : null,
+            key: const ValueKey('form-dialog-new')),
         button(widget.removeOnDelete ? Icons.link_off : Icons.delete_outline,
             widget.removeOnDelete ? l.remove : l.delete,
-            readonly || record == null || marked
-                ? null
-                : () => _screen.remove(
-                    records: [record], remove: widget.removeOnDelete)),
+            _canDelete && record != null
+                ? () => _screen.remove(
+                    records: [record], remove: widget.removeOnDelete)
+                : null,
+            key: const ValueKey('form-dialog-delete')),
         button(Icons.restore_from_trash_outlined, l.undelete,
-            readonly || !marked ? null : _screen.unremove),
+            _canUndelete ? _screen.unremove : null,
+            key: const ValueKey('form-dialog-undelete')),
       ]),
     );
   }

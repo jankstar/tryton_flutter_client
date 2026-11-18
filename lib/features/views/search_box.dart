@@ -153,15 +153,28 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
 
   // ── Filter dialog ─────────────────────────────────────────────────────────
 
+  /// Inputs of the filter dialog and the search text they gave (Python
+  /// `last_search_text`): another text (cleared, typed, bookmark) empties
+  /// them; reopening after the search keeps them.
+  final FilterValues _filterValues = FilterValues();
+  String? _filterText;
+
   Future<void> _filter() async {
     final parser = _parser;
     if (parser == null) return;
+    // (compared as domain: the search shows the text normalized)
+    final last = _filterText;
+    if (last == null ||
+        !domainEquals(parser.parse(last), parser.parse(widget.controller.text))) {
+      _filterValues.clear();
+    }
     final text = await showDialog<String>(
       context: context,
-      builder: (_) => FilterDialog(parser: parser),
+      builder: (_) => FilterDialog(parser: parser, values: _filterValues),
     );
     if (text == null || !mounted) return;
     widget.controller.text = text;
+    _filterText = text;
     _search();
   }
 
@@ -277,22 +290,63 @@ class _SearchBoxState extends ConsumerState<SearchBox> {
   }
 }
 
-/// Filter dialog (spec 8.4): one input per field (boolean: choice,
-/// selection: multiple choice, date/number: from–to, else text); returns
-/// the search text `Label: value …`.
+/// Inputs of the filter dialog, kept by the search bar between openings
+/// (Python `search_popover`): emptied when the search text is no longer
+/// the one the dialog wrote (cleared, typed, bookmark).
+class FilterValues {
+  final Map<String, String> text = {};
+  final Map<String, String> to = {};
+  final Map<String, String?> choice = {};
+  final Map<String, Set<String>> multi = {};
+
+  void clear() {
+    text.clear();
+    to.clear();
+    choice.clear();
+    multi.clear();
+  }
+}
+
+/// Labels of a selection field for the filter dialog (Python
+/// `screen_container.search_box`): all labels of `selection` (method
+/// selections are resolved by `TrytonScreen.loadDomainParser`), sorted
+/// unless `sort` is false.
+List<String> filterSelectionLabels(Map<String, dynamic> field) {
+  final selection = field['selection'];
+  final labels = <String>[
+    if (selection is List)
+      for (final s in selection)
+        if (s is List && s.length >= 2) '${s[1] ?? ''}'
+  ];
+  if (field['sort'] != false) labels.sort();
+  final seen = <String>{};
+  return [for (final l in labels) if (seen.add(l)) l];
+}
+
+/// Filter dialog (spec 8.4, Python `ScreenContainer.search_box`): one
+/// input per searchable field of the parser (boolean: choice, selection:
+/// list with multiple choice, date/number: from–to, else text); returns
+/// the search text `Label: value …` (several selection values `A;B`).
 class FilterDialog extends StatefulWidget {
   final DomainParser parser;
-  const FilterDialog({super.key, required this.parser});
+
+  /// Inputs to start with and to keep (else a fresh set).
+  final FilterValues? values;
+  const FilterDialog({super.key, required this.parser, this.values});
 
   @override
   State<FilterDialog> createState() => _FilterDialogState();
 }
 
 class _FilterDialogState extends State<FilterDialog> {
+  late final FilterValues _values = widget.values ?? FilterValues();
   final Map<String, TextEditingController> _text = {};
   final Map<String, TextEditingController> _to = {};
-  final Map<String, String?> _choice = {};
-  final Map<String, Set<String>> _multi = {};
+  Map<String, String?> get _choice => _values.choice;
+  Map<String, Set<String>> get _multi => _values.multi;
+
+  /// Rebuilds the inputs after „Clear“ (new keys for the form fields).
+  int _generation = 0;
 
   static const _range = {
     'integer', 'float', 'numeric', 'date', 'datetime', 'timestamp', 'time'
@@ -300,11 +354,16 @@ class _FilterDialogState extends State<FilterDialog> {
 
   List<Map<String, dynamic>> get _fields => [
         for (final f in widget.parser.fields.values)
-          if (!'${f['name']}'.contains('.')) f
+          if (!'${f['name']}'.contains('.') && f['searchable'] != false) f
       ];
 
-  TextEditingController _ctrl(Map<String, TextEditingController> map, String name) =>
-      map.putIfAbsent(name, TextEditingController.new);
+  TextEditingController _ctrl(Map<String, TextEditingController> map,
+      Map<String, String> store, String name) =>
+      map.putIfAbsent(name, () {
+        final c = TextEditingController(text: store[name] ?? '');
+        c.addListener(() => store[name] = c.text);
+        return c;
+      });
 
   @override
   void dispose() {
@@ -313,6 +372,14 @@ class _FilterDialogState extends State<FilterDialog> {
     }
     super.dispose();
   }
+
+  void _clear() => setState(() {
+        _values.clear();
+        for (final c in [..._text.values, ..._to.values]) {
+          c.clear();
+        }
+        _generation++;
+      });
 
   /// Search text of the filled inputs.
   String _result() {
@@ -327,7 +394,11 @@ class _FilterDialogState extends State<FilterDialog> {
       } else if (type == 'selection' || type == 'multiselection') {
         final chosen = _multi[name] ?? const {};
         if (chosen.isNotEmpty) {
-          value = [for (final c in chosen) '${quote(c, empty: true)}'].join(';');
+          // in the order of the list (Python `get_selected_rows`)
+          value = [
+            for (final c in filterSelectionLabels(f))
+              if (chosen.contains(c)) '${quote(c, empty: true)}'
+          ].join(';');
         }
       } else if (_range.contains(type)) {
         final from = _text[name]?.text.trim() ?? '';
@@ -348,6 +419,55 @@ class _FilterDialogState extends State<FilterDialog> {
     return parts.join(' ');
   }
 
+  /// Framed list of the options with a check box per row (Python
+  /// `Selection`: multiple choice, up to 200 px high).
+  Widget _selection(String name, String label, List<String> options) {
+    final theme = Theme.of(context);
+    final chosen = _multi.putIfAbsent(name, () => {});
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: label,
+        isDense: true,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 200),
+        child: ListView(
+          key: ValueKey('filter-$name'),
+          shrinkWrap: true,
+          children: [
+            for (final o in options)
+              InkWell(
+                key: ValueKey('filter-$name-$o'),
+                onTap: () => setState(() {
+                  chosen.contains(o) ? chosen.remove(o) : chosen.add(o);
+                }),
+                child: Container(
+                  color: chosen.contains(o)
+                      ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                      : null,
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(children: [
+                    Checkbox(
+                      value: chosen.contains(o),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      onChanged: (on) => setState(() {
+                        on == true ? chosen.add(o) : chosen.remove(o);
+                      }),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(o.isEmpty ? '""' : o)),
+                  ]),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _input(Map<String, dynamic> f) {
     final l = context.l10n;
     final name = '${f['name']}';
@@ -355,6 +475,7 @@ class _FilterDialogState extends State<FilterDialog> {
     final type = f['type'];
     if (type == 'boolean') {
       return DropdownButtonFormField<String?>(
+        key: ValueKey('filter-$name-$_generation'),
         initialValue: _choice[name],
         decoration: InputDecoration(labelText: label, isDense: true),
         items: [
@@ -366,31 +487,14 @@ class _FilterDialogState extends State<FilterDialog> {
       );
     }
     if (type == 'selection' || type == 'multiselection') {
-      final options = [
-        for (final s in (f['selection'] as List? ?? const []))
-          if (s is List && s.length >= 2 && '${s[1]}'.isNotEmpty) '${s[1]}'
-      ];
-      final chosen = _multi.putIfAbsent(name, () => {});
-      return InputDecorator(
-        decoration: InputDecoration(labelText: label, isDense: true),
-        child: Wrap(spacing: 4, runSpacing: 4, children: [
-          for (final o in options)
-            FilterChip(
-              label: Text(o),
-              selected: chosen.contains(o),
-              onSelected: (on) => setState(() {
-                on ? chosen.add(o) : chosen.remove(o);
-              }),
-            ),
-        ]),
-      );
+      return _selection(name, label, filterSelectionLabels(f));
     }
     if (_range.contains(type)) {
       return Row(children: [
         Expanded(
           child: TextField(
             key: ValueKey('filter-from-$name'),
-            controller: _ctrl(_text, name),
+            controller: _ctrl(_text, _values.text, name),
             decoration: InputDecoration(
                 labelText: '$label (${l.rangeFrom})', isDense: true),
           ),
@@ -399,7 +503,7 @@ class _FilterDialogState extends State<FilterDialog> {
         Expanded(
           child: TextField(
             key: ValueKey('filter-to-$name'),
-            controller: _ctrl(_to, name),
+            controller: _ctrl(_to, _values.to, name),
             decoration: InputDecoration(
                 labelText: '$label (${l.rangeTo})', isDense: true),
           ),
@@ -408,7 +512,7 @@ class _FilterDialogState extends State<FilterDialog> {
     }
     return TextField(
       key: ValueKey('filter-$name'),
-      controller: _ctrl(_text, name),
+      controller: _ctrl(_text, _values.text, name),
       decoration: InputDecoration(labelText: label, isDense: true),
     );
   }
@@ -436,8 +540,13 @@ class _FilterDialogState extends State<FilterDialog> {
       ),
       actions: [
         TextButton(
+            key: const ValueKey('filter-clear'),
+            onPressed: _clear,
+            child: Text(l.clear)),
+        TextButton(
             onPressed: () => Navigator.pop(context), child: Text(l.cancel)),
         FilledButton(
+            key: const ValueKey('filter-find'),
             onPressed: () => Navigator.pop(context, _result()),
             child: Text(l.find)),
       ],
