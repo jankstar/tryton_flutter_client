@@ -166,6 +166,15 @@ class TreeView extends ConsumerStatefulWidget {
   /// (attachments, notes, actions, …); not in a slim dialog.
   final bool recordFunctions;
 
+  /// Choosing records (search dialog, Python `WinSearch`): a tap selects
+  /// – toggles with [multiSelect] – also on touch platforms, a double
+  /// click / double tap / Enter activates; no relation links.
+  final bool picker;
+
+  /// With [picker]: several records can be ticked; without, the tick
+  /// moves (single choice, no „select all“).
+  final bool multiSelect;
+
   const TreeView({
     super.key,
     required this.screen,
@@ -179,6 +188,8 @@ class TreeView extends ConsumerStatefulWidget {
     this.keyPrefix = 'list',
     this.displayStep = 100,
     this.recordFunctions = true,
+    this.picker = false,
+    this.multiSelect = true,
   });
 
   @override
@@ -1027,6 +1038,10 @@ class _TreeViewState extends ConsumerState<TreeView> {
 
   void _setSelected(Iterable<Record> records) {
     records = records.toList();
+    // a single-choice picker keeps one record (e.g. after Ctrl+A)
+    if (widget.picker && !widget.multiSelect && records.length > 1) {
+      records = [records.first];
+    }
     final previous = _screen.currentRecord;
     _selected
       ..clear()
@@ -1056,9 +1071,14 @@ class _TreeViewState extends ConsumerState<TreeView> {
 
   /// Touch devices: tapping opens, a long press selects; otherwise a click
   /// selects and a double click / Enter opens (like SAO).
-  bool get _touch => isTouchPlatform(context);
+  bool get _touch => !widget.picker && isTouchPlatform(context);
 
   void _toggleSelected(Record record) {
+    if (widget.picker && !widget.multiSelect) {
+      // single choice: the tick moves
+      _select(_selected.contains(record) ? const [] : [record]);
+      return;
+    }
     final selected = {..._selected};
     if (!selected.remove(record)) selected.add(record);
     _select(selected);
@@ -1357,7 +1377,10 @@ class _TreeViewState extends ConsumerState<TreeView> {
       child: Row(children: [
         SizedBox(
           width: _selectionWidth,
-          child: Checkbox(
+          // single choice: no „select all“
+          child: widget.picker && !widget.multiSelect
+              ? null
+              : Checkbox(
             tristate: true,
             visualDensity: _compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1559,6 +1582,7 @@ class _TreeViewState extends ConsumerState<TreeView> {
             child: SizedBox(
               width: _selectionWidth,
               child: Checkbox(
+                key: ValueKey(_key('check-${record.id}')),
                 visualDensity: _compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 value: isSelected,
@@ -1616,7 +1640,11 @@ class _TreeViewState extends ConsumerState<TreeView> {
     }
     if (!mounted) return;
     if (!_editableView) _listFocus.requestFocus();
-    _select([record]);
+    if (widget.picker && widget.multiSelect) {
+      _toggleSelected(record);
+    } else {
+      _select([record]);
+    }
     if (_editableView) {
       setState(() => _editKey = _cellEditable(record, c) ? c.key : null);
     }
@@ -1818,7 +1846,7 @@ class _TreeViewState extends ConsumerState<TreeView> {
   /// Model and id a many2one/one2one/reference cell links to: null in
   /// editable lists, without value and without read access to the model.
   (String, int)? _linkTarget(Record record, TreeColumn c) {
-    if (_editableView) return null;
+    if (_editableView || widget.picker) return null;
     final field = record.model.fields[c.name];
     String? model;
     dynamic id;

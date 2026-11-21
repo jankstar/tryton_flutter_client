@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,14 +6,12 @@ import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart' hide TextField;
 import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
-import '../../core/xml/form_xml_parser.dart';
-import '../../core/xml/view_definition.dart';
 import '../model/field_support.dart';
 import '../model/model_service.dart';
-import 'column_selections.dart';
 import 'form_dialog.dart';
-import 'record_cells.dart';
 import 'record_menu.dart';
+import 'search_box.dart';
+import 'tree_view.dart';
 
 /// A record chosen in the search dialog: id and rec_name.
 typedef SearchResult = ({int id, String name});
@@ -26,10 +22,13 @@ Future<String> _recName(Record record) async {
   return loaded is String ? loaded : record.recName();
 }
 
-/// Search popup (spec 11.2, SAO `Sao.Window.Search`) for [model]: a list
-/// with search, single or multiple ([multi]) selection and the buttons
-/// Cancel, Find, New ([allowNew]) and OK ([okLabel]). With [searchText]
-/// and exactly one hit, the hit is returned without dialog.
+/// Search popup (spec 11.2, T3, Python `WinSearch`, SAO
+/// `Sao.Window.Search`) for [model]: a screen with the search bar
+/// (Tryton syntax) and the same [TreeView] as every list – widths by type,
+/// stored (`set_width`) and dragged, optional columns, sorting –, single
+/// or multiple ([multi]) choice and the buttons Cancel, Find, New
+/// ([allowNew]) and OK ([okLabel]). With [searchText] and exactly one
+/// hit, the hit is returned without dialog.
 ///
 /// Returns the chosen records; empty when cancelled.
 Future<List<SearchResult>> showSearchDialog(
@@ -63,8 +62,29 @@ Future<List<SearchResult>> showSearchDialog(
     session: session,
   );
   try {
+    // the rights of the model (New, read only) like ScreenWidget
+    if (session.accessOf?.call(model) == null) {
+      try {
+        await session.loadAccess?.call([model]);
+      } catch (_) {
+        // MetadataService: an error means read only
+      }
+    }
     await screen.switchView();
     screen.onViewAdded = (v) => markUnsupportedFields(screen.model, v);
+    // the search bar parses Tryton syntax like the lists (DomainParser)
+    if (context.mounted) {
+      screen.parserContext = ProviderScope.containerOf(context, listen: false)
+              .read(modelServiceProvider)
+              .metadata
+              ?.parserContext ??
+          const {};
+    }
+    try {
+      await screen.loadDomainParser();
+    } catch (_) {
+      // without parser the text searches the rec_name
+    }
     await screen.searchFilter(searchText ?? '');
     if ((searchText ?? '').isNotEmpty && screen.group.length == 1) {
       final record = screen.group.first;
@@ -131,58 +151,36 @@ class SearchDialog extends ConsumerStatefulWidget {
 }
 
 class _SearchDialogState extends ConsumerState<SearchDialog> {
-  late final TextEditingController _text =
-      TextEditingController(text: widget.initialText);
-  final _scroll = ScrollController();
-  final Set<Record> _selected = {};
-  final Set<Record> _loading = {};
-  List<TreeColumn> _columns = const [];
+  // the text as the screen normalized it (DomainParser), else as typed
+  late final TextEditingController _text = TextEditingController(
+      text: widget.screen.searchText.isNotEmpty
+          ? widget.screen.searchText
+          : widget.initialText);
+  final _searchFocus = FocusNode();
+  final _table = TreeViewController();
   bool _busy = false;
 
   TrytonScreen get _screen => widget.screen;
-
-  /// Labels of method selections in the columns (like the lists).
-  late final ColumnSelections _columnSelections = ColumnSelections(
-      screen: _screen,
-      service: ref.read(modelServiceProvider),
-      onLoaded: () {
-        if (mounted) setState(() {});
-      });
 
   @override
   void initState() {
     super.initState();
     _screen.addListener(_onChanged);
-    _scroll.addListener(_onScroll);
-    final view = _screen.currentView;
-    if (view != null) {
-      _columns = [
-        for (final c in TreeXmlParser()
-            .parse(view.definition.arch, view.definition.rawFields)
-            .columns)
-          if (!c.treeInvisible && !c.isButton) c
-      ];
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _screen.removeListener(_onChanged);
     _text.dispose();
-    _scroll.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
   void _onChanged() {
     if (mounted) setState(() {});
-  }
-
-  void _onScroll() {
-    if (!_scroll.hasClients || _busy) return;
-    final pos = _scroll.position;
-    if (pos.pixels >= pos.maxScrollExtent - 100 && _screen.hasMore) {
-      _run(_screen.searchMore);
-    }
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -197,44 +195,35 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
   }
 
   Future<void> _find() => _run(() async {
-        _selected.clear();
+        _table.reset();
         await _screen.searchFilter(_text.text.trim());
+        _text.text = _screen.searchText;
       });
 
-  void _ensureLoaded(Record record) {
-    final name = _columns.isNotEmpty ? _columns.first.name : 'rec_name';
-    if (record.isLoaded(name) || _loading.contains(record)) return;
-    _loading.add(record);
-    record
-        .load(name, processException: false)
-        .catchError((Object _) {})
-        .whenComplete(() {
-      _loading.remove(record);
-      if (mounted) setState(() {});
-    });
+  /// End of the shown rows: the next search page.
+  void _searchMore() {
+    if (_busy || !_screen.hasMore) return;
+    _run(_screen.searchMore);
   }
 
-  void _tap(Record record) {
-    setState(() {
-      if (widget.multi) {
-        if (!_selected.remove(record)) _selected.add(record);
-      } else {
-        _selected
-          ..clear()
-          ..add(record);
-      }
-    });
+  /// The ticked records in the order of the rows.
+  List<Record> get _selected => _screen.selectedRecords;
+
+  /// Double click / Enter (Python `WinSearch` row activation): the row is
+  /// chosen – with the ticked ones of a multiple choice – and the dialog
+  /// closes; the form is never opened.
+  void _activate(Record record) {
+    final records = widget.multi
+        ? [..._selected, if (!_selected.contains(record)) record]
+        : [record];
+    _ok(records);
   }
 
-  Future<void> _ok([Record? record]) async {
-    final records = record != null
-        ? [record]
-        : [
-            for (final r in _screen.group)
-              if (_selected.contains(r)) r
-          ];
+  Future<void> _ok([List<Record>? records]) async {
+    final chosen = records ?? _selected;
+    if (chosen.isEmpty) return;
     final result = <SearchResult>[
-      for (final r in records) (id: r.id, name: await _recName(r))
+      for (final r in chosen) (id: r.id, name: await _recName(r))
     ];
     if (mounted) Navigator.of(context).pop(result);
   }
@@ -262,8 +251,74 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final size = MediaQuery.sizeOf(context);
-    final records = _screen.group.toList();
+    final view = _screen.currentView;
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Text(l.searchTitle(widget.title),
+              style: Theme.of(context).textTheme.titleMedium),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SearchBox(
+            key: const ValueKey('search-dialog-text'),
+            screen: _screen,
+            controller: _text,
+            focusNode: _searchFocus,
+            onSearch: _find,
+          ),
+        ),
+        const SizedBox(height: 4),
+        if (_busy) const LinearProgressIndicator(),
+        Expanded(
+          child: view == null || _screen.group.isEmpty
+              ? Center(child: Text(l.noRecordsFound))
+              : TreeView(
+                  screen: _screen,
+                  view: view,
+                  controller: _table,
+                  keyPrefix: 'search-dialog',
+                  picker: true,
+                  multiSelect: widget.multi,
+                  recordFunctions: false,
+                  onActivate: _activate,
+                  onSelectionChanged: () => setState(() {}),
+                  onEndReached: _searchMore,
+                ),
+        ),
+        Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(_screen.statusText,
+              key: const ValueKey('search-dialog-status'),
+              style: TextStyle(
+                  fontSize: 11, color: Theme.of(context).colorScheme.outline)),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            children: [
+              TextButton(onPressed: _cancel, child: Text(l.cancel)),
+              OutlinedButton(
+                  onPressed: _busy ? null : _find, child: Text(l.find)),
+              if (widget.allowNew)
+                OutlinedButton(
+                    key: const ValueKey('search-dialog-new'),
+                    onPressed: _busy ? null : _new,
+                    child: Text(l.createNew)),
+              FilledButton(
+                onPressed: _busy || _selected.isEmpty ? null : _ok,
+                child: Text(widget.okLabel ?? l.ok),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): _cancel,
@@ -271,140 +326,26 @@ class _SearchDialogState extends ConsumerState<SearchDialog> {
         if (widget.allowNew && !_busy)
           recordShortcut(RecordAction.newRecord)!: _new,
       },
-      child: Dialog(
-        insetPadding: const EdgeInsets.all(24),
-        child: SizedBox(
-          width: math.min(size.width * 0.9, 960),
-          height: size.height * 0.85,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Text(l.searchTitle(widget.title),
-                    style: Theme.of(context).textTheme.titleMedium),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  key: const ValueKey('search-dialog-text'),
-                  controller: _text,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: l.search,
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    isDense: true,
-                    border: const OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _find(),
-                ),
-              ),
-              if (_busy) const LinearProgressIndicator(),
-              Expanded(
-                child: records.isEmpty
-                    ? Center(child: Text(l.noRecordsFound))
-                    : ListView.builder(
-                        controller: _scroll,
-                        itemCount: records.length + 1,
-                        itemBuilder: (ctx, i) =>
-                            i == 0 ? _header() : _row(records[i - 1]),
-                      ),
-              ),
-              Container(
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(_screen.statusText,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.outline)),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  children: [
-                    TextButton(onPressed: _cancel, child: Text(l.cancel)),
-                    OutlinedButton(
-                        onPressed: _busy ? null : _find, child: Text(l.find)),
-                    if (widget.allowNew)
-                      OutlinedButton(
-                          onPressed: _busy ? null : _new,
-                          child: Text(l.createNew)),
-                    FilledButton(
-                      onPressed: _busy || _selected.isEmpty ? null : _ok,
-                      child: Text(widget.okLabel ?? l.ok),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: _frame(MediaQuery.sizeOf(context), content),
+    );
+  }
+
+  /// Like the form dialog: at least 90 % of the window's width, 90 % of
+  /// its height (the list fills it); narrow windows (< 600 px) full
+  /// screen.
+  static Widget _frame(Size size, Widget child) {
+    if (size.width < formDialogFullscreenWidth) {
+      return Dialog.fullscreen(child: SafeArea(child: child));
+    }
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+          horizontal: size.width * 0.05, vertical: size.height * 0.05),
+      child: SizedBox(
+        key: const ValueKey('search-dialog-frame'),
+        width: size.width * 0.9,
+        height: size.height * 0.9,
+        child: child,
       ),
     );
   }
-
-  Widget _header() => Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        child: Row(children: [
-          const SizedBox(width: 40),
-          for (final c in _columns)
-            Expanded(
-              child: Text(c.label,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 12)),
-            ),
-        ]),
-      );
-
-  /// A row: the checkbox (also for a single choice: the tick moves) sits
-  /// outside the row's InkWell, whose double tap would hold the click.
-  Widget _row(Record record) {
-    _ensureLoaded(record);
-    final selected = _selected.contains(record);
-    final fields = _screen.currentView?.definition.fields ?? const {};
-    return Container(
-      color: selected
-          ? Theme.of(context).colorScheme.primaryContainer.withAlpha(80)
-          : null,
-      padding: const EdgeInsets.only(left: 16),
-      child: Row(children: [
-        SizedBox(
-          width: 40,
-          child: Checkbox(
-            key: ValueKey('search-dialog-check-${record.id}'),
-            value: selected,
-            onChanged: (_) => _tap(record),
-          ),
-        ),
-        Expanded(
-          child: InkWell(
-            onTap: () => _tap(record),
-            onDoubleTap: () => _ok(record),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 8, 16, 8),
-              child: Row(children: [
-                for (final c in _columns)
-                  Expanded(
-                    child: !record.isLoaded(c.name)
-                        ? const Text('')
-                        : isNumericField(fields[c.name])
-                            ? RecordNumericCell.of(record, c.name, fields[c.name]!,
-                                style: const TextStyle(fontSize: 13))
-                            : RecordTextCell(record, c.name,
-                                _columnSelections.field(
-                                    record, fields[c.name], fields),
-                                style: const TextStyle(fontSize: 13)),
-                  ),
-              ]),
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
-
 }
