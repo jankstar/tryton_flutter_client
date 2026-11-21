@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -179,5 +180,33 @@ void main() {
     final rpc = server();
     await pumpMenu(tester, rpc);
     expect(tester.getSize(find.byKey(const ValueKey('menu-1'))).height, 28);
+  });
+
+  testWidgets('a rebuild (language) keeps the previous menu until the new '
+      'one is there', (tester) async {
+    Completer<void>? gate;
+    final rpc = server();
+    final search = rpc.handlers['model.ir.ui.menu.search']!;
+    rpc.handlers['model.ir.ui.menu.search'] = (p) async {
+      await gate?.future;
+      return search(p);
+    };
+    final container = await pumpMenu(tester, rpc);
+    expect(find.text('Parties'), findsOneWidget);
+
+    gate = Completer<void>();
+    container.read(preferencesProvider.notifier).state = {
+      'pyson_menu': pysonMenu,
+      'language': 'de',
+    };
+    await pumpFrames(tester);
+    expect(rpc.named('model.ir.ui.menu.search'), hasLength(2));
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Parties'), findsOneWidget, reason: 'the old menu');
+
+    gate.complete();
+    await pumpFrames(tester);
+    expect(find.text('Parties'), findsOneWidget, reason: 'the new menu');
+    expect(rpc.named('model.ir.ui.menu.read'), hasLength(2));
   });
 }

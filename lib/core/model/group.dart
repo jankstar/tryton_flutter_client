@@ -42,8 +42,11 @@ class RecordGroup extends ChangeNotifier with IterableMixin<Record> {
   /// (SAO `screen.record_notify`).
   void Function(List<dynamic> notifications)? onNotify;
 
-  /// Running `read` of this group (SAO `group.prm`).
-  Future<void>? _loading;
+  /// Running `read`s of this group and, for a tree, of its child groups
+  /// of the same model (SAO `group.prm`): a child record's read takes the
+  /// records of all sibling child groups ([Record.load]), so they share
+  /// this list of the parent's group.
+  final List<_PendingLoad> _loads = [];
 
   RecordGroup(this.model,
       {Map<String, dynamic>? context, Iterable<Record> records = const []})

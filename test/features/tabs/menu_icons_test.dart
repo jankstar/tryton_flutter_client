@@ -16,6 +16,7 @@ class _Server extends RpcClient {
       {bool reAuth = true}) async {
     if (method == 'model.ir.ui.icon.search_read') {
       domains.add(params.first);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
       return [
         {'id': 1, 'name': 'tryton-list', 'icon': '<svg/>'}
       ];
@@ -29,6 +30,34 @@ class _Server extends RpcClient {
 /// ir.ui.icon – the menu's preload must not mark it as missing, else the
 /// Material fallback is drawn.
 void main() {
+  // the icon cache is global
+  setUp(IconFactory.clear);
+
+  test('rows of a group loading at once share one icon query; loaded '
+      'and loading icons are not asked again', () async {
+    final rpc = _Server();
+    final svc = ModelService(
+        rpc: rpc, getContext: () => const {}, getDatabase: () => 'tryton');
+    // the menu after the login: every row of the group preloads its icons
+    final rows = [
+      for (var i = 0; i < 16; i++)
+        preloadIconSvgs(svc, {'tryton-party', 'tryton-sale'})
+    ];
+    // a sub-menu while that query runs: only its new icon is asked
+    final sub = preloadIconSvgs(svc, {'tryton-sale', 'tryton-stock'});
+    await Future.wait([...rows, sub]);
+    expect(rpc.domains, hasLength(2));
+    expect('${rpc.domains[0]}',
+        allOf(contains('tryton-party'), contains('tryton-sale')));
+    expect('${rpc.domains[1]}',
+        allOf(contains('tryton-stock'), isNot(contains('tryton-sale'))));
+    expect(isIconCached('tryton-party'), isTrue);
+    expect(isIconCached('tryton-stock'), isTrue);
+
+    await preloadIconSvgs(svc, {'tryton-party', 'tryton-stock'});
+    expect(rpc.domains, hasLength(2), reason: 'all cached');
+  });
+
   testWidgets('the preload asks the server only for module icons; '
       'tryton-launch is drawn from its SVG', (tester) async {
     final rpc = _Server();

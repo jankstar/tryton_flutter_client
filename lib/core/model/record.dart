@@ -442,23 +442,45 @@ class Record {
   ///
   /// Locally modified fields are not overwritten. On error the records
   /// get null values and `exception = true`, and the error is rethrown.
+  ///
+  /// Only one read runs per set of records: a load of a record and field
+  /// that a running read fetches waits for that read and gets its result
+  /// or its error; another load of the same group family waits for the
+  /// running reads first and then reads what is still missing. The family
+  /// is the group, or for a child group of the same model (tree) the
+  /// parent's group, whose child groups are read together like Python
+  /// `sum(self.parent.group.children, [])`.
   Future<void> load(String name, {bool processException = true}) async {
-    if (destroyed || isLoaded(name)) return;
-    final pending = group._loading;
-    if (pending != null) {
-      await pending.catchError((Object _) {});
+    final loads = _loadFamily._loads;
+    while (true) {
       if (destroyed || isLoaded(name)) return;
+      for (final pending in loads) {
+        if (pending.covers(this, name)) return pending.future;
+      }
+      if (loads.isEmpty) break;
+      await loads.last.future.catchError((Object _) {});
     }
-    final future = _load(name, processException);
-    group._loading = future;
+    final pending = _PendingLoad();
+    // runs synchronously up to the read and fills [pending] before it
+    pending.future = _load(name, processException, pending);
+    loads.add(pending);
     try {
-      await future;
+      await pending.future;
     } finally {
-      if (identical(group._loading, future)) group._loading = null;
+      loads.remove(pending);
     }
   }
 
-  Future<void> _load(String name, bool processException) async {
+  /// The group whose running reads this record's reads share (see [load]).
+  RecordGroup get _loadFamily {
+    final parent = group.parent;
+    return parent != null && parent.model.name == model.name
+        ? parent.group
+        : group;
+  }
+
+  Future<void> _load(
+      String name, bool processException, _PendingLoad pending) async {
     final id2record = <int, Record>{id: this};
     String loading;
     Set<Object> views;
@@ -561,6 +583,9 @@ class Record {
       }
     }
 
+    pending
+      ..records.addAll(id2record.values)
+      ..names.addAll({name, checkName, ...fnames});
     final ids = id2record.keys.toList();
     final values = <Map<String, dynamic>>[];
     try {
@@ -990,4 +1015,15 @@ Map<String, dynamic> evalEnvironment(Record record, {bool onChange = false}) {
         ? evalEnvironment(parent, onChange: onChange)
         : null,
   );
+}
+
+/// A running read of [Record.load]: the records it fetches and the field
+/// names it loads (the requested name included).
+class _PendingLoad {
+  final Set<Record> records = {};
+  final Set<String> names = {};
+  late final Future<void> future;
+
+  bool covers(Record record, String name) =>
+      records.contains(record) && names.contains(name);
 }

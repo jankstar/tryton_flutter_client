@@ -60,18 +60,44 @@ ScreenAttributes? menuAttributes(
   );
 }
 
-/// The menu screen of the current preferences (null when logged out).
+/// Menu screens replaced by a rebuild of [menuScreenProvider]; the
+/// sidebar still shows the last one until the new menu is built.
+final _retiredMenuScreens = Provider<List<TrytonScreen>>((ref) => []);
+
+/// The menu screen of the current preferences (null when logged out). On a
+/// rebuild (language, `reload menu`) the previous screen stays alive – the
+/// sidebar keeps showing it – and is disposed once the new one is built.
 final menuScreenProvider = FutureProvider<TrytonScreen?>((ref) async {
+  final retired = ref.read(_retiredMenuScreens);
+  void disposeRetired() {
+    for (final old in [...retired]) {
+      old.dispose();
+    }
+    retired.clear();
+  }
+
   final preferences = ref.watch(preferencesProvider);
-  if (preferences == null) return null;
+  if (preferences == null) {
+    disposeRetired();
+    return null;
+  }
   final svc = ref.read(modelServiceProvider);
   final attributes =
       menuAttributes(preferences, ref.read(sessionProvider).context);
-  if (attributes == null) return null;
+  if (attributes == null) {
+    disposeRetired();
+    return null;
+  }
   final screen = TrytonScreen(attributes, session: modelSessionFor(svc));
-  ref.onDispose(screen.dispose);
+  var replaced = false;
+  ref.onDispose(() {
+    replaced = true;
+    retired.add(screen);
+  });
   await screen.switchView();
   await screen.searchFilter();
+  // a newer build disposes this one with the other replaced screens
+  if (!replaced) disposeRetired();
   return screen;
 });
 
@@ -94,15 +120,39 @@ final menuFavoritesProvider = FutureProvider<List<List<dynamic>>>((ref) async {
   }
 });
 
-/// Loads the SVGs of [names] (ir.ui.icon) into the icon cache.
+/// Icons of a running [preloadIconSvgs] read → that read.
+final Map<String, Future<void>> _iconLoads = {};
+
+/// Loads the SVGs of [names] (ir.ui.icon) into the icon cache: one
+/// `search_read` for the names neither cached nor being loaded; names a
+/// running call loads are awaited, not asked again (the menu calls this for
+/// every row of a group at once).
 Future<void> preloadIconSvgs(ModelService svc, Set<String> names) async {
   // Tryton's own icons (e.g. `tryton-launch` of wizards) are not in
   // ir.ui.icon: TrytonIcon loads them from the assets – marking them as
   // missing here would show the Material fallback instead
+  final running = <Future<void>>{for (final n in names) ?_iconLoads[n]};
   final missing = names
-      .where((n) => !isIconCached(n) && !localIcons.contains(n))
+      .where((n) =>
+          !isIconCached(n) &&
+          !localIcons.contains(n) &&
+          !_iconLoads.containsKey(n))
       .toList();
-  if (missing.isEmpty) return;
+  if (missing.isNotEmpty) {
+    final future = _readIconSvgs(svc, missing);
+    for (final n in missing) {
+      _iconLoads[n] = future;
+    }
+    running.add(future.whenComplete(() {
+      for (final n in missing) {
+        if (identical(_iconLoads[n], future)) _iconLoads.remove(n);
+      }
+    }));
+  }
+  await Future.wait(running);
+}
+
+Future<void> _readIconSvgs(ModelService svc, List<String> missing) async {
   try {
     final records = await svc.searchRead(
       'ir.ui.icon',
@@ -263,7 +313,10 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
         ),
         Divider(height: 1, thickness: 1, color: cs.outlineVariant),
         Expanded(
+          // a rebuild keeps the previous menu until the new one is there;
+          // only the first build shows the progress indicator
           child: menu.when(
+            skipLoadingOnReload: true,
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
