@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/shared/widgets/selection_input.dart';
 import 'package:tryton_flutter_client/core/serialization/tryton_serializer.dart';
 import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 import 'package:tryton_flutter_client/features/views/record_form.dart';
@@ -764,17 +765,18 @@ void main() {
         ['rec_name', 'code'],
       ]);
       expect(call.context['lang_ctx'], 1, reason: 'field context');
-      expect(find.byType(DropdownButtonFormField<int?>), findsOneWidget);
+      expect(find.byKey(const ValueKey('m2o-selection-lang')), findsOneWidget);
       expect(find.text('English'), findsOneWidget, reason: 'current value');
+      // touch (test default): the list in a bottom sheet (spec T2)
       await tester.tap(find.text('English'));
       await tester.pumpAndSettle();
       // server order (German before English), empty entry last
-      final items = tester
-          .widgetList<DropdownMenuItem<int?>>(find.byType(DropdownMenuItem<int?>))
-          .map((i) => i.value)
-          .toList();
-      expect(items.sublist(items.length - 3), [2, 1, null]);
-      expect(find.byTooltip('de'), findsWidgets, reason: 'help_field');
+      final items = [
+        for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
+          ((tile.title as Text?)?.data)
+      ];
+      expect(items.sublist(items.length - 3), ['German', 'English', '']);
+      expect(find.text('de'), findsWidgets, reason: 'help_field');
       await tester.tap(find.text('German').last);
       await tester.pumpAndSettle();
       await save(tester);
@@ -803,7 +805,7 @@ void main() {
       expect(find.text('Latin (inactive)'), findsOneWidget);
       // change the domain before the first answer arrived
       // (selection dropdowns are indexed by position: keys keep their type)
-      final kind = find.byType(DropdownButtonFormField<int>);
+      final kind = find.byKey(const ValueKey('selection-kind'));
       await tester.tap(kind);
       await tester.pumpAndSettle(const Duration(milliseconds: 50));
       await tester.tap(find.text('B').last);
@@ -826,12 +828,9 @@ void main() {
       );
       await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
       expect(find.byType(AlertDialog), findsNothing);
-      await tester.tap(find.byType(DropdownButtonFormField<int?>));
+      await tester.tap(find.byKey(const ValueKey('m2o-selection-lang')));
       await tester.pumpAndSettle();
-      expect(
-        tester.widgetList<DropdownMenuItem<int?>>(find.byType(DropdownMenuItem<int?>)).map((i) => i.value).toSet(),
-        {null},
-      );
+      expect(find.byType(ListTile), findsOneWidget, reason: 'the empty entry');
     });
 
     testWidgets('readonly: the rec_name as text, nothing loaded', (tester) async {
@@ -840,7 +839,7 @@ void main() {
         'lang.': {'rec_name': 'English'},
       });
       await pumpForm(tester, ro, model: 'test.form', recordId: 1);
-      expect(find.byType(DropdownButtonFormField<int?>), findsNothing);
+      expect(find.byType(SelectionInput), findsNothing);
       expect(find.text('English'), findsOneWidget);
       expect(ro.named('model.test.lang.search_read'), isEmpty);
     });

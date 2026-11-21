@@ -11,6 +11,7 @@ import '../../core/l10n/locale_provider.dart';
 import '../../core/model/model.dart' hide TextField;
 import '../../core/serialization/tryton_serializer.dart';
 import '../../core/xml/view_definition.dart';
+import '../../shared/widgets/selection_input.dart';
 import '../../shared/utils/date_format_utils.dart';
 import '../../shared/utils/number_format_utils.dart';
 import '../auth/auth_provider.dart';
@@ -540,8 +541,9 @@ class RecordMultiSelection extends StatefulWidget {
   final RecordFieldArgs args;
   const RecordMultiSelection({super.key, required this.args});
 
-  /// Options from which the search field is shown.
-  static const searchFrom = 20;
+  /// Options from which the search field is shown (like the search
+  /// filter's check lists, spec T2).
+  static const searchFrom = selectionSearchThreshold;
 
   @override
   State<RecordMultiSelection> createState() => _RecordMultiSelectionState();
@@ -574,10 +576,12 @@ class _RecordMultiSelectionState extends State<RecordMultiSelection> {
       for (final v in values)
         if (!known.any((i) => '${i[0]}' == '$v')) [v, '$v'],
     ];
-    final filter = _filter.trim().toLowerCase();
+    // the same filter as the selection entries: case, accents and
+    // umlauts ignored, word starts first
     final shown = [
-      for (final item in items)
-        if (filter.isEmpty || '${item[1]}'.toLowerCase().contains(filter)) item
+      for (final i in filterSelection(
+          [for (final item in items) '${item[1]}'], _filter))
+        items[i]
     ];
     final searchable = items.length >= RecordMultiSelection.searchFrom;
     final height = args.node.height;
@@ -793,27 +797,20 @@ class _RecordSelectionMany2OneState extends State<RecordSelectionMany2One> {
     if (id != null && !entries.any((e) => e.$1 == id)) {
       entries.add((id, name, null));
     }
-    Widget label((int, String, String?) e) {
-      final text = Text(e.$2, overflow: TextOverflow.ellipsis);
-      return e.$3 == null ? text : Tooltip(message: e.$3!, child: text);
-    }
-
-    return DropdownButtonFormField<int?>(
-      // a new value (e.g. from on_change) rebuilds the field
-      key: ValueKey('m2o-selection-${a.node.name}-$id'),
-      initialValue: id,
-      isExpanded: true,
-      // (the dense dropdown line is 24 px, a text line 20: less padding
-      // keeps the field as high as a text field)
-      decoration: a.decoration(context).copyWith(
-          contentPadding: const EdgeInsets.fromLTRB(10, 7, 10, 6)),
-      items: [
-        for (final e in entries)
-          DropdownMenuItem<int?>(value: e.$1, child: label(e)),
-        // the empty entry at the end, like the Python client
-        const DropdownMenuItem<int?>(value: null, child: Text('')),
-      ],
-      onChanged: (v) {
+    // the empty entry at the end, like the Python client
+    final items = <List<dynamic>>[
+      for (final e in entries) [e.$1, e.$2],
+      const [null, ''],
+    ];
+    return SelectionInput(
+      fieldKey: ValueKey('m2o-selection-${a.node.name}'),
+      items: items,
+      value: id,
+      required: a.required,
+      autofocus: a.autofocus,
+      decoration: a.decoration(context),
+      tooltipOf: (i) => i < entries.length ? entries[i].$3 : null,
+      onSelected: (v) {
         if (v == id) return;
         if (v == null) {
           a.onValue(null);

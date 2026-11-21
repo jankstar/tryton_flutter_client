@@ -12,6 +12,7 @@ import '../../core/screen/screen.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../model/model_service.dart';
 import '../../shared/dialogs/tryton_dialogs.dart';
+import '../../shared/widgets/selection_input.dart';
 import 'form_label_style.dart' show toolbarInputFill;
 
 /// Search bar of a list (spec 8.4, SAO `ScreenContainer`): text with the
@@ -351,6 +352,9 @@ class _FilterDialogState extends State<FilterDialog> {
   /// Rebuilds the inputs after „Clear“ (new keys for the form fields).
   int _generation = 0;
 
+  /// Search text of a long check list per field (spec T2).
+  final Map<String, String> _query = {};
+
   static const _range = {
     'integer', 'float', 'numeric', 'date', 'datetime', 'timestamp', 'time'
   };
@@ -378,6 +382,7 @@ class _FilterDialogState extends State<FilterDialog> {
 
   void _clear() => setState(() {
         _values.clear();
+        _query.clear();
         for (final c in [..._text.values, ..._to.values]) {
           c.clear();
         }
@@ -423,10 +428,40 @@ class _FilterDialogState extends State<FilterDialog> {
   }
 
   /// Framed list of the options with a check box per row (Python
-  /// `Selection`: multiple choice, up to 200 px high).
+  /// `Selection`: multiple choice, up to 200 px high); from
+  /// [selectionSearchThreshold] options a search entry above it filters
+  /// the rows (ticked rows stay ticked while hidden).
   Widget _selection(String name, String label, List<String> options) {
     final theme = Theme.of(context);
     final chosen = _multi.putIfAbsent(name, () => {});
+    final searchable = options.length >= selectionSearchThreshold;
+    final shown = searchable
+        ? [for (final i in filterSelection(options, _query[name] ?? '')) options[i]]
+        : options;
+    Widget row(String o) => InkWell(
+          key: ValueKey('filter-$name-$o'),
+          onTap: () => setState(() {
+            chosen.contains(o) ? chosen.remove(o) : chosen.add(o);
+          }),
+          child: Container(
+            color: chosen.contains(o)
+                ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                : null,
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(children: [
+              Checkbox(
+                value: chosen.contains(o),
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onChanged: (on) => setState(() {
+                  on == true ? chosen.add(o) : chosen.remove(o);
+                }),
+              ),
+              const SizedBox(width: 4),
+              Expanded(child: Text(o.isEmpty ? '""' : o)),
+            ]),
+          ),
+        );
     return InputDecorator(
       decoration: InputDecoration(
         labelText: label,
@@ -434,40 +469,30 @@ class _FilterDialogState extends State<FilterDialog> {
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 200),
-        child: ListView(
-          key: ValueKey('filter-$name'),
-          shrinkWrap: true,
-          children: [
-            for (final o in options)
-              InkWell(
-                key: ValueKey('filter-$name-$o'),
-                onTap: () => setState(() {
-                  chosen.contains(o) ? chosen.remove(o) : chosen.add(o);
-                }),
-                child: Container(
-                  color: chosen.contains(o)
-                      ? theme.colorScheme.primary.withValues(alpha: 0.08)
-                      : null,
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(children: [
-                    Checkbox(
-                      value: chosen.contains(o),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      onChanged: (on) => setState(() {
-                        on == true ? chosen.add(o) : chosen.remove(o);
-                      }),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(child: Text(o.isEmpty ? '""' : o)),
-                  ]),
-                ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (searchable)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+            child: TextField(
+              key: ValueKey('filter-search-$name-$_generation'),
+              decoration: InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(Icons.search, size: 18),
+                hintText: context.l10n.search,
               ),
-          ],
+              onChanged: (text) => setState(() => _query[name] = text),
+            ),
+          ),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 200),
+          child: ListView.builder(
+            key: ValueKey('filter-$name'),
+            shrinkWrap: true,
+            itemCount: shown.length,
+            itemBuilder: (context, i) => row(shown[i]),
+          ),
         ),
-      ),
+      ]),
     );
   }
 

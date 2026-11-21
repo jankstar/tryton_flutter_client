@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tryton_flutter_client/shared/widgets/selection_input.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 
 import 'form_harness.dart';
@@ -56,10 +57,19 @@ void main() {
       });
 
   Future<void> choose(WidgetTester tester, int index, String label) async {
-    await tester.tap(find.byType(DropdownButtonFormField<int>).at(index));
+    // the arrow of the selection entry shows the whole list (spec T2)
+    await tester.tap(find.descendant(
+        of: find.byType(SelectionInput).at(index),
+        matching: find.byIcon(Icons.arrow_drop_down)));
     await pumpFrames(tester, 5);
     // (the empty label has no size: the tap hits its row)
-    await tester.tap(find.text(label).last, warnIfMissed: false);
+    await tester.tap(
+        find
+            .descendant(
+                of: find.byKey(const ValueKey('selection-options')),
+                matching: find.text(label))
+            .first,
+        warnIfMissed: false);
     await pumpFrames(tester, 10);
   }
 

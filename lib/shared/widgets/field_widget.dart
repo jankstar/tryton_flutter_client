@@ -14,6 +14,7 @@ import '../utils/date_format_utils.dart';
 import '../utils/number_format_utils.dart';
 import '../utils/symbol_cache.dart' as sym_cache;
 import '../../features/views/form_label_style.dart';
+import 'selection_input.dart';
 
 /// Renders a Tryton field as the appropriate Flutter widget.
 class FieldWidget extends ConsumerWidget {
@@ -156,6 +157,8 @@ class FieldWidget extends ConsumerWidget {
           field: field,
           value: value,
           readOnly: effective,
+          required: isRequired,
+          autofocus: autofocus,
           onChanged: onChanged,
           decoration: _decoration(context),
         );
@@ -424,10 +427,13 @@ class _DateField extends StatelessWidget {
 
 // ─── Selection field ──────────────────────────────────────────────────────────
 
+/// Entry with a filtered list (spec T2, [SelectionInput]).
 class _SelectionField extends StatelessWidget {
   final FieldDefinition field;
   final dynamic value;
   final bool readOnly;
+  final bool required;
+  final bool autofocus;
   final void Function(dynamic)? onChanged;
   final InputDecoration decoration;
 
@@ -436,46 +442,22 @@ class _SelectionField extends StatelessWidget {
     required this.value,
     required this.readOnly,
     required this.decoration,
+    this.required = false,
+    this.autofocus = false,
     this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final items = field.selection ?? [];
-    final rawKey = (value == null || value == false) ? null : value.toString();
-    // Items by position: the keys keep their type (a `None` key stays
-    // null, an integer key an int) – `toString` made `(None, '')` "null".
-    final index = selectionIndex(items, value);
-
-    // If options unavailable but value is set, show as read-only text.
-    if (items.isEmpty && rawKey != null) {
-      return TextFormField(
-        key: ValueKey(rawKey),
-        initialValue: rawKey,
-        decoration: decoration,
-        readOnly: true,
-        enabled: false,
-      );
-    }
-
-    return DropdownButtonFormField<int>(
-      key: ValueKey((Object.hashAll([for (final e in items) e[0]]), index)),
-      initialValue: index,
-      // (the dense dropdown line is 24 px, a text line 20: less padding
-      // keeps the field as high as a text field)
-      decoration: decoration.copyWith(
-          contentPadding: const EdgeInsets.fromLTRB(10, 7, 10, 6)),
-      isExpanded: true,
-      items: [
-        for (var i = 0; i < items.length; i++)
-          DropdownMenuItem<int>(
-            value: i,
-            child: Text('${items[i][1] ?? ''}', overflow: TextOverflow.ellipsis),
-          ),
-      ],
-      onChanged: readOnly
-          ? null
-          : (i) => onChanged?.call(i == null ? null : items[i][0]),
+    return SelectionInput(
+      fieldKey: ValueKey('selection-${field.name}'),
+      items: field.selection ?? const [],
+      value: value,
+      readOnly: readOnly || onChanged == null,
+      required: required,
+      autofocus: autofocus,
+      decoration: decoration,
+      onSelected: (key) => onChanged?.call(key),
     );
   }
 }
