@@ -1106,4 +1106,24 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Servidor de demonstração: senha “demo”';
+
+  @override
+  String get serverUnreachable =>
+      'Não é possível contactar o servidor. Verifique o endereço do servidor e a ligação de rede.';
+
+  @override
+  String get connectionLost =>
+      'A ligação foi interrompida enquanto o servidor processava o pedido. O servidor pode ter executado a ação – recarregue os dados antes de tentar novamente.';
+
+  @override
+  String get waitAbandoned =>
+      'Deixou de esperar pelo servidor. Ele pode ainda estar a processar o pedido; o resultado é desconhecido – recarregue os dados.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'A aguardar o servidor… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Deixar de esperar';
 }

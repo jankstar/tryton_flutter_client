@@ -592,5 +592,10 @@
   "openReport": "Ouvrir un rapport",
   "printReport": "Imprimer un rapport",
   "aboutTranslationsTryton": "De nombreux textes issus des traductions du projet Tryton",
-  "demoPasswordHint": "Serveur de démonstration : mot de passe « demo »"
+  "demoPasswordHint": "Serveur de démonstration : mot de passe « demo »",
+  "serverUnreachable": "Impossible de joindre le serveur. Vérifiez l'adresse du serveur et la connexion réseau.",
+  "connectionLost": "La connexion a été interrompue pendant que le serveur traitait la requête. Le serveur a peut-être exécuté l'action : rechargez les données avant de réessayer.",
+  "waitAbandoned": "Attente du serveur arrêtée. Il traite peut-être encore la requête ; le résultat est inconnu : rechargez les données.",
+  "waitingForServer": "En attente du serveur… {elapsed}",
+  "stopWaiting": "Ne plus attendre"
 }

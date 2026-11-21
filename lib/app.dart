@@ -14,6 +14,7 @@ import 'core/theme/theme_provider.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/auth/session_bootstrap.dart';
 import 'features/notifications/notifications.dart' show rootMessengerKey;
+import 'shared/widgets/rpc_wait_overlay.dart';
 import 'features/model/metadata_service.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/relogin_dialog.dart';
@@ -138,10 +139,14 @@ class _TrytonFlutterClientAppState extends ConsumerState<TrytonFlutterClientApp>
       theme: currentTheme.buildThemeData(),
       themeMode: ThemeMode.light,
       routerConfig: _router,
-      // Writing direction of the user's language (language_direction).
+      // Writing direction of the user's language; the wait indicator of
+      // long server calls above tabs and dialogs (spec T1).
       builder: (context, child) => Directionality(
         textDirection: ref.watch(textDirectionProvider),
-        child: child ?? const SizedBox.shrink(),
+        child: RpcWaitOverlay(
+          monitor: ref.watch(rpcClientProvider).activity,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }

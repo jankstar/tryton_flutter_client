@@ -592,5 +592,10 @@
   "openReport": "Open rapport",
   "printReport": "Rapport afdrukken",
   "aboutTranslationsTryton": "Veel teksten uit de vertalingen van het Tryton-project",
-  "demoPasswordHint": "Demoserver: wachtwoord ‘demo’"
+  "demoPasswordHint": "Demoserver: wachtwoord ‘demo’",
+  "serverUnreachable": "De server is niet bereikbaar. Controleer het serveradres en de netwerkverbinding.",
+  "connectionLost": "De verbinding werd onderbroken terwijl de server het verzoek verwerkte. De server heeft de actie mogelijk uitgevoerd – laad de gegevens opnieuw voordat u het nogmaals probeert.",
+  "waitAbandoned": "Gestopt met wachten op de server. Mogelijk verwerkt hij het verzoek nog; het resultaat is onbekend – laad de gegevens opnieuw.",
+  "waitingForServer": "Wachten op de server… {elapsed}",
+  "stopWaiting": "Niet meer wachten"
 }

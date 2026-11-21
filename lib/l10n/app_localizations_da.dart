@@ -1105,4 +1105,24 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Demoserver: adgangskode »demo«';
+
+  @override
+  String get serverUnreachable =>
+      'Serveren kan ikke nås. Kontrollér serveradressen og netværksforbindelsen.';
+
+  @override
+  String get connectionLost =>
+      'Forbindelsen blev afbrudt, mens serveren behandlede anmodningen. Serveren kan have udført handlingen – genindlæs dataene, før du prøver igen.';
+
+  @override
+  String get waitAbandoned =>
+      'Holdt op med at vente på serveren. Den behandler muligvis stadig anmodningen; resultatet er ukendt – genindlæs dataene.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'Venter på serveren… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Stop med at vente';
 }

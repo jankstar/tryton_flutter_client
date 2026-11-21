@@ -5,6 +5,19 @@ import '../../core/rpc/rpc_exceptions.dart';
 /// Answer to the UserWarning dialog (spec 2.6).
 enum WarningChoice { cancel, ok, always }
 
+/// Connection problems with their own message (spec T1).
+enum ConnectionProblem {
+  /// No connection could be set up ([RpcConnectException]).
+  unreachable,
+
+  /// Broken while the server was processing the request
+  /// ([RpcConnectionLostException]): the result is unknown.
+  interrupted,
+
+  /// The user stopped waiting ([RpcWaitAbandonedException]).
+  abandoned,
+}
+
 /// Shows the dialogs of the central error handling. Implemented with real
 /// dialogs in `error_dialogs.dart`, faked in tests.
 abstract class ErrorPresenter {
@@ -20,6 +33,10 @@ abstract class ErrorPresenter {
 
   /// HTTP error with [code], or network error when [code] is null.
   Future<void> httpError(int? code, String text);
+
+  /// Server unreachable / connection lost during a request / stopped
+  /// waiting (spec T1).
+  Future<void> connectionError(ConnectionProblem problem);
 
   /// ConcurrencyException that was not resolved by the caller (A1).
   Future<void> concurrency();
@@ -112,6 +129,12 @@ class ErrorHandler implements RpcErrorProcessor {
       LoginException(:final message) => presenter.userError(message, ''),
       RpcHttpException(:final statusCode) =>
         presenter.httpError(statusCode, httpReason(statusCode)),
+      RpcConnectException() =>
+        presenter.connectionError(ConnectionProblem.unreachable),
+      RpcConnectionLostException() =>
+        presenter.connectionError(ConnectionProblem.interrupted),
+      RpcWaitAbandonedException() =>
+        presenter.connectionError(ConnectionProblem.abandoned),
       RpcNetworkException(:final message) => presenter.httpError(null, message),
       // [str(exception), traceback]
       RpcServerException(:final errorType, :final message) =>

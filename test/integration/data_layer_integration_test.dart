@@ -296,5 +296,8 @@ class _Presenter implements ErrorPresenter {
   Future<void> httpError(int? code, String text) async =>
       log.add('http:$code');
   @override
+  Future<void> connectionError(ConnectionProblem problem) async =>
+      log.add('connection:${problem.name}');
+  @override
   Future<void> concurrency() async => log.add('error:concurrency');
 }

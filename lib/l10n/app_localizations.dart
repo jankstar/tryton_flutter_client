@@ -2149,6 +2149,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Demo server: password “demo”'**
   String get demoPasswordHint;
+
+  /// Error: no connection to the server could be set up (refused, DNS, TLS, connect timeout)
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to reach the server. Check the server address and the network connection.'**
+  String get serverUnreachable;
+
+  /// Error: the connection broke while the server was processing a request; the result is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'The connection was interrupted while the server was processing the request. The server may have carried out the action – reload the data before you try again.'**
+  String get connectionLost;
+
+  /// Notice after the user pressed "Stop waiting" in the wait indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped waiting for the server. It may still be processing the request; the result is unknown – reload the data.'**
+  String get waitAbandoned;
+
+  /// Wait indicator shown after 3 s of a running server call; elapsed time like 0:42
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the server… {elapsed}'**
+  String waitingForServer(String elapsed);
+
+  /// Wait indicator: button that stops waiting for the server answer (the server keeps working)
+  ///
+  /// In en, this message translates to:
+  /// **'Stop waiting'**
+  String get stopWaiting;
 }
 
 class _AppLocalizationsDelegate

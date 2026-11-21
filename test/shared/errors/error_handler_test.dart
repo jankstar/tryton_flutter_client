@@ -28,6 +28,9 @@ class _FakePresenter implements ErrorPresenter {
   Future<void> httpError(int? code, String text) async =>
       log.add('http:$code|$text');
   @override
+  Future<void> connectionError(ConnectionProblem problem) async =>
+      log.add('connection:${problem.name}');
+  @override
   Future<void> concurrency() async => log.add('concurrency');
 }
 
@@ -259,6 +262,16 @@ void main() {
     test('RpcNetworkException: no code', () async {
       expect(await shown(const RpcNetworkException('Connection timed out')),
           'http:null|Connection timed out');
+    });
+    test('connection problems have their own messages (T1)', () async {
+      expect(await shown(const RpcConnectException('refused')),
+          'connection:unreachable');
+      presenter.log.clear();
+      expect(await shown(const RpcConnectionLostException('closed')),
+          'connection:interrupted');
+      presenter.log.clear();
+      expect(await shown(const RpcWaitAbandonedException()),
+          'connection:abandoned');
     });
     test('ConcurrencyException: unchanged simple message (A1)', () async {
       expect(await shown(const ConcurrencyException()), 'concurrency');

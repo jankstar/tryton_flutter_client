@@ -592,5 +592,10 @@
   "openReport": "Bericht öffnen",
   "printReport": "Bericht drucken",
   "aboutTranslationsTryton": "Viele Texte aus den Übersetzungen des Tryton-Projekts",
-  "demoPasswordHint": "Demo-Server: Passwort „demo“"
+  "demoPasswordHint": "Demo-Server: Passwort „demo“",
+  "serverUnreachable": "Server nicht erreichbar. Bitte Serveradresse und Netzwerkverbindung prüfen.",
+  "connectionLost": "Die Verbindung wurde während der Verarbeitung unterbrochen. Der Server hat die Aktion möglicherweise ausgeführt – bitte die Daten neu laden, bevor Sie es erneut versuchen.",
+  "waitAbandoned": "Warten auf den Server beendet. Er verarbeitet die Anfrage möglicherweise noch; das Ergebnis ist unbekannt – bitte die Daten neu laden.",
+  "waitingForServer": "Warten auf den Server … {elapsed}",
+  "stopWaiting": "Nicht mehr warten"
 }

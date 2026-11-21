@@ -10,7 +10,8 @@ import '../../l10n/app_localizations.dart';
 /// `login_failed` (401: wrong user name or password), `forbidden` (403,
 /// e.g. no password authentication for the reset),
 /// `too_many_requests` (429), `database_not_found` (404),
-/// `http_error:<code>:<text>`, `network_error:<text>`; other errors their
+/// `http_error:<code>:<text>`, `server_unreachable`, `connection_lost`,
+/// `wait_abandoned` (spec T1), `network_error:<text>`; other errors their
 /// text.
 String loginErrorCode(Object error) {
   if (error is RpcHttpException) {
@@ -22,6 +23,9 @@ String loginErrorCode(Object error) {
       _ => 'http_error:${error.statusCode}:${error.message}',
     };
   }
+  if (error is RpcConnectException) return 'server_unreachable';
+  if (error is RpcConnectionLostException) return 'connection_lost';
+  if (error is RpcWaitAbandonedException) return 'wait_abandoned';
   if (error is RpcNetworkException) return 'network_error:${error.message}';
   if (error is TrytonException) return error.message;
   return error.toString();
@@ -44,6 +48,12 @@ String localizeLoginError(String code, AppLocalizations l) {
       return l.versionMismatch(parts[1], parts[2]);
     case 'http_error' when parts.length >= 3 && int.tryParse(parts[1]) != null:
       return l.httpError(int.parse(parts[1]), parts.sublist(2).join(':'));
+    case 'server_unreachable':
+      return l.serverUnreachable;
+    case 'connection_lost':
+      return l.connectionLost;
+    case 'wait_abandoned':
+      return l.waitAbandoned;
     case 'network_error':
       return l.networkError(parts.sublist(1).join(':'));
   }

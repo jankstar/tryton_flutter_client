@@ -1103,4 +1103,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Demo server: password “demo”';
+
+  @override
+  String get serverUnreachable =>
+      'Unable to reach the server. Check the server address and the network connection.';
+
+  @override
+  String get connectionLost =>
+      'The connection was interrupted while the server was processing the request. The server may have carried out the action – reload the data before you try again.';
+
+  @override
+  String get waitAbandoned =>
+      'Stopped waiting for the server. It may still be processing the request; the result is unknown – reload the data.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'Waiting for the server… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Stop waiting';
 }

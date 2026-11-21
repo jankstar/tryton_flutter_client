@@ -43,6 +43,26 @@ class RpcNetworkException extends TrytonException {
   const RpcNetworkException(super.message);
 }
 
+/// No connection to the server could be set up (refused, no route, DNS,
+/// TLS, connect timeout): the request never reached the server.
+class RpcConnectException extends RpcNetworkException {
+  const RpcConnectException(super.message);
+}
+
+/// The connection broke while the server was processing the request: the
+/// server may have carried out the call, the result is unknown. Never
+/// sent again automatically (spec T1).
+class RpcConnectionLostException extends RpcNetworkException {
+  const RpcConnectionLostException(super.message);
+}
+
+/// The user stopped waiting for the answer (wait indicator): the server
+/// may still be processing the request, the result is unknown.
+class RpcWaitAbandonedException extends RpcNetworkException {
+  const RpcWaitAbandonedException(
+      [super.message = 'Stopped waiting for the server.']);
+}
+
 /// HTTP status other than 200 (e.g. 403 with an HTML body for a method
 /// that is not exposed, or 503 after all retries).
 class RpcHttpException extends RpcNetworkException {

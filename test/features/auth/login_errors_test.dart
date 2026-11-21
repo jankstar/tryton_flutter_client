@@ -66,6 +66,11 @@ void main() {
     expect(text(const RpcHttpException(502, 'Bad: Gateway')),
         de.httpError(502, 'Bad: Gateway'));
     expect(text(const RpcNetworkException('timeout')), de.networkError('timeout'));
+    // T1: unreachable vs. broken during the request
+    expect(text(const RpcConnectException('refused')), de.serverUnreachable);
+    expect(text(const RpcConnectionLostException('closed')), de.connectionLost);
+    expect(text(const RpcWaitAbandonedException()), de.waitAbandoned);
+    expect(de.serverUnreachable, isNot(de.connectionLost));
     expect(localizeLoginError('version_mismatch:7.0:8.0', de),
         de.versionMismatch('7.0', '8.0'));
   });

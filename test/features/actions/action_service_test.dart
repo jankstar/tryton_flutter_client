@@ -208,6 +208,31 @@ void main() {
     expect(tabs.state.tabs, isEmpty);
   });
 
+  test('module activation: the wizard\'s end result reload menu runs as '
+      'client action (spec T1, trytond ModuleActivateUpgrade.end)', () async {
+    final clientActions = <String>[];
+    final svc = ActionService(
+      ModelService(
+          rpc: rpc, getContext: () => const {}, getDatabase: () => 'test'),
+      tabs,
+      sessionContext: () => const {},
+      userId: () => 42,
+      clientAction: (action) async => clientActions.add(action),
+    );
+    rpc.handlers['wizard.ir.module.activate_upgrade.create'] =
+        (_) => [1, 'upgrade', 'end'];
+    rpc.handlers['wizard.ir.module.activate_upgrade.execute'] =
+        (_) => <String, dynamic>{};
+    rpc.handlers['wizard.ir.module.activate_upgrade.delete'] =
+        (_) => 'reload menu';
+    await svc.execute({
+      'type': 'ir.action.wizard',
+      'name': 'Perform Pending Activation/Upgrade',
+      'wiz_name': 'ir.module.activate_upgrade',
+    }, ui: _FakeUi());
+    expect(clientActions, ['reload menu']);
+  });
+
   group('keywords (12.6)', () {
     Map<String, dynamic> window(String name) => {
           'type': 'ir.action.act_window',

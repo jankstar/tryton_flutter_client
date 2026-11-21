@@ -1106,4 +1106,24 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Демо-сервер: пароль «demo»';
+
+  @override
+  String get serverUnreachable =>
+      'Не удаётся связаться с сервером. Проверьте адрес сервера и сетевое подключение.';
+
+  @override
+  String get connectionLost =>
+      'Соединение было прервано во время обработки запроса сервером. Возможно, сервер выполнил действие – перезагрузите данные, прежде чем повторить попытку.';
+
+  @override
+  String get waitAbandoned =>
+      'Ожидание сервера прекращено. Возможно, он всё ещё обрабатывает запрос; результат неизвестен – перезагрузите данные.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'Ожидание сервера… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Не ждать';
 }

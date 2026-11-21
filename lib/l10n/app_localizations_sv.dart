@@ -1106,4 +1106,24 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Demoserver: lösenord ”demo”';
+
+  @override
+  String get serverUnreachable =>
+      'Det går inte att nå servern. Kontrollera serveradressen och nätverksanslutningen.';
+
+  @override
+  String get connectionLost =>
+      'Anslutningen bröts medan servern behandlade begäran. Servern kan ha utfört åtgärden – läs in data igen innan du försöker på nytt.';
+
+  @override
+  String get waitAbandoned =>
+      'Slutade vänta på servern. Den kan fortfarande behandla begäran; resultatet är okänt – läs in data igen.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'Väntar på servern… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Sluta vänta';
 }

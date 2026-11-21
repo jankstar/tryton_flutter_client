@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/locale_provider.dart';
 import '../../features/model/model_service.dart';
+import '../../l10n/app_localizations.dart';
 import '../dialogs/tryton_dialogs.dart';
 import '../widgets/concurrency_dialog.dart';
 import 'error_handler.dart';
@@ -31,6 +32,14 @@ Future<void> showErrorDialog(BuildContext context, Object error) {
 Future<void> skipUserWarning(ModelService svc, String name, bool always) =>
     svc.execute<dynamic>('res.user.warning', 'skip', [name, always]);
 
+/// The message of a connection [problem] (spec T1).
+String connectionProblemText(ConnectionProblem problem, AppLocalizations l) =>
+    switch (problem) {
+      ConnectionProblem.unreachable => l.serverUnreachable,
+      ConnectionProblem.interrupted => l.connectionLost,
+      ConnectionProblem.abandoned => l.waitAbandoned,
+    };
+
 /// The standard dialogs (spec 11.3, `tryton_dialogs.dart`) for
 /// [ErrorPresenter] (spec 2.6).
 class DialogErrorPresenter implements ErrorPresenter {
@@ -55,6 +64,13 @@ class DialogErrorPresenter implements ErrorPresenter {
     final l = context.l10n;
     await showMessage(
         context, code == null ? l.networkError(text) : l.httpError(code, text),
+        icon: Icons.cloud_off_outlined);
+  }
+
+  @override
+  Future<void> connectionError(ConnectionProblem problem) async {
+    if (!context.mounted) return;
+    await showMessage(context, connectionProblemText(problem, context.l10n),
         icon: Icons.cloud_off_outlined);
   }
 

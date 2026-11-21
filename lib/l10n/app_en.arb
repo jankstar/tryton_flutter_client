@@ -1093,5 +1093,30 @@
   "demoPasswordHint": "Demo server: password “demo”",
   "@demoPasswordHint": {
     "description": "Login screen: hint below the password field while the profile of the public Tryton demo server is selected"
+  },
+  "serverUnreachable": "Unable to reach the server. Check the server address and the network connection.",
+  "@serverUnreachable": {
+    "description": "Error: no connection to the server could be set up (refused, DNS, TLS, connect timeout)"
+  },
+  "connectionLost": "The connection was interrupted while the server was processing the request. The server may have carried out the action – reload the data before you try again.",
+  "@connectionLost": {
+    "description": "Error: the connection broke while the server was processing a request; the result is unknown"
+  },
+  "waitAbandoned": "Stopped waiting for the server. It may still be processing the request; the result is unknown – reload the data.",
+  "@waitAbandoned": {
+    "description": "Notice after the user pressed \"Stop waiting\" in the wait indicator"
+  },
+  "waitingForServer": "Waiting for the server… {elapsed}",
+  "@waitingForServer": {
+    "description": "Wait indicator shown after 3 s of a running server call; elapsed time like 0:42",
+    "placeholders": {
+      "elapsed": {
+        "type": "String"
+      }
+    }
+  },
+  "stopWaiting": "Stop waiting",
+  "@stopWaiting": {
+    "description": "Wait indicator: button that stops waiting for the server answer (the server keeps working)"
   }
 }

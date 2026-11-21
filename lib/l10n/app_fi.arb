@@ -592,5 +592,10 @@
   "openReport": "Avaa raportti",
   "printReport": "Tulosta raportti",
   "aboutTranslationsTryton": "Monet tekstit Tryton-projektin käännöksistä",
-  "demoPasswordHint": "Demopalvelin: salasana ”demo”"
+  "demoPasswordHint": "Demopalvelin: salasana ”demo”",
+  "serverUnreachable": "Palvelimeen ei saada yhteyttä. Tarkista palvelimen osoite ja verkkoyhteys.",
+  "connectionLost": "Yhteys katkesi, kun palvelin käsitteli pyyntöä. Palvelin on ehkä suorittanut toiminnon – lataa tiedot uudelleen ennen kuin yrität uudestaan.",
+  "waitAbandoned": "Palvelimen odottaminen lopetettiin. Se saattaa yhä käsitellä pyyntöä; tulos on tuntematon – lataa tiedot uudelleen.",
+  "waitingForServer": "Odotetaan palvelinta… {elapsed}",
+  "stopWaiting": "Lopeta odotus"
 }

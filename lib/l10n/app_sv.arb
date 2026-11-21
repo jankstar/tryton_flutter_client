@@ -592,5 +592,10 @@
   "openReport": "Öppna rapport",
   "printReport": "Skriv ut rapport",
   "aboutTranslationsTryton": "Många texter från Tryton-projektets översättningar",
-  "demoPasswordHint": "Demoserver: lösenord ”demo”"
+  "demoPasswordHint": "Demoserver: lösenord ”demo”",
+  "serverUnreachable": "Det går inte att nå servern. Kontrollera serveradressen och nätverksanslutningen.",
+  "connectionLost": "Anslutningen bröts medan servern behandlade begäran. Servern kan ha utfört åtgärden – läs in data igen innan du försöker på nytt.",
+  "waitAbandoned": "Slutade vänta på servern. Den kan fortfarande behandla begäran; resultatet är okänt – läs in data igen.",
+  "waitingForServer": "Väntar på servern… {elapsed}",
+  "stopWaiting": "Sluta vänta"
 }

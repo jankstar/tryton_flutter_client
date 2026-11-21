@@ -1103,4 +1103,24 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Serwer demonstracyjny: hasło „demo”';
+
+  @override
+  String get serverUnreachable =>
+      'Nie można połączyć się z serwerem. Sprawdź adres serwera i połączenie sieciowe.';
+
+  @override
+  String get connectionLost =>
+      'Połączenie zostało przerwane podczas przetwarzania żądania przez serwer. Serwer mógł wykonać operację – odśwież dane przed ponowną próbą.';
+
+  @override
+  String get waitAbandoned =>
+      'Przestano czekać na serwer. Może on nadal przetwarzać żądanie; wynik jest nieznany – odśwież dane.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'Oczekiwanie na serwer… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Przestań czekać';
 }

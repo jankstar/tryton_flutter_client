@@ -592,5 +592,10 @@
   "openReport": "Otwórz raport",
   "printReport": "Drukuj raport",
   "aboutTranslationsTryton": "Wiele tekstów z tłumaczeń projektu Tryton",
-  "demoPasswordHint": "Serwer demonstracyjny: hasło „demo”"
+  "demoPasswordHint": "Serwer demonstracyjny: hasło „demo”",
+  "serverUnreachable": "Nie można połączyć się z serwerem. Sprawdź adres serwera i połączenie sieciowe.",
+  "connectionLost": "Połączenie zostało przerwane podczas przetwarzania żądania przez serwer. Serwer mógł wykonać operację – odśwież dane przed ponowną próbą.",
+  "waitAbandoned": "Przestano czekać na serwer. Może on nadal przetwarzać żądanie; wynik jest nieznany – odśwież dane.",
+  "waitingForServer": "Oczekiwanie na serwer… {elapsed}",
+  "stopWaiting": "Przestań czekać"
 }

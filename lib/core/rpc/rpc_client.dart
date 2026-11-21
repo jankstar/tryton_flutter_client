@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HandshakeException, HttpException;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../serialization/tryton_serializer.dart';
 import 'reauth_service.dart';
+import 'rpc_activity.dart';
 import 'rpc_cache.dart';
 import 'rpc_exceptions.dart';
 
@@ -39,6 +41,30 @@ class RpcClient {
   /// HTTP 503: at most this many attempts in total (like SAO).
   static const max503Attempts = 5;
 
+  /// Time to set up the connection (Python `jsonrpc.CONNECT_TIMEOUT` is
+  /// 5 s; a little more for mobile networks and TLS). There is no read
+  /// timeout for RPC calls (Python `DEFAULT_TIMEOUT = None`): a module
+  /// activation answers after minutes (spec T1).
+  static const connectTimeout = Duration(seconds: 10);
+
+  /// Read timeout of the database-independent calls (server version,
+  /// database list): an address that accepts the connection but never
+  /// answers must not hang the login screen.
+  static const serverCallTimeout = Duration(seconds: 30);
+
+  /// The requests being waited for (wait indicator, spec T1).
+  final RpcActivityMonitor activity = RpcActivityMonitor();
+
+  /// Calls that never show the wait indicator: counters, completion,
+  /// global search and icons run beside the user's work (Python runs them
+  /// with a callback, i.e. without blocking).
+  static bool isBackgroundMethod(String method) =>
+      method.endsWith('.search_count') ||
+      method.endsWith('.autocomplete') ||
+      method == 'model.res.notification.get_count' ||
+      method == 'model.ir.model.global_search' ||
+      method.startsWith('model.ir.ui.icon.');
+
   RpcClient({
     required String baseUrl,
     @visibleForTesting Dio? dio,
@@ -47,12 +73,14 @@ class RpcClient {
   })  : _baseUrl = baseUrl.endsWith('/') ? baseUrl : '$baseUrl/',
         cache = cache ?? RpcCache(),
         _sleep = sleep ?? Future.delayed,
-        _dio = dio ??
-            Dio(BaseOptions(
-              connectTimeout: const Duration(seconds: 30),
-              receiveTimeout: const Duration(seconds: 60),
-              headers: {'Content-Type': 'application/json'},
-            ));
+        _dio = dio ?? Dio(defaultOptions());
+
+  /// Options of the RPC [Dio]: [connectTimeout], no read timeout.
+  @visibleForTesting
+  static BaseOptions defaultOptions() => BaseOptions(
+        connectTimeout: connectTimeout,
+        headers: {'Content-Type': 'application/json'},
+      );
 
   Options get _options => Options(
         responseType: ResponseType.plain,
@@ -99,13 +127,24 @@ class RpcClient {
 
     var attempts503 = 0;
     var reAuthed = false;
+    final background = isBackgroundMethod(method);
     while (true) {
       try {
-        final response = await _dio.post<String>(
-          url,
-          data: body,
-          options: _options,
-        );
+        // only the HTTP request counts as waiting (not the re-login dialog
+        // or the 503 pause)
+        final cancel = CancelToken();
+        final running = activity.start(method, cancel, background: background);
+        final Response<String> response;
+        try {
+          response = await _dio.post<String>(
+            url,
+            data: body,
+            options: _options,
+            cancelToken: cancel,
+          );
+        } finally {
+          activity.end(running);
+        }
         final result = _handleResponse(response);
         final seconds =
             int.tryParse(response.headers.value('x-tryton-cache') ?? '');
@@ -180,22 +219,47 @@ class RpcClient {
       final response = await _dio.post<String>(
         url,
         data: body,
-        options: _options,
+        options: _options.copyWith(receiveTimeout: serverCallTimeout),
       );
       return _handleResponse(response);
     } on DioException catch (e) {
+      // no answer from the address: as unreachable as a refused connection
+      if (e.type == DioExceptionType.receiveTimeout) {
+        throw RpcConnectException(_friendlyError(e));
+      }
       throw _networkError(e);
     }
   }
 
-  /// HTTP status → [RpcHttpException]; connection problems →
-  /// [RpcNetworkException].
-  static RpcNetworkException _networkError(DioException e) {
+  /// HTTP status → [RpcHttpException]; no connection set up →
+  /// [RpcConnectException]; broken during the request →
+  /// [RpcConnectionLostException]; stopped waiting →
+  /// [RpcWaitAbandonedException] (spec T1). Dio reports a failed connect
+  /// as `connectionTimeout` or `connectionError` with a `SocketException`,
+  /// but a connection the server closes after the request was sent also
+  /// as `connectionError` – with an `HttpException` („Connection closed
+  /// before full header was received“); a TLS handshake failure comes as
+  /// `unknown` with a `HandshakeException`.
+  @visibleForTesting
+  static RpcNetworkException networkError(DioException e) {
     final status = e.response?.statusCode;
-    return status != null
-        ? RpcHttpException(status, _friendlyError(e))
-        : RpcNetworkException(_friendlyError(e));
+    if (status != null) return RpcHttpException(status, _friendlyError(e));
+    final message = _friendlyError(e);
+    return switch (e.type) {
+      DioExceptionType.cancel => const RpcWaitAbandonedException(),
+      _ when e.error is HttpException => RpcConnectionLostException(message),
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.connectionError ||
+      DioExceptionType.badCertificate =>
+        RpcConnectException(message),
+      DioExceptionType.unknown when e.error is HandshakeException =>
+        RpcConnectException(message),
+      _ => RpcConnectionLostException(message),
+    };
   }
+
+  static RpcNetworkException _networkError(DioException e) =>
+      networkError(e);
 
   /// Converts a DioException to a short, user-readable message.
   static String _friendlyError(DioException e) {
@@ -211,14 +275,17 @@ class RpcClient {
       }
     }
     // Connection-level errors (timeout, no route, etc.)
-    if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout) {
-      return 'Connection timed out – check the server URL.';
-    }
-    if (e.type == DioExceptionType.connectionError) {
-      return 'Cannot connect to server – check the URL and network.';
-    }
-    return e.message ?? 'Network error.';
+    return switch (e.type) {
+      DioExceptionType.connectionTimeout =>
+        'Connection timed out – check the server URL.',
+      DioExceptionType.connectionError ||
+      DioExceptionType.badCertificate =>
+        'Cannot connect to server – check the URL and network.',
+      DioExceptionType.receiveTimeout => 'The server did not answer.',
+      DioExceptionType.cancel => 'Stopped waiting for the server.',
+      _ => 'Connection interrupted during the request'
+          '${e.error != null ? ': ${e.error}' : ''}.',
+    };
   }
 
   dynamic _handleResponse(Response<String> response) =>

@@ -592,5 +592,10 @@
   "openReport": "Åbn rapport",
   "printReport": "Udskriv rapport",
   "aboutTranslationsTryton": "Mange tekster fra Tryton-projektets oversættelser",
-  "demoPasswordHint": "Demoserver: adgangskode »demo«"
+  "demoPasswordHint": "Demoserver: adgangskode »demo«",
+  "serverUnreachable": "Serveren kan ikke nås. Kontrollér serveradressen og netværksforbindelsen.",
+  "connectionLost": "Forbindelsen blev afbrudt, mens serveren behandlede anmodningen. Serveren kan have udført handlingen – genindlæs dataene, før du prøver igen.",
+  "waitAbandoned": "Holdt op med at vente på serveren. Den behandler muligvis stadig anmodningen; resultatet er ukendt – genindlæs dataene.",
+  "waitingForServer": "Venter på serveren… {elapsed}",
+  "stopWaiting": "Stop med at vente"
 }

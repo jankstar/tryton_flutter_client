@@ -1105,4 +1105,24 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Demopalvelin: salasana ”demo”';
+
+  @override
+  String get serverUnreachable =>
+      'Palvelimeen ei saada yhteyttä. Tarkista palvelimen osoite ja verkkoyhteys.';
+
+  @override
+  String get connectionLost =>
+      'Yhteys katkesi, kun palvelin käsitteli pyyntöä. Palvelin on ehkä suorittanut toiminnon – lataa tiedot uudelleen ennen kuin yrität uudestaan.';
+
+  @override
+  String get waitAbandoned =>
+      'Palvelimen odottaminen lopetettiin. Se saattaa yhä käsitellä pyyntöä; tulos on tuntematon – lataa tiedot uudelleen.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'Odotetaan palvelinta… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Lopeta odotus';
 }

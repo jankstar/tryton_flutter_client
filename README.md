@@ -137,6 +137,22 @@ Authorization: Session base64(login:user_id:token)
 
 Tryton types are encoded with `__class__` (`datetime` in UTC, `date`, `time`, `timedelta`, `Decimal`, `bytes`). Handled errors: `UserError`, `UserWarning`, `ConcurrencyException`, `LoginException`, 401 (re-login), 503 (retry).
 
+### Long server calls
+
+Like the Tryton desktop client, RPC calls have a short connect timeout (10 s) but **no read timeout**: activating many modules or a large report can take minutes. After 3 s a wait indicator blocks the input and shows the elapsed time; „Stop waiting“ only stops waiting in the client – the server keeps working and the result is unknown. Calls are never sent again automatically after a timeout or a broken connection (only HTTP 503 is retried, honouring `Retry-After`).
+
+**Reverse proxy:** a proxy in front of trytond needs a read timeout long enough for these calls, otherwise it answers with *504 Gateway Timeout* while the server is still working, e.g.
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+}
+```
+
+Apache: `ProxyTimeout 3600` (or `timeout=3600` on the `ProxyPass` line).
+
 ## Tryton compatibility
 
 Developed and tested against **trytond 8.0**. Reference implementations: Tryton desktop client 8.0 (primary) and SAO.

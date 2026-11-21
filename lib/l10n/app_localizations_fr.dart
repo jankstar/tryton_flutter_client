@@ -1111,4 +1111,24 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get demoPasswordHint =>
       'Serveur de démonstration : mot de passe « demo »';
+
+  @override
+  String get serverUnreachable =>
+      'Impossible de joindre le serveur. Vérifiez l\'adresse du serveur et la connexion réseau.';
+
+  @override
+  String get connectionLost =>
+      'La connexion a été interrompue pendant que le serveur traitait la requête. Le serveur a peut-être exécuté l\'action : rechargez les données avant de réessayer.';
+
+  @override
+  String get waitAbandoned =>
+      'Attente du serveur arrêtée. Il traite peut-être encore la requête ; le résultat est inconnu : rechargez les données.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'En attente du serveur… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Ne plus attendre';
 }

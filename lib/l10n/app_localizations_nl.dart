@@ -1108,4 +1108,24 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get demoPasswordHint => 'Demoserver: wachtwoord ‘demo’';
+
+  @override
+  String get serverUnreachable =>
+      'De server is niet bereikbaar. Controleer het serveradres en de netwerkverbinding.';
+
+  @override
+  String get connectionLost =>
+      'De verbinding werd onderbroken terwijl de server het verzoek verwerkte. De server heeft de actie mogelijk uitgevoerd – laad de gegevens opnieuw voordat u het nogmaals probeert.';
+
+  @override
+  String get waitAbandoned =>
+      'Gestopt met wachten op de server. Mogelijk verwerkt hij het verzoek nog; het resultaat is onbekend – laad de gegevens opnieuw.';
+
+  @override
+  String waitingForServer(String elapsed) {
+    return 'Wachten op de server… $elapsed';
+  }
+
+  @override
+  String get stopWaiting => 'Niet meer wachten';
 }
