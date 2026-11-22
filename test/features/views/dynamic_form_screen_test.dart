@@ -73,7 +73,18 @@ void main() {
     expect(find.text('Check the code'), findsOneWidget);
     // attachment/note badges from resources()
     expect(find.text('2'), findsOneWidget);
-    expect(find.text('1/1'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('toolbar-note')),
+            matching: find.text('1/1')),
+        findsOneWidget,
+        reason: 'unread/total notes');
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('toolbar-position')),
+            matching: find.text('1/1')),
+        findsOneWidget,
+        reason: 'the position between previous and next (SAO)');
   });
 
   testWidgets('an empty required field blocks saving', (tester) async {

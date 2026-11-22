@@ -805,9 +805,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get x2mCreate => 'Crear un nuevo registro';
 
   @override
-  String get x2mEdit => 'Editar registro seleccionado';
-
-  @override
   String get x2mDelete => 'Eliminar registro seleccionado';
 
   @override
@@ -1005,6 +1002,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get allTabs => 'Todas las pestañas';
+
+  @override
+  String get allPages => 'Todas las pestañas';
 
   @override
   String get connectionSecure => 'Conexión cifrada (HTTPS)';

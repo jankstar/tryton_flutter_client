@@ -23,4 +23,16 @@ void main() {
     SharedPreferences.setMockInitialValues({themePrefKey: 'blackMamba'});
     expect(await themeAtStart(), AppTheme.blackMamba);
   });
+
+  test('Blue Ocean (T5): chosen, stored under tryton_app_theme, restored',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await container.read(themeProvider.notifier).setTheme(AppTheme.blueOcean);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(themePrefKey), 'blueOcean');
+    expect(AppTheme.blueOcean.label, 'Blue Ocean');
+    expect(await themeAtStart(), AppTheme.blueOcean);
+  });
 }

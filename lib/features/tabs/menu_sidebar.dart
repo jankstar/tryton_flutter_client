@@ -18,6 +18,7 @@ import '../model/model_service.dart';
 import '../shell/tab_manager.dart';
 import '../../shared/errors/error_dialogs.dart';
 import '../../core/screen/tryton_url.dart';
+import '../../core/theme/tryton_colors.dart';
 import '../actions/url_opener.dart';
 
 // ─── Menu screen (spec 10.1) ──────────────────────────────────────────────────
@@ -277,17 +278,17 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l = context.l10n;
     final menu = ref.watch(menuScreenProvider);
-    return Column(
+    final tc = TrytonColors.of(context);
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          color: cs.surfaceContainerHighest,
-          child: Row(children: [
+          color: tc.menuHeaderBackground,
+          child: _colored(tc.menuHeaderForeground, Row(children: [
             Expanded(
               child: Text(l.appTitle,
                   style: const TextStyle(
@@ -309,9 +310,9 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               onPressed: () => ref.invalidate(menuScreenProvider),
             ),
-          ]),
+          ])),
         ),
-        Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+        Divider(height: 1, thickness: 1, color: TrytonColors.of(context).menuDivider),
         Expanded(
           // a rebuild keeps the previous menu until the new one is there;
           // only the first build shows the progress indicator
@@ -343,7 +344,21 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
         ),
       ],
     );
+    // the menu's own background (Blue Ocean: SAO grey), else as it is
+    final background = tc.menuBackground;
+    return background == null
+        ? column
+        : ColoredBox(color: background, child: column);
   }
+
+  /// Icons and texts of the menu header in the theme's colour; unchanged
+  /// without one.
+  static Widget _colored(Color? color, Widget child) => color == null
+      ? child
+      : IconTheme.merge(
+          data: IconThemeData(color: color),
+          child: DefaultTextStyle.merge(
+              style: TextStyle(color: color), child: child));
 
   Widget _buildMenu(TrytonScreen screen) {
     final rows = <Widget>[_buildFavorites(screen)];
@@ -385,7 +400,7 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
             child: Row(children: [
               Icon(_favoritesOpen ? Icons.arrow_drop_down : Icons.arrow_right,
-                  size: 20, color: cs.primary),
+                  size: 20, color: TrytonColors.of(context).menuIcon),
               const Icon(Icons.star, size: 16, color: Colors.amber),
               const SizedBox(width: 6),
               Text(l.favorites,
@@ -412,7 +427,7 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
                     TrytonIcon(
                         iconName: f.length > 2 ? '${f[2]}' : null,
                         size: 16,
-                        color: cs.primary,
+                        color: TrytonColors.of(context).menuIcon,
                         fallback: Icons.circle),
                     const SizedBox(width: 8),
                     Expanded(
@@ -423,7 +438,7 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
                   ]),
                 ),
               ),
-        Divider(height: 1, color: cs.outlineVariant),
+        Divider(height: 1, color: TrytonColors.of(context).menuDivider),
       ],
     );
   }
@@ -467,7 +482,7 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
                     icon: Icon(
                         expanded ? Icons.arrow_drop_down : Icons.arrow_right,
                         size: 20,
-                        color: cs.primary.withAlpha(180)),
+                        color: TrytonColors.of(context).menuIcon.withAlpha(180)),
                     tooltip: expanded ? l.collapse : l.expand,
                     onPressed: () => _toggle(record),
                   )
@@ -477,17 +492,18 @@ class _MenuSidebarState extends ConsumerState<MenuSidebar> {
             TrytonIcon(
                 iconName: icon,
                 size: 18,
-                color: cs.primary.withAlpha(200),
+                color: TrytonColors.of(context).menuIcon.withAlpha(200),
                 fallback: Icons.widgets_outlined)
           else
             Icon(hasChildren ? Icons.folder_outlined : Icons.circle,
-                size: hasChildren ? 18 : 7, color: cs.primary.withAlpha(80)),
+                size: hasChildren ? 18 : 7, color: TrytonColors.of(context).menuIcon.withAlpha(80)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(name,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                     fontSize: 13,
+                    color: TrytonColors.of(context).menuText,
                     fontWeight: depth == 0 && hasChildren
                         ? FontWeight.w600
                         : FontWeight.normal)),

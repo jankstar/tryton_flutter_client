@@ -28,6 +28,8 @@ import 'calendar_view.dart';
 import 'graph_view.dart';
 import 'email_dialog.dart';
 import '../shell/tab_manager.dart';
+import '../../core/theme/tryton_colors.dart';
+import 'chat_panel.dart';
 import '../actions/url_opener.dart';
 
 export 'tree_view.dart' show clearListCaches;
@@ -243,6 +245,30 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     } catch (_) {
       // Toolbar is optional – ignore errors
     }
+    // Chat only for the models of MODELCHAT (spec 14.2)
+    try {
+      final hasChat = await svc.metadata?.hasChat(_model) ?? false;
+      if (mounted && hasChat != _hasChat) setState(() => _hasChat = hasChat);
+    } catch (_) {}
+  }
+
+  /// The model has a chat (MODELCHAT): the chat button is active.
+  bool _hasChat = false;
+
+  /// Chat of the selected record (Python `Form.sig_chat`) in a sheet.
+  Future<void> _chatOfSelection() async {
+    final selected = _screen.selectedRecords;
+    if (selected.length != 1 || selected.first.id < 0) return;
+    final resource = '$_model,${selected.first.id}';
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SizedBox(
+        height: MediaQuery.sizeOf(ctx).height * 0.8,
+        child: ChatPanel(
+            resource: resource, onClose: () => Navigator.of(ctx).pop()),
+      ),
+    );
   }
 
   /// Runs [action]; errors of the data layer were shown by its handler,
@@ -327,7 +353,6 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
   final _actionKey = GlobalKey();
   final _relateKey = GlobalKey();
   final _printKey = GlobalKey();
-  final _printDirectKey = GlobalKey();
   final _emailKey = GlobalKey();
 
   /// Previous/next row becomes the selection (Python `display_prev/next`
@@ -426,10 +451,14 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
           hasSelection &&
                   (_toolbar.print.isNotEmpty || _keywordButtons('print').isNotEmpty) ||
               _toolbar.exports.isNotEmpty),
+      // one „Report ▾“ (SAO): its menu offers „print directly“ too
       RecordAction.printDirect: menu(
-          _printDirectKey,
+          _printKey,
           hasSelection &&
               (_toolbar.print.isNotEmpty || _keywordButtons('print').isNotEmpty)),
+      // in the menu only for chat models (Python `menu_def`); the toolbar
+      // button is always shown and then disabled
+      if (_hasChat) RecordAction.chat: single ? _chatOfSelection : null,
       RecordAction.email: single ? _email : null,
       RecordAction.export: () => showCsvExport(context,
           screen: _screen,
@@ -579,7 +608,8 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       // the toolbar follows the width of the tab (SAO hidden-xs/-sm)
       child: LayoutBuilder(builder: (context, box) => Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        backgroundColor: TrytonColors.of(context).headerBackground,
+        foregroundColor: TrytonColors.of(context).headerForeground,
         scrolledUnderElevation: 0,
         // record menu at the title (spec 10.3)
         title: RecordTitleMenu(
@@ -589,152 +619,180 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
               : '${widget.title} @ ${revisionText(_screen.group.revision!)}'),
         ),
         actions: [
-          ...adaptiveToolbar(box.maxWidth, [
+          ...adaptiveToolbar(box.maxWidth, actions: actions, [
+          // The bar of SAO (`tab.js` `menu_def`), the same as the form's
+          // (`toolbar-*` keys, same order and groups): switch · previous ·
+          // position · next | new · save · reload | attachment · note ·
+          // chat | action · relate · report · email | close. Copy,
+          // delete, logs and revisions are in the record menu only.
           // ── Navigation ────────────────────────────────────────────────
-          // Switch: like SAO's tryton-switch – jump to form view
-          ToolbarSlot(0, IconButton(
-            icon: TrytonIcon(
-              iconName: 'tryton-switch',
-              size: 20,
-              color: hasSelection || _chart
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).disabledColor,
-              fallback: Icons.compare_arrows,
+          ToolbarSlot(group: ToolbarGroup.navigation, actions: const [RecordAction.switchView], KeyedSubtree(
+            key: const ValueKey('toolbar-switch'),
+            child: IconButton(
+              icon: TrytonIcon(
+                iconName: 'tryton-switch',
+                size: 20,
+                color: hasSelection || _chart
+                    ? TrytonColors.of(context).toolbarIcon
+                    : Theme.of(context).disabledColor,
+                fallback: Icons.compare_arrows,
+              ),
+              tooltip: context.l10n.switchToForm,
+              onPressed: hasSelection || _chart ? _switchToForm : null,
             ),
-            tooltip: context.l10n.switchToForm,
-            onPressed: hasSelection || _chart ? _switchToForm : null,
+          )),
+          // previous / next move the selection (SAO in a list)
+          ToolbarSlot(group: ToolbarGroup.navigation, actions: const [RecordAction.previous], KeyedSubtree(
+            key: const ValueKey('toolbar-previous'),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios, size: 16),
+              tooltip: context.l10n.previousRecord,
+              onPressed: actions[RecordAction.previous],
+            ),
+          )),
+          ToolbarSlot(group: ToolbarGroup.navigation, width: toolbarPositionWidth, KeyedSubtree(
+            key: const ValueKey('toolbar-position'),
+            child: toolbarPosition(context, _screen.statusText),
+          )),
+          ToolbarSlot(group: ToolbarGroup.navigation, actions: const [RecordAction.next], KeyedSubtree(
+            key: const ValueKey('toolbar-next'),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+              tooltip: context.l10n.nextRecord,
+              onPressed: actions[RecordAction.next],
+            ),
           )),
 
-          // ── CRUD ──────────────────────────────────────────────────────
+          // ── Records ───────────────────────────────────────────────────
           // Rights and revision view (spec 10.3, MODELACCESS)
-          ToolbarSlot(0, IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: l.createNew,
-            onPressed: _screen.canCreate ? _newRecord : null,
+          ToolbarSlot(group: ToolbarGroup.records, actions: const [RecordAction.newRecord], KeyedSubtree(
+            key: const ValueKey('toolbar-new'),
+            child: IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: l.createNew,
+              onPressed: _screen.canCreate ? _newRecord : null,
+            ),
           )),
           // Save: changes of editable rows and of drag and drop
-          ToolbarSlot(0, IconButton(
-            key: const ValueKey('list-save'),
-            icon: const Icon(Icons.save),
-            tooltip: l.save,
-            onPressed: _screen.modified() ? _saveList : null,
+          ToolbarSlot(group: ToolbarGroup.records, actions: const [RecordAction.save], KeyedSubtree(
+            key: const ValueKey('toolbar-save'),
+            child: IconButton(
+              key: const ValueKey('list-save'),
+              icon: const Icon(Icons.save),
+              tooltip: l.save,
+              onPressed: _screen.modified() ? _saveList : null,
+            ),
           )),
-          ToolbarSlot(0, IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: l.reload,
-            onPressed: _reload,
-          )),
-          if (!widget.dialogToolbar)
-          ToolbarSlot(3, IconButton(
-            icon: Icon(Icons.copy_outlined,
-                color: hasSelection && _screen.canCreate
-                    ? null
-                    : Theme.of(context).disabledColor),
-            tooltip: l.duplicate,
-            onPressed: hasSelection && _screen.canCreate ? _copySelected : null,
-          )),
-          ToolbarSlot(1, IconButton(
-            icon: Icon(Icons.delete_outline,
-                color: hasSelection && _screen.canDelete
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).disabledColor),
-            tooltip: l.delete,
-            onPressed: hasSelection && _screen.canDelete ? _deleteSelected : null,
+          ToolbarSlot(group: ToolbarGroup.records, actions: const [RecordAction.reload], KeyedSubtree(
+            key: const ValueKey('toolbar-reload'),
+            child: IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: l.reload,
+              onPressed: _reload,
+            ),
           )),
 
-          // ── Attachment (requires selection) ───────────────────────────
-          if (!widget.dialogToolbar)
-          ToolbarSlot(1, _ResourceButtons(
-            attachKey: _attachKey,
-            record: singleSelection ? _screen.selectedRecords.first : null,
-            onNote: actions[RecordAction.note] == null
-                ? null
-                : () => _resourceDialog(notes: true),
-          ), slots: 2),
+          // ── Attachment / Note / Chat (require a selection) ────────────
+          if (!widget.dialogToolbar) ...[
+            ToolbarSlot(group: ToolbarGroup.resources,
+                actions: const [RecordAction.attach, RecordAction.note],
+                _ResourceButtons(
+              attachKey: _attachKey,
+              record: singleSelection ? _screen.selectedRecords.first : null,
+              onNote: actions[RecordAction.note] == null
+                  ? null
+                  : () => _resourceDialog(notes: true),
+            ), slots: 2),
+            // always shown, disabled for a model without chat (MODELCHAT)
+            ToolbarSlot(group: ToolbarGroup.resources, actions: const [RecordAction.chat], KeyedSubtree(
+              key: const ValueKey('toolbar-chat'),
+              child: IconButton(
+                key: const ValueKey('chat-button'),
+                icon: const Icon(Icons.forum_outlined), // tryton-chat
+                tooltip: context.l10n.chat,
+                onPressed: actions[RecordAction.chat],
+              ),
+            )),
 
-          // ── Action / Relate / Print / Email (require selection) ───────
-          if (!widget.dialogToolbar)
-          ToolbarSlot(2, ToolbarDropdownButton(
-            key: _actionKey,
-            screen: _screen,
-            icon: Icons.toys_outlined,
-            iconName: 'tryton-launch', // the propeller of the Python client
-            tooltip: l.launchActions,
-            items: _toolbar.actions,
-            model: _model,
-            selectedIds: selectedIds,
-            listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
-            enabled: hasSelection,
-            beforeExecute: _confirmSave,
-            buttons: _keywordButtons('action'),
-            onButton: _runButton,
-          )),
-          if (!widget.dialogToolbar)
-          ToolbarSlot(2, ToolbarDropdownButton(
-            key: _relateKey,
-            screen: _screen,
-            icon: Icons.link,
-            tooltip: l.relatedRecords,
-            items: _toolbar.relate,
-            model: _model,
-            selectedIds: selectedIds,
-            listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
-            enabled: hasSelection,
-            beforeExecute: _confirmSave,
-            buttons: _keywordButtons('relate'),
-            onButton: _runButton,
-          )),
-          if (!widget.dialogToolbar)
-          ToolbarSlot(2, ToolbarDropdownButton(
-            key: _printKey,
-            screen: _screen,
-            icon: Icons.open_in_new,            // tryton-open
-            tooltip: l.openReport,
-            items: _toolbar.print,
-            model: _model,
-            selectedIds: selectedIds,
-            listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
-            enabled: hasSelection,
-            beforeExecute: _confirmSave,
-            buttons: _keywordButtons('print'),
-            onButton: _runButton,
-            exports: _toolbar.exports,
-            onExport: (export) => runPredefinedExport(context, _screen, export,
-                listed: _listed),
-          )),
-          // the same reports straight to the printer (Python „Print“)
-          if (!widget.dialogToolbar)
-          ToolbarSlot(2, ToolbarDropdownButton(
-            key: _printDirectKey,
-            screen: _screen,
-            icon: Icons.print_outlined,         // tryton-print
-            tooltip: l.printReport,
-            items: _toolbar.print,
-            model: _model,
-            selectedIds: selectedIds,
-            listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
-            enabled: hasSelection,
-            beforeExecute: _confirmSave,
-            buttons: _keywordButtons('print'),
-            onButton: _runButton,
-            directPrint: true,
-          )),
-          if (!widget.dialogToolbar)
-          ToolbarSlot(2, IconButton(
-            key: _emailKey,
-            icon: const Icon(Icons.email_outlined),
-            tooltip: l.email,
-            onPressed: actions[RecordAction.email],
-          )),
+            // ── Action / Relate / Report / Email (require a selection) ──
+            ToolbarSlot(group: ToolbarGroup.actions, actions: const [RecordAction.action], KeyedSubtree(
+              key: const ValueKey('toolbar-action'),
+              child: ToolbarDropdownButton(
+                key: _actionKey,
+                screen: _screen,
+                icon: Icons.toys_outlined,
+                iconName: 'tryton-launch', // the propeller of the Python client
+                tooltip: l.launchActions,
+                items: _toolbar.actions,
+                model: _model,
+                selectedIds: selectedIds,
+                listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
+                enabled: hasSelection,
+                beforeExecute: _confirmSave,
+                buttons: _keywordButtons('action'),
+                onButton: _runButton,
+              ),
+            )),
+            ToolbarSlot(group: ToolbarGroup.actions, actions: const [RecordAction.relate], KeyedSubtree(
+              key: const ValueKey('toolbar-relate'),
+              child: ToolbarDropdownButton(
+                key: _relateKey,
+                screen: _screen,
+                icon: Icons.link,
+                tooltip: l.relatedRecords,
+                items: _toolbar.relate,
+                model: _model,
+                selectedIds: selectedIds,
+                listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
+                enabled: hasSelection,
+                beforeExecute: _confirmSave,
+                buttons: _keywordButtons('relate'),
+                onButton: _runButton,
+              ),
+            )),
+            // one „Report ▾“ like SAO: open or print each report
+            ToolbarSlot(group: ToolbarGroup.actions, actions: const [RecordAction.print], KeyedSubtree(
+              key: const ValueKey('toolbar-print'),
+              child: ToolbarDropdownButton(
+                key: _printKey,
+                screen: _screen,
+                icon: Icons.print_outlined,         // tryton-print
+                tooltip: l.printReport,
+                items: _toolbar.print,
+                model: _model,
+                selectedIds: selectedIds,
+                listedIds: () => [for (final r in _listed) if (r.id >= 0) r.id],
+                enabled: hasSelection,
+                beforeExecute: _confirmSave,
+                buttons: _keywordButtons('print'),
+                onButton: _runButton,
+                exports: _toolbar.exports,
+                onExport: (export) => runPredefinedExport(context, _screen, export,
+                    listed: _listed),
+                reportEntries: true,
+              ),
+            )),
+            ToolbarSlot(group: ToolbarGroup.actions, actions: const [RecordAction.email], KeyedSubtree(
+              key: const ValueKey('toolbar-email'),
+              child: IconButton(
+                key: _emailKey,
+                icon: const Icon(Icons.email_outlined),
+                tooltip: l.email,
+                onPressed: actions[RecordAction.email],
+              ),
+            )),
+          ],
 
           // ── Close ─────────────────────────────────────────────────────
-          ToolbarSlot(0, IconButton(
-            icon: const Icon(Icons.close),
-            tooltip: context.l10n.close,
-            onPressed: () => widget.onClose?.call(),
+          ToolbarSlot(group: ToolbarGroup.close, actions: const [RecordAction.close], KeyedSubtree(
+            key: const ValueKey('toolbar-close'),
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: context.l10n.close,
+              onPressed: () => widget.onClose?.call(),
+            ),
           )),
           ]),
-          const SizedBox(width: 4),
         ],
       ),
       body: _buildBody(),
@@ -754,8 +812,9 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
       ),
     );
 
-    // Layout: [context form] → search bar → tabs → table → status; a
-    // list-form is not searchable (Python `search_active`)
+    // Layout: [context form] → search bar → tabs → table (the position
+    // is in the toolbar like SAO); a list-form is not searchable (Python
+    // `search_active`)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -763,7 +822,6 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
         if (!_listForm) searchBar,
         if (screen.tabDomain.isNotEmpty) _buildTabBar(screen),
         Expanded(child: _buildListBody()),
-        _buildStatus(screen),
       ],
     );
   }
@@ -842,17 +900,6 @@ class _ListViewScreenState extends ConsumerState<ListViewScreen> {
     );
   }
 
-  /// `position/count` of the screen (spec 8.3).
-  Widget _buildStatus(TrytonScreen screen) {
-    return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-      alignment: Alignment.centerRight,
-      child: Text(screen.statusText,
-          style: TextStyle(
-              fontSize: 11, color: Theme.of(context).colorScheme.outline)),
-    );
-  }
 
 
   Widget _buildListBody() {
@@ -1039,21 +1086,27 @@ class _ResourceButtonsState extends State<_ResourceButtons> {
   Widget build(BuildContext context) {
     final onNote = widget.onNote;
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      AttachmentMenuButton(
-        key: widget.attachKey,
-        resource: widget.record == null ? null : _resource,
-        count: _count('attachment_count'),
-        onChanged: () => _load(reload: true),
+      KeyedSubtree(
+        key: const ValueKey('toolbar-attach'),
+        child: AttachmentMenuButton(
+          key: widget.attachKey,
+          resource: widget.record == null ? null : _resource,
+          count: _count('attachment_count'),
+          onChanged: () => _load(reload: true),
+        ),
       ),
-      NoteIconButton(
-        total: _count('note_count'),
-        unread: _count('note_unread'),
-        onPressed: onNote == null
-            ? null
-            : () async {
-                await onNote();
-                await _load(reload: true);
-              },
+      KeyedSubtree(
+        key: const ValueKey('toolbar-note'),
+        child: NoteIconButton(
+          total: _count('note_count'),
+          unread: _count('note_unread'),
+          onPressed: onNote == null
+              ? null
+              : () async {
+                  await onNote();
+                  await _load(reload: true);
+                },
+        ),
       ),
     ]);
   }

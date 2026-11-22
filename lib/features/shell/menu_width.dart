@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Below this window width the menu does not stand beside the tabs: the
+/// menu button switches between the menu and the tabs, each in the full
+/// width (like on a phone; decision 2026-11-22, value to be tried out).
+const menuToggleWidth = 640.0;
+
 /// Width of the menu beside the tabs, set by dragging the divider and kept
 /// in `shared_preferences` like the language (restored at the next start).
 class MenuWidthNotifier extends StateNotifier<double> {

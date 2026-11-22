@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/rpc/rpc_client.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
+import 'package:tryton_flutter_client/core/theme/app_theme.dart';
 import 'package:tryton_flutter_client/features/auth/auth_provider.dart';
 import 'package:tryton_flutter_client/features/auth/user_preferences_provider.dart';
 import 'package:tryton_flutter_client/features/model/metadata_service.dart';
@@ -44,7 +45,14 @@ const _forms = [
   ('billing-unit', 'real_estate.billing_unit', 1, <String, dynamic>{}, Size(1040, 1400)),
   ('graph-cron-log', 'ir.cron.log', null, <String, dynamic>{}, Size(1040, 800)),
   ('calendar-tasks', 'real_estate.task', null, <String, dynamic>{}, Size(1040, 900)),
+  // T5: the theme in the style of SAO, to compare with the web client
+  ('party-blue-ocean', 'party.party', 44, <String, dynamic>{}, Size(1040, 1400)),
+  ('parties-list-blue-ocean', 'party.party', null, <String, dynamic>{}, Size(1040, 900)),
 ];
+
+/// Screenshots in another theme than the plain one (by name suffix).
+AppTheme? _themeOf(String name) =>
+    name.endsWith('-blue-ocean') ? AppTheme.blueOcean : null;
 
 /// Views of the screenshots other than list (no id) or form.
 const _modes = {
@@ -72,6 +80,15 @@ Future<void> _loadFonts() async {
       if (f.path.split('/').last.startsWith('Roboto-')) f.path.split('/').last
   ]);
   await load('MaterialIcons', ['MaterialIcons-Regular.otf']);
+  // the app font of the themes (assets of the project)
+  final lato = FontLoader('Lato');
+  for (final f in Directory('assets/fonts').listSync()) {
+    if (f.path.endsWith('.ttf')) {
+      lato.addFont(
+          Future.value(ByteData.sublistView(File(f.path).readAsBytesSync())));
+    }
+  }
+  await lato.load();
 }
 
 void main() {
@@ -136,7 +153,8 @@ void main() {
             builder: (context, child) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(size: size),
                 child: child!),
-            theme: ThemeData(fontFamily: 'Roboto'),
+            theme: _themeOf(name)?.buildThemeData() ??
+                ThemeData(fontFamily: 'Roboto'),
             locale: const Locale('de'),
             localizationsDelegates: const [
               ...AppLocalizations.localizationsDelegates,

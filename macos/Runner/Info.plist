@@ -45,5 +45,11 @@
 	</array>
 	<key>FlutterDeepLinkingEnabled</key>
 	<false/>
+	<!-- Skia instead of Impeller on macOS: Impeller (Metal) aborts while the
+	     window is resized ("The texture and its descriptor disagree about
+	     its size", Flutter 3.47.9). Check again with a newer Flutter and
+	     remove this entry once resizing works with Impeller. -->
+	<key>FLTEnableImpeller</key>
+	<false/>
 </dict>
 </plist>

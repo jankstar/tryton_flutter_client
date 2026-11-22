@@ -18,7 +18,9 @@ import 'record_richtext.dart';
 import 'record_link.dart';
 import 'record_many2one.dart';
 import 'record_widget_values.dart';
+import '../../core/theme/tryton_colors.dart';
 import 'form_label_style.dart';
+import '../../shared/widgets/overflow_list_button.dart';
 
 /// Form layout of one [Record] (spec 9.2): fields, labels, groups,
 /// notebooks and buttons of a form view. States come from the record
@@ -738,7 +740,6 @@ class _RecordFormState extends State<RecordForm> {
     final states = _nodeStates(node.states);
     final fieldStates = field == null ? const {} : _stateAttrs(field);
     final required = PYSONEvaluator.truthy(fieldStates['required']);
-    final cs = Theme.of(context).colorScheme;
     final xalign = node.xalign ?? 1.0;
     // labels before the fields: as high as the text of an input
     final side = _sideLabels && name != null;
@@ -752,8 +753,11 @@ class _RecordFormState extends State<RecordForm> {
                 ? Theme.of(context).textTheme.bodyMedium
                 : Theme.of(context).textTheme.bodySmall)
             ?.copyWith(
-              color: states.readonly ? cs.outline : cs.onSurfaceVariant,
+              color: states.readonly
+                  ? TrytonColors.of(context).labelReadonlyColor
+                  : TrytonColors.of(context).labelColor,
               fontWeight: required ? FontWeight.w600 : null,
+              fontStyle: TrytonColors.of(context).labelFontStyle,
             ),
         textAlign: xalign >= 0.75
             ? TextAlign.right
@@ -833,6 +837,7 @@ class _RecordFormState extends State<RecordForm> {
 
     return _NotebookView(
       pages: visiblePages,
+      label: _pageLabel,
       tab:(p) =>
                 Tab(
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1356,8 +1361,12 @@ class _NotebookView extends StatefulWidget {
   final Widget Function(PageNode page) tab;
   final Widget Function(PageNode page) page;
 
+  /// The page's label for the list of all pages.
+  final String Function(PageNode page) label;
+
   const _NotebookView({
     required this.pages,
+    required this.label,
     required this.tab,
     required this.page,
   });
@@ -1369,6 +1378,20 @@ class _NotebookView extends StatefulWidget {
 class _NotebookViewState extends State<_NotebookView>
     with TickerProviderStateMixin {
   late TabController _controller = _create(0);
+
+  /// Not all page tabs fit: the „all pages“ button is shown (like the
+  /// shell's tab bar; Python/GTK only scrolls the tabs).
+  bool _overflow = false;
+
+  bool _metrics(ScrollMetricsNotification n) {
+    final overflow = n.metrics.maxScrollExtent > 0;
+    if (overflow != _overflow) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _overflow = overflow);
+      });
+    }
+    return false;
+  }
 
   TabController _create(int index) => TabController(
     length: widget.pages.length,
@@ -1397,6 +1420,12 @@ class _NotebookViewState extends State<_NotebookView>
     super.dispose();
   }
 
+  /// The tab row on the notebook background of the theme (none: as is).
+  static Widget _notebookBar(BuildContext context, Widget bar) {
+    final background = TrytonColors.of(context).notebookBackground;
+    return background == null ? bar : ColoredBox(color: background, child: bar);
+  }
+
   @override
   Widget build(BuildContext context) {
     final index = _controller.index;
@@ -1404,12 +1433,34 @@ class _NotebookViewState extends State<_NotebookView>
     return FillColumn(
       children: [
         const SizedBox(height: 8),
-        TabBar(
-          controller: _controller,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: [for (final p in widget.pages) widget.tab(p)],
-        ),
+        _notebookBar(context, Row(children: [
+          Expanded(
+            child: NotificationListener<ScrollMetricsNotification>(
+              onNotification: _metrics,
+              child: TabBar(
+                controller: _controller,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelColor: TrytonColors.of(context).notebookActive,
+                indicatorColor: TrytonColors.of(context).notebookActive,
+                unselectedLabelColor:
+                    TrytonColors.of(context).notebookInactive,
+                tabs: [for (final p in widget.pages) widget.tab(p)],
+              ),
+            ),
+          ),
+          // the chosen page: the TabBar scrolls its tab into view
+          if (_overflow)
+            OverflowListButton(
+              key: const ValueKey('notebook-all'),
+              tooltip: context.l10n.allPages,
+              count: widget.pages.length,
+              activeIndex: index,
+              label: (i) => widget.label(widget.pages[i]),
+              itemKeyPrefix: 'notebook-all',
+              onSelected: _controller.animateTo,
+            ),
+        ])),
         FillChild(
           child: Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -1478,9 +1529,11 @@ const double _fieldGap = 4;
 
 ThemeData compactFormTheme(ThemeData theme) {
   final text = theme.textTheme;
+  // the values in the colour of the theme (SAO #555), else unchanged
+  final value = theme.extension<TrytonColors>()?.valueColor;
   return theme.copyWith(
     textTheme: text.copyWith(
-      bodyLarge: text.bodyLarge?.copyWith(fontSize: 14),
+      bodyLarge: text.bodyLarge?.copyWith(fontSize: 14, color: value),
       titleMedium: text.titleMedium?.copyWith(fontSize: 14),
       bodyMedium: text.bodyMedium?.copyWith(fontSize: 13),
     ),

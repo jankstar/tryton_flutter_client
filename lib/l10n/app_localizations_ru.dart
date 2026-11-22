@@ -804,9 +804,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get x2mCreate => 'Создать новую запись';
 
   @override
-  String get x2mEdit => 'Изменить выбранную запись';
-
-  @override
   String get x2mDelete => 'Удалить выбранную запись';
 
   @override
@@ -1003,6 +1000,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get allTabs => 'Все вкладки';
+
+  @override
+  String get allPages => 'Все вкладки';
 
   @override
   String get connectionSecure => 'Зашифрованное соединение (HTTPS)';

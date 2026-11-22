@@ -806,9 +806,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get x2mCreate => 'Maak een nieuw record';
 
   @override
-  String get x2mEdit => 'Bewerk geselecteerde record';
-
-  @override
   String get x2mDelete => 'Geselecteerde record verwijderen';
 
   @override
@@ -1005,6 +1002,9 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get allTabs => 'Alle tabbladen';
+
+  @override
+  String get allPages => 'Alle tabbladen';
 
   @override
   String get connectionSecure => 'Versleutelde verbinding (HTTPS)';

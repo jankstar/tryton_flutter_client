@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/icons/tryton_icon.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../l10n/app_localizations.dart';
+import '../../core/theme/tryton_colors.dart';
 import '../shell/tab_manager.dart';
 
 // Record menu at the title of a form tab and the keyboard shortcuts of
@@ -197,6 +198,17 @@ String shortcutText(SingleActivator activator) {
 /// Dropdown at the title of a form tab with all entries of
 /// [recordMenuGroups] – icon, label, shortcut and the activation of the
 /// buttons (spec 10.3 „Datensatz-Menü“).
+/// The title of the band in the theme's title colour (SAO: muted on the
+/// coloured band); unchanged without one.
+Widget _titleColored(BuildContext context, Widget child) {
+  final color = TrytonColors.of(context).headerTitle;
+  if (color == null) return child;
+  return IconTheme.merge(
+    data: IconThemeData(color: color),
+    child: DefaultTextStyle.merge(style: TextStyle(color: color), child: child),
+  );
+}
+
 class RecordTitleMenu extends StatelessWidget {
   final Widget title;
   final RecordActions actions;
@@ -237,10 +249,10 @@ class RecordTitleMenu extends StatelessWidget {
           message: l.recordMenu,
           // (a very narrow title: also the arrow shrinks instead of
           // overflowing)
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: _titleColored(context, Row(mainAxisSize: MainAxisSize.min, children: [
             Flexible(child: title),
             const Flexible(child: Icon(Icons.arrow_drop_down, size: 20)),
-          ]),
+          ])),
         ),
       ),
     );
@@ -440,56 +452,285 @@ bool pressButtonOf(GlobalKey key) {
   return false;
 }
 
-/// A toolbar button of form or list with its [level]: narrow tabs hide
-/// the highest levels first (SAO tab.js `hidden-xs`/`hidden-sm`), their
-/// functions stay in the record menu at the title. [slots] is the number
-/// of buttons [child] shows.
+/// A toolbar button of form or list. [actions] are the record actions it
+/// offers (its entries in the „⋯“ menu when it does not fit); [width] its
+/// width (default [slots] buttons).
 class ToolbarSlot {
-  final int level;
   final Widget child;
   final int slots;
-  const ToolbarSlot(this.level, this.child, {this.slots = 1});
+
+  /// The button group (SAO `btn-group`): consecutive buttons of a group
+  /// are drawn together by themes with button groups (Blue Ocean).
+  final ToolbarGroup? group;
+  final List<RecordAction> actions;
+  final double? width;
+  const ToolbarSlot(this.child,
+      {this.slots = 1, this.group, this.actions = const [], this.width});
+
+  double get extent => width ?? slots * toolbarButtonWidth;
 }
 
-/// Width of one toolbar button (Material `IconButton`).
-const toolbarButtonWidth = 48.0;
+/// [text] (a position like „1/53“) as a pill in the theme's
+/// `positionBackground` (SAO: white with blue text); unchanged without.
+Widget positionPill(BuildContext context, Widget text) {
+  final background = TrytonColors.of(context).positionBackground;
+  if (background == null) return text;
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    decoration: BoxDecoration(
+        color: background, borderRadius: BorderRadius.circular(8)),
+    child: text,
+  );
+}
 
-/// Width the title keeps before toolbar buttons are hidden.
-const toolbarTitleWidth = 220.0;
+/// The position of the toolbar between previous and next (SAO status
+/// label „1/53“): a pill in themes with `positionBackground`, else text.
+Widget toolbarPosition(BuildContext context, String text) {
+  final tc = TrytonColors.of(context);
+  // a fixed minimum width: „_/2“ and „1/2“ must not move the buttons
+  // right of it (list ↔ form, another record)
+  return ConstrainedBox(
+    constraints: const BoxConstraints(minWidth: toolbarPositionWidth),
+    child: Center(
+      widthFactor: 1,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: positionPill(
+          context,
+          Text(text,
+              style: TextStyle(fontSize: 12, color: tc.positionForeground)),
+        ),
+      ),
+    ),
+  );
+}
 
-/// The highest level of [items] shown in a tab [width] wide: the title
-/// keeps [toolbarTitleWidth]; level 0 is always shown.
-int toolbarLevel(double width, List<ToolbarSlot> items) {
-  final levels = {for (final i in items) i.level}.toList()..sort();
-  var shown = 0;
-  for (final level in levels) {
-    final slots = [
-      for (final i in items)
-        if (i.level <= level) i.slots
-    ].fold(0, (a, b) => a + b);
-    if (level > 0 && slots * toolbarButtonWidth > width - toolbarTitleWidth) {
-      break;
+/// Minimum width of [toolbarPosition] („9999/9999“ fits).
+const toolbarPositionWidth = 72.0;
+
+/// Button groups of the toolbars of form and list (SAO tab.js).
+enum ToolbarGroup { navigation, records, resources, actions, close }
+
+/// Consecutive toolbar buttons of one [ToolbarGroup] (also the groups of
+/// the x2many header): with `TrytonColors.toolbarButtonBackground` (Blue
+/// Ocean) a group with a small radius whose buttons paint their own
+/// background – enabled opaque, disabled translucent (SAO: Bootstrap
+/// `opacity: .65`, light blue on the blue band) –, icons in
+/// `toolbarButtonForeground`, pressed `toolbarButtonActive`; otherwise
+/// just the buttons side by side.
+class ToolbarButtonGroup extends StatelessWidget {
+  final List<Widget> children;
+
+  /// Space around the group (the x2many header is lower than the band).
+  final EdgeInsets margin;
+
+  /// Size of a button of the group (they touch, no larger tap target).
+  final Size buttonSize;
+  const ToolbarButtonGroup({
+    super.key,
+    required this.children,
+    this.margin = const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
+    this.buttonSize = const Size(40, 40),
+  });
+
+  /// Opacity of a disabled button's background (SAO `.btn[disabled]`).
+  static const disabledAlpha = 166;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(mainAxisSize: MainAxisSize.min, children: children);
+    final tc = TrytonColors.of(context);
+    final background = tc.toolbarButtonBackground;
+    // every theme: compact buttons of [buttonSize] (no 48 px tap target),
+    // so the whole bar fits early and the widths are the same everywhere
+    if (background == null) {
+      return IconButtonTheme(
+        data: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            minimumSize: buttonSize,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        child: row,
+      );
     }
-    shown = level;
+    final foreground = tc.toolbarButtonForeground ??
+        Theme.of(context).colorScheme.onSurface;
+    final active = tc.toolbarButtonActive ?? foreground.withAlpha(40);
+    return Padding(
+      padding: margin,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(Radius.circular(4)),
+        child: IconTheme.merge(
+          data: IconThemeData(color: foreground),
+          child: IconButtonTheme(
+            data: IconButtonThemeData(
+              style: IconButton.styleFrom(
+                backgroundColor: background,
+                disabledBackgroundColor: background.withAlpha(disabledAlpha),
+                foregroundColor: foreground,
+                disabledForegroundColor: foreground.withAlpha(110),
+                highlightColor: active,
+                hoverColor: active.withAlpha(110),
+                // the buttons tile; the group rounds the corners
+                shape: const RoundedRectangleBorder(),
+                minimumSize: buttonSize,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            child: row,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Width of one toolbar button (compact, [ToolbarButtonGroup]).
+const toolbarButtonWidth = 40.0;
+
+/// Space a button group takes around it ([ToolbarButtonGroup.margin]).
+const toolbarGroupGap = 6.0;
+
+/// Width the title keeps at least; it is shortened (…) before buttons
+/// leave the bar.
+const toolbarTitleWidth = 100.0;
+
+/// Width of the bar of [items] (buttons and group gaps).
+double toolbarWidth(List<ToolbarSlot> items) {
+  var width = 0.0;
+  ToolbarGroup? current;
+  var first = true;
+  for (final i in items) {
+    if (first || i.group != current || i.group == null) {
+      width += toolbarGroupGap;
+      current = i.group;
+      first = false;
+    }
+    width += i.extent;
+  }
+  return width;
+}
+
+/// How many of [items] (without the close group) stay in a bar [width]
+/// wide: all when everything fits, else the most from the left that fit
+/// beside the „⋯“ button and the close group – buttons only ever leave
+/// at the right end, so none moves (spec, decision 2026-11-22).
+int toolbarShown(double width, List<ToolbarSlot> items) {
+  final closing = [for (final i in items) if (i.group == ToolbarGroup.close) i];
+  final rest = [for (final i in items) if (i.group != ToolbarGroup.close) i];
+  final available = width - toolbarTitleWidth;
+  if (toolbarWidth(items) <= available) return rest.length;
+  var shown = rest.length;
+  while (shown > 0 &&
+      toolbarWidth([...rest.take(shown), ...closing]) +
+              toolbarButtonWidth +
+              toolbarGroupGap >
+          available) {
+    shown--;
+  }
+  // the position never stays without its „next“ (it has no action)
+  while (shown > 0 && rest[shown - 1].actions.isEmpty) {
+    shown--;
   }
   return shown;
 }
 
-/// The visible buttons of [items] for a tab [width] wide, then the hidden
-/// ones offstage: they stay in the tree so that [pressButtonOf] opens
-/// them from the record menu (their menus open at the end of the bar).
-List<Widget> adaptiveToolbar(double width, List<ToolbarSlot> items) {
-  final level = toolbarLevel(width, items);
-  final hidden = [
-    for (final i in items)
-      if (i.level > level) i.child
-  ];
+/// The buttons of [items] for a tab [width] wide (SAO toolbar): from the
+/// left as many as fit, the others in a „⋯“ menu before the close group
+/// (always shown). The buttons in the menu stay in the tree offstage, so
+/// [pressButtonOf] opens their menus; the „⋯“ entries run [actions].
+List<Widget> adaptiveToolbar(double width, List<ToolbarSlot> items,
+    {RecordActions actions = const {}}) {
+  final closing = [for (final i in items) if (i.group == ToolbarGroup.close) i];
+  final rest = [for (final i in items) if (i.group != ToolbarGroup.close) i];
+  final count = toolbarShown(width, items);
+  final visible = rest.take(count).toList();
+  final hidden = rest.skip(count).toList();
+
+  // the visible buttons by group (consecutive ones of the same group)
+  final shown = <Widget>[];
+  var run = <Widget>[];
+  ToolbarGroup? current;
+  void flush() {
+    if (run.isEmpty) return;
+    final group = current;
+    shown.add(group == null
+        ? (run.length == 1 ? run.single : ToolbarButtonGroup(children: run))
+        : ToolbarButtonGroup(
+            key: ValueKey('toolbar-group-${group.name}'), children: run));
+    run = [];
+  }
+
+  void add(ToolbarSlot i) {
+    if (i.group != current || i.group == null) {
+      flush();
+      current = i.group;
+    }
+    run.add(i.child);
+  }
+
+  visible.forEach(add);
+  flush();
+  if (hidden.isNotEmpty) {
+    shown.add(ToolbarButtonGroup(
+      key: const ValueKey('toolbar-group-more'),
+      children: [
+        _ToolbarMore(
+          actions: [for (final i in hidden) ...i.actions],
+          handlers: actions,
+        ),
+      ],
+    ));
+    current = null;
+  }
+  closing.forEach(add);
+  flush();
   return [
-    for (final i in items)
-      if (i.level <= level) i.child,
+    ...shown,
     if (hidden.isNotEmpty)
       Offstage(
           key: const ValueKey('toolbar-hidden'),
-          child: Row(mainAxisSize: MainAxisSize.min, children: hidden)),
+          child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [for (final i in hidden) i.child])),
   ];
+}
+
+/// The „⋯“ button of the toolbar: the record actions of the buttons that
+/// did not fit, in the order of the bar (label and icon of the record
+/// menu, disabled like their buttons).
+class _ToolbarMore extends StatelessWidget {
+  final List<RecordAction> actions;
+  final RecordActions handlers;
+  const _ToolbarMore({required this.actions, required this.handlers});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return PopupMenuButton<RecordAction>(
+      key: const ValueKey('toolbar-more'),
+      icon: const Icon(Icons.more_horiz),
+      tooltip: l.x2mMore,
+      position: PopupMenuPosition.under,
+      onSelected: (a) => handlers[a]?.call(),
+      itemBuilder: (_) => [
+        for (final a in actions)
+          if (handlers.containsKey(a))
+            PopupMenuItem<RecordAction>(
+              key: ValueKey('toolbar-more-${a.name}'),
+              value: a,
+              enabled: handlers[a] != null,
+              child: Row(children: [
+                TrytonIcon(
+                    iconName: recordActionIcon(a).$1,
+                    size: 18,
+                    fallback: recordActionIcon(a).$2),
+                const SizedBox(width: 12),
+                Text(recordActionLabel(l, a)),
+              ]),
+            ),
+      ],
+    );
+  }
 }

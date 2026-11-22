@@ -806,9 +806,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get x2mCreate => 'Neuen Datensatz erstellen';
 
   @override
-  String get x2mEdit => 'Ausgewählten Datensatz bearbeiten';
-
-  @override
   String get x2mDelete => 'Ausgewählte Datensätze löschen';
 
   @override
@@ -1006,6 +1003,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get allTabs => 'Alle Tabs';
+
+  @override
+  String get allPages => 'Alle Reiter';
 
   @override
   String get connectionSecure => 'Verschlüsselte Verbindung (HTTPS)';

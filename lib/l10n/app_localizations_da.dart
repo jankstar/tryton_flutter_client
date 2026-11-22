@@ -803,9 +803,6 @@ class AppLocalizationsDa extends AppLocalizations {
   String get x2mCreate => 'Opret en ny post';
 
   @override
-  String get x2mEdit => 'Redigér valgte post';
-
-  @override
   String get x2mDelete => 'Slet valgte post';
 
   @override
@@ -1002,6 +999,9 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get allTabs => 'Alle faner';
+
+  @override
+  String get allPages => 'Alle faner';
 
   @override
   String get connectionSecure => 'Krypteret forbindelse (HTTPS)';

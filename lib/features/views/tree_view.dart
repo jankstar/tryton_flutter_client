@@ -33,6 +33,7 @@ import 'record_link.dart' show parseHexColor;
 import 'column_selections.dart';
 import 'record_widget_values.dart';
 import 'tree_context_menu.dart';
+import '../../core/theme/tryton_colors.dart';
 import '../../shared/dialogs/tryton_dialogs.dart';
 
 /// A visible row: record and depth (tree views).
@@ -445,7 +446,7 @@ class _TreeViewState extends ConsumerState<TreeView> {
     }
 
     // header: bold label, sort arrow, separator
-    var width = measure(c.label, _HeaderCell.labelStyle) +
+    var width = measure(c.label, _HeaderCell.styleOf(context)) +
         (_sortDirection(c) != null ? 14 : 0) +
         8;
     if (!c.isButton) {
@@ -1369,10 +1370,9 @@ class _TreeViewState extends ConsumerState<TreeView> {
 
   Widget _buildHeader(List<TreeRow> rows, List<TreeColumn> columns,
       Map<String, double> widths, bool reorderable) {
-    final cs = Theme.of(context).colorScheme;
     final allSelected = _selected.length == rows.length && rows.isNotEmpty;
     return Container(
-      color: cs.surfaceContainerHighest,
+      color: TrytonColors.of(context).listHeaderBackground,
       height: _headerHeight,
       child: Row(children: [
         SizedBox(
@@ -1571,7 +1571,8 @@ class _TreeViewState extends ConsumerState<TreeView> {
       child: Container(
         constraints: const BoxConstraints(minHeight: _rowHeight - 1),
         decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: cs.outlineVariant.withAlpha(80)))),
+            border: Border(bottom: BorderSide(
+                color: TrytonColors.of(context).listLine.withAlpha(80)))),
         child: Row(children: [
           // outside the InkWells of the cells: their double tap would
           // hold the click on the checkbox
@@ -2138,6 +2139,13 @@ class _HeaderCell extends StatelessWidget {
   /// separator).
   static const labelStyle = TextStyle(fontWeight: FontWeight.bold, fontSize: 12);
 
+  /// [labelStyle] with the list header colours of the theme.
+  static TextStyle styleOf(BuildContext context) {
+    final tc = TrytonColors.of(context);
+    return labelStyle.copyWith(
+        color: tc.listHeaderText, fontStyle: tc.listHeaderFontStyle);
+  }
+
   final String columnKey;
   final double width;
   final bool touch;
@@ -2179,7 +2187,7 @@ class _HeaderCell extends StatelessWidget {
     Widget text = Text(label,
         overflow: TextOverflow.ellipsis,
         textAlign: numeric ? TextAlign.end : TextAlign.start,
-        style: labelStyle.copyWith(
+        style: styleOf(context).copyWith(
             decoration: required ? TextDecoration.underline : null));
     if (help != null) text = Tooltip(message: help!, child: text);
     final header = InkWell(
@@ -2198,7 +2206,7 @@ class _HeaderCell extends StatelessWidget {
     // plain drag scrolls the table)
     final feedback = Material(
       elevation: 4,
-      color: cs.surfaceContainerHighest,
+      color: TrytonColors.of(context).listHeaderBackground,
       child: SizedBox(
         width: width,
         height: 34,
@@ -2206,7 +2214,8 @@ class _HeaderCell extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(label, overflow: TextOverflow.ellipsis, style: labelStyle)),
+              child: Text(label,
+                  overflow: TextOverflow.ellipsis, style: styleOf(context))),
         ),
       ),
     );
@@ -2253,7 +2262,7 @@ class _HeaderCell extends StatelessWidget {
             onHorizontalDragEnd: (_) => onResizeEnd(),
             child: Center(
               child: Container(
-                  width: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                  width: 1, color: TrytonColors.of(context).listLine),
             ),
           ),
         ),

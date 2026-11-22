@@ -20,6 +20,7 @@ import '../actions/url_opener.dart';
 import 'menu_width.dart';
 import 'shell_context.dart';
 import 'tab_manager.dart';
+import '../../core/theme/tryton_colors.dart';
 import 'tab_strip.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -31,6 +32,32 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   bool _sidebarOpen = true;
+
+  /// Narrow window (< [menuToggleWidth]): the menu is shown instead of the
+  /// tabs (the menu button switches); without an open tab only the menu.
+  bool _narrowMenu = false;
+
+  /// Narrow window without a tab: only the menu (no empty page).
+  bool get _onlyMenu => _narrow && ref.read(tabsProvider).tabs.isEmpty;
+
+  /// The menu keeps its state (expanded entries) when the layout switches
+  /// between narrow and wide.
+  final _menuKey = GlobalKey();
+
+  bool get _narrow => MediaQuery.sizeOf(context).width < menuToggleWidth;
+
+  /// The menu button: narrow – menu or tabs; wide – menu beside the tabs
+  /// shown or hidden.
+  void _toggleMenu() => setState(() {
+        if (_narrow) {
+          _narrowMenu = !_narrowMenu;
+        } else {
+          _sidebarOpen = !_sidebarOpen;
+        }
+      });
+
+  /// The menu is shown: beside the tabs (wide) or instead of them (narrow).
+  bool get _menuShown => _narrow ? (_narrowMenu || _onlyMenu) : _sidebarOpen;
 
   @override
   void initState() {
@@ -56,6 +83,16 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final tabsState = ref.watch(tabsProvider);
     final cs = Theme.of(context).colorScheme;
+    // narrow window: a tab opened or activated from the menu, the
+    // favorites or the global search is shown at once (like on a phone)
+    ref.listen<TabsState>(tabsProvider, (previous, next) {
+      if (!_narrow || !_narrowMenu || next.tabs.isEmpty) return;
+      if (previous == null ||
+          next.activeIndex != previous.activeIndex ||
+          next.tabs.length != previous.tabs.length) {
+        setState(() => _narrowMenu = false);
+      }
+    });
     // a tryton:// link of the operating system while logged in (E7)
     ref.listen<String?>(pendingTrytonUrlProvider, (_, url) {
       if (url == null) return;
@@ -81,8 +118,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             showShortcutsHelp(context),
         primaryShortcut(LogicalKeyboardKey.f1): () =>
             showShortcutsHelp(context),
-        primaryShortcut(LogicalKeyboardKey.keyM): () =>
-            setState(() => _sidebarOpen = !_sidebarOpen),
+        primaryShortcut(LogicalKeyboardKey.keyM): () {
+          if (!_onlyMenu) _toggleMenu();
+        },
         primaryShortcut(LogicalKeyboardKey.comma): () =>
             showPreferencesDialog(context, ref),
         if (defaultTargetPlatform != TargetPlatform.macOS)
@@ -103,13 +141,15 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: Focus(
         autofocus: true,
         child: Scaffold(
-      body: Row(
+      body: _narrow
+          ? _narrowBody(tabsState, cs)
+          : Row(
         children: [
           // ── Sidebar (opening/closing animated) ─────────────────────────
           MenuSlot(
             open: _sidebarOpen,
             width: sidebarWidth,
-            child: const MenuSidebar(),
+            child: MenuSidebar(key: _menuKey),
           ),
           // the divider: drag for the width of the menu (kept like the
           // language), double click for the default
@@ -124,18 +164,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               children: [
                 _buildTabBar(tabsState),
                 Divider(height: 1, thickness: 1, color: cs.outlineVariant),
-                Expanded(
-                  child: tabsState.tabs.isEmpty
-                      ? _buildWelcome()
-                      : IndexedStack(
-                          index: tabsState.activeIndex < 0
-                              ? 0
-                              : tabsState.activeIndex,
-                          children: tabsState.tabs
-                              .map((tab) => _buildTabContent(tab))
-                              .toList(),
-                        ),
-                ),
+                Expanded(child: _tabsArea(tabsState)),
               ],
             ),
           ),
@@ -145,6 +174,50 @@ class _AppShellState extends ConsumerState<AppShell> {
       ), // Focus
     ); // CallbackShortcuts
   }
+
+  /// The content of the active tab (all tabs stay alive), else the welcome.
+  /// The tabs see their own size as the window size (`MediaQuery`): beside
+  /// the menu a form decides one column / side labels by the width it
+  /// really has (< 600 px: narrow layout) – with the window's width a
+  /// 450 px tab kept the columns and squeezed groups (labels broken
+  /// inside a word, overflowing check boxes). Dialogs open over the whole
+  /// window (root navigator) and keep its size.
+  Widget _tabsArea(TabsState tabsState) => LayoutBuilder(
+        builder: (context, box) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(size: Size(box.maxWidth, box.maxHeight)),
+          child: tabsState.tabs.isEmpty
+              ? _buildWelcome()
+              : IndexedStack(
+                  index: tabsState.activeIndex < 0 ? 0 : tabsState.activeIndex,
+                  children: tabsState.tabs
+                      .map((tab) => _buildTabContent(tab))
+                      .toList(),
+                ),
+        ),
+      );
+
+  /// Narrow window (< [menuToggleWidth], like on a phone): the tab bar on
+  /// top over the full width, below either the menu or the tabs, each in
+  /// the full width; both stay alive (no state is lost when switching).
+  Widget _narrowBody(TabsState tabsState, ColorScheme cs) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTabBar(tabsState),
+          Divider(height: 1, thickness: 1, color: cs.outlineVariant),
+          Expanded(
+            child: IndexedStack(
+              key: const ValueKey('narrow-body'),
+              // without a tab only the menu (no empty page)
+              index: _narrowMenu || tabsState.tabs.isEmpty ? 0 : 1,
+              children: [
+                MenuSidebar(key: _menuKey),
+                _tabsArea(tabsState),
+              ],
+            ),
+          ),
+        ],
+      );
 
   /// Quit (Ctrl+Q): all tabs close first, each with its save prompt.
   Future<void> _quit() async {
@@ -161,22 +234,25 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   Widget _tabBar(TabsState state, ColorScheme cs, double chipMaxWidth) {
+    final foreground = TrytonColors.of(context).tabBarForeground;
     return Container(
       height: 40,
-      color: cs.surfaceContainerHighest,
-      child: Row(
+      color: TrytonColors.of(context).tabBarBackground,
+      child: _onBar(foreground, Row(
         children: [
           // Sidebar toggle
           SizedBox(
             width: 40,
             child: IconButton(
               icon: Icon(
-                _sidebarOpen ? Icons.menu_open : Icons.menu,
+                _menuShown ? Icons.menu_open : Icons.menu,
                 size: 18,
               ),
+              key: const ValueKey('menu-toggle'),
               padding: EdgeInsets.zero,
-              tooltip: _sidebarOpen ? 'Menü ausblenden' : 'Menü einblenden',
-              onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
+              tooltip: _menuShown ? 'Menü ausblenden' : 'Menü einblenden',
+              // narrow without a tab: nothing to switch to
+              onPressed: _onlyMenu ? null : _toggleMenu,
             ),
           ),
           // Tab chips: wheel scrolling, active tab in view, "all tabs"
@@ -198,9 +274,18 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
           const SizedBox(width: 4),
         ],
-      ),
+      )),
     );
   }
+
+  /// Icons and texts of the tab bar in the theme's colour (Blue Ocean:
+  /// white on the dark band); unchanged without one.
+  static Widget _onBar(Color? foreground, Widget child) => foreground == null
+      ? child
+      : IconTheme.merge(
+          data: IconThemeData(color: foreground),
+          child: DefaultTextStyle.merge(
+              style: TextStyle(color: foreground), child: child));
 
   Widget _buildTabContent(AppTab tab) {
     return TabScope(

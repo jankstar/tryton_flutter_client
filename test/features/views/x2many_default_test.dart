@@ -96,7 +96,8 @@ void main() {
     });
     await pumpForm(tester, rpc, model: 'test.party', recordId: -1);
     // one address in the inline form, without clicking „+“
-    expect(find.text('1/1'), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(const ValueKey('x2m-position'))).data,
+        '1/1');
     // its view fields got their defaults (Python Group.add_fields): active
     expect(rpc.named('model.test.address.default_get'), hasLength(1));
     expect(rpc.named('model.test.address.default_get').single.params[0],
@@ -155,7 +156,8 @@ void main() {
       'addresses': [7]
     });
     await pumpForm(tester, rpc, model: 'test.party', recordId: -1);
-    expect(find.text('1/1'), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(const ValueKey('x2m-position'))).data,
+        '1/1');
     expect(tester.widget<TextField>(textFieldOf('Street')).controller!.text,
         'Street 7');
     expect(rpc.named('model.test.address.default_get'), isEmpty);

@@ -51,6 +51,13 @@ class ToolbarDropdownButton extends ConsumerWidget {
   /// button „Print“ beside „Report“).
   final bool directPrint;
 
+  /// One „Report ▾“ like SAO: every report twice in the menu – open it
+  /// and print it directly (`direct_print`).
+  final bool reportEntries;
+
+  /// Icon of the „print directly“ entries ([reportEntries]).
+  final IconData printIcon;
+
   const ToolbarDropdownButton({
     super.key,
     required this.icon,
@@ -68,10 +75,14 @@ class ToolbarDropdownButton extends ConsumerWidget {
     this.exports = const [],
     this.onExport,
     this.directPrint = false,
+    this.reportEntries = false,
+    this.printIcon = Icons.print_outlined,
   });
 
   Future<void> _execute(
-      BuildContext context, WidgetRef ref, TrytonActionItem action) async {
+      BuildContext context, WidgetRef ref, TrytonActionItem action,
+      {bool? direct}) async {
+    final print = direct ?? directPrint;
     final before = beforeExecute;
     if (before != null && !await before()) return;
     if (!context.mounted) return;
@@ -88,7 +99,7 @@ class ToolbarDropdownButton extends ConsumerWidget {
             {
               'res_model': action.resModel,
               ...action.raw,
-              if (directPrint) 'direct_print': true,
+              if (print) 'direct_print': true,
             },
             data: {
               'model': model,
@@ -133,8 +144,12 @@ class ToolbarDropdownButton extends ConsumerWidget {
       );
     }
 
-    // Single item → execute directly
-    if (items.length == 1 && shownButtons.isEmpty && shownExports.isEmpty) {
+    // Single item → execute directly (a report menu always offers open
+    // and print)
+    if (!reportEntries &&
+        items.length == 1 &&
+        shownButtons.isEmpty &&
+        shownExports.isEmpty) {
       return IconButton(
         icon: _icon(context),
         tooltip: '$tooltip: ${items.first.name}',
@@ -148,7 +163,9 @@ class ToolbarDropdownButton extends ConsumerWidget {
       tooltip: tooltip,
       position: PopupMenuPosition.under,
       onSelected: (entry) => switch (entry) {
-        TrytonActionItem() => _execute(context, ref, entry),
+        _DirectPrint(:final action) =>
+          _execute(context, ref, action, direct: true),
+        TrytonActionItem() => _execute(context, ref, entry, direct: false),
         ButtonNode() => onButton?.call(entry),
         Map<String, dynamic>() => onExport?.call(entry),
         _ => null,
@@ -171,13 +188,29 @@ class ToolbarDropdownButton extends ConsumerWidget {
               value: a,
               enabled: enabled,
               child: Row(children: [
-                Icon(icon, size: 16,
+                Icon(reportEntries ? Icons.open_in_new : icon, size: 16,
                     color: Theme.of(ctx).colorScheme.onSurface),
                 const SizedBox(width: 8),
                 Expanded(
                     child: Text(a.name, overflow: TextOverflow.ellipsis)),
               ]),
             )),
+        // the same reports straight to the printer (Python „Print“)
+        if (reportEntries && items.isNotEmpty) ...[
+          const PopupMenuDivider(height: 1),
+          ...items.map((a) => PopupMenuItem<Object>(
+                key: ValueKey('report-print-${a.name}'),
+                value: _DirectPrint(a),
+                enabled: enabled,
+                child: Row(children: [
+                  Icon(printIcon, size: 16,
+                      color: Theme.of(ctx).colorScheme.onSurface),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(a.name, overflow: TextOverflow.ellipsis)),
+                ]),
+              )),
+        ],
         if (items.isNotEmpty && shownButtons.isNotEmpty)
           const PopupMenuDivider(height: 1),
         ...shownButtons.map((b) => PopupMenuItem<Object>(
@@ -197,4 +230,10 @@ class ToolbarDropdownButton extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// A report of a „Report ▾“ menu to print directly.
+class _DirectPrint {
+  final TrytonActionItem action;
+  const _DirectPrint(this.action);
 }

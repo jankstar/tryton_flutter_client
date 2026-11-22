@@ -809,9 +809,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get x2mCreate => 'Créer un nouvel enregistrement';
 
   @override
-  String get x2mEdit => 'Éditer l\'enregistrement sélectionné';
-
-  @override
   String get x2mDelete => 'Supprimer l\'enregistrement sélectionné';
 
   @override
@@ -1008,6 +1005,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get allTabs => 'Tous les onglets';
+
+  @override
+  String get allPages => 'Tous les onglets';
 
   @override
   String get connectionSecure => 'Connexion chiffrée (HTTPS)';

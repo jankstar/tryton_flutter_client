@@ -117,27 +117,24 @@ void main() {
     await settle(_addressPosition);
     expect(tester.takeException(), isNull);
     expect(find.byType(RecordForm), findsWidgets);
-    // Language (many2one with widget="selection"): a dropdown of ir.lang
-    final lang = find.byWidgetPredicate((w) =>
-        w is DropdownButtonFormField<int?> &&
-        '${w.key}'.contains('m2o-selection-lang'));
+    // Language (many2one with widget="selection"): a selection entry of
+    // ir.lang (spec T2); touch (test default): its list in a bottom sheet
+    final lang = find.byKey(const ValueKey('m2o-selection-lang'));
     expect(lang, findsOneWidget);
     await tester.ensureVisible(lang);
     await tester.tap(lang);
-    await settle(find.byType(DropdownMenuItem<int?>));
-    final items = tester
-        .widgetList<DropdownMenuItem<int?>>(find.byType(DropdownMenuItem<int?>))
-        .map((i) => i.value)
-        .toSet();
-    // (the empty entry at the end lies outside the built part of the menu)
-    expect(items.length, greaterThan(1), reason: 'languages of ir.lang');
-    // close the menu without a choice
-    await tester.tapAt(Offset.zero);
+    await settle(find.byKey(const ValueKey('selection-sheet-search')));
+    // (the empty entry at the end lies outside the built part of the list)
+    expect(find.byType(ListTile).evaluate().length, greaterThan(1),
+        reason: 'languages of ir.lang');
+    // close the sheet without a choice
+    await tester.tapAt(const Offset(5, 5));
     await settle(_addressPosition);
 
     // Addresses (mode="form,tree"): the form of the first address
     expect(_addressPosition, findsOneWidget);
-    expect(find.text('1/${_count(tester)}'), findsOneWidget);
+    // (the position of the addresses' header, not the one of the toolbar)
+    expect(tester.widget<Text>(_addressPosition).data, '1/${_count(tester)}');
 
     await tester.ensureVisible(find.descendant(of: find.byKey(const ValueKey('x2m_addresses')), matching: find.byKey(const ValueKey('x2m-switch'))));
     await tester.pump();

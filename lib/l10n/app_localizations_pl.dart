@@ -803,9 +803,6 @@ class AppLocalizationsPl extends AppLocalizations {
   String get x2mCreate => 'Utwórz nowy rekord';
 
   @override
-  String get x2mEdit => 'Edytuj wybrany rekord';
-
-  @override
   String get x2mDelete => 'Usuń zaznaczony rekord';
 
   @override
@@ -1002,6 +999,9 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get allTabs => 'Wszystkie karty';
+
+  @override
+  String get allPages => 'Wszystkie karty';
 
   @override
   String get connectionSecure => 'Połączenie szyfrowane (HTTPS)';

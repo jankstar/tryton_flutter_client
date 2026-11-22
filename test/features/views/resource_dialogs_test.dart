@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/serialization/tryton_serializer.dart';
 import 'package:tryton_flutter_client/shared/utils/file_actions.dart';
@@ -216,18 +216,32 @@ void main() {
     await pumpFrames(tester);
     final dialog = find.byKey(const ValueKey('notes-dialog'));
     Finder inDialog(Finder f) => find.descendant(of: dialog, matching: f);
-    void slim(String view) {
-      for (final tip in ['Note', 'Launch actions', 'Open report', 'Print report',
-          'Related records', 'Email', 'Duplicate', 'View logs']) {
+    Future<void> slim(String view) async {
+      // the buttons of the toolbar a note has no use for (SAO toolbar:
+      // copy, delete, logs are in the record menu anyway)
+      for (final tip in ['Note', 'Chat', 'Launch actions', 'Print report',
+          'Related records', 'Email']) {
         expect(inDialog(find.byTooltip(tip)), findsNothing,
             reason: '$view: $tip');
       }
       expect(inDialog(find.byKey(const ValueKey('attachment-button'))),
           findsNothing, reason: view);
-      expect(inDialog(find.byTooltip('Delete')), findsWidgets, reason: view);
+      // delete: in the record menu (like SAO, no toolbar button)
+      await tester.tap(inDialog(find.byKey(const ValueKey('record-title'))));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('record-menu-delete')), findsOneWidget,
+          reason: view);
+      expect(find.byKey(const ValueKey('record-menu-note')), findsNothing,
+          reason: '$view: no notes of a note');
+      // close it again (the title toggles the menu): it must not cover
+      // the rows the test taps next
+      await tester.tap(inDialog(find.byKey(const ValueKey('record-title'))));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('record-menu-delete')), findsNothing,
+          reason: '$view: the record menu is closed again');
     }
 
-    slim('list');
+    await slim('list');
     // the form of the note: also slim
     // (a tap opens the form on touch platforms, else the switch)
     await tester.tap(find.text('N5'));
@@ -238,7 +252,7 @@ void main() {
       await pumpFrames(tester);
     }
     expect(inDialog(find.text('N5')), findsWidgets);
-    slim('form');
+    await slim('form');
   });
 
   testWidgets('logs: header with model, ID, module/XML ID, created by/at',
@@ -257,7 +271,10 @@ void main() {
       'model.ir.model.log.view_toolbar_get': (_) => <String, dynamic>{},
     });
     await pumpForm(tester, rpc, model: 'test.form', recordId: 1);
-    await tester.tap(find.byTooltip('View logs'));
+    // the logs: in the record menu (like SAO, no toolbar button)
+    await tester.tap(find.byKey(const ValueKey('record-title')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('record-menu-logs')));
     await pumpFrames(tester);
     String text(String key) => tester
         .widget<TextField>(find.byKey(ValueKey('log-$key')))

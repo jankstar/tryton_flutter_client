@@ -1580,12 +1580,6 @@ abstract class AppLocalizations {
   /// **'Create a new record'**
   String get x2mCreate;
 
-  /// No description provided for @x2mEdit.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit selected record'**
-  String get x2mEdit;
-
   /// No description provided for @x2mDelete.
   ///
   /// In en, this message translates to:
@@ -1963,6 +1957,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All tabs'**
   String get allTabs;
+
+  /// Tooltip of the button listing all pages of a form notebook whose tabs do not fit
+  ///
+  /// In en, this message translates to:
+  /// **'All pages'**
+  String get allPages;
 
   /// No description provided for @connectionSecure.
   ///

@@ -108,7 +108,7 @@ lib/
 │   ├── screen/         # Screen, graph and calendar logic, Tryton URLs
 │   ├── serialization/  # Tryton JSON types (datetime, Decimal, bytes, …)
 │   ├── session/        # session, secure session store, profiles
-│   ├── theme/          # light/dark theme
+│   ├── theme/          # themes (AppTheme, incl. „Blue Ocean“ in the style of SAO) and TrytonColors
 │   ├── wizard/         # wizard runtime
 │   └── xml/            # view XML parsing
 ├── features/

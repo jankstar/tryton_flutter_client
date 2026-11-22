@@ -877,8 +877,6 @@
   "@ctxPrint": {},
   "x2mCreate": "Create a new record",
   "@x2mCreate": {},
-  "x2mEdit": "Edit selected record",
-  "@x2mEdit": {},
   "x2mDelete": "Delete selected record",
   "@x2mDelete": {},
   "x2mAdd": "Add existing record",
@@ -1021,6 +1019,10 @@
   "scanCodeNoCamera": "No camera available – enter or scan the code with a hand scanner.",
   "@scanCodeNoCamera": {},
   "allTabs": "All tabs",
+  "allPages": "All pages",
+  "@allPages": {
+    "description": "Tooltip of the button listing all pages of a form notebook whose tabs do not fit"
+  },
   "@allTabs": {},
   "connectionSecure": "Encrypted connection (HTTPS)",
   "@connectionSecure": {},

@@ -261,8 +261,8 @@ void main() {
     expect(find.text('T11'), findsOneWidget);
   }, variant: desktop);
 
-  testWidgets('narrow screen: the rare buttons are in the „More“ menu',
-      (tester) async {
+  testWidgets('narrow screen: the buttons leave only at the right end into '
+      'the „More“ menu, none moves (decision 2026-11-22)', (tester) async {
     final rpc = server({
       'type': 'one2many',
       'add_remove': [
@@ -272,11 +272,21 @@ void main() {
     await pumpForm(tester, rpc,
         model: 'test.form', recordId: 1, size: const Size(420, 900));
     expect(find.byKey(const ValueKey('x2m-more')), findsOneWidget);
-    expect(find.byKey(const ValueKey('x2m-switch')), findsNothing);
-    expect(button(tester, 'new'), isNotNull, reason: 'frequent: stays');
+    // the order of the header (Python One2Many)
+    const order = [
+      'switch', 'previous', 'next', 'add', 'remove', 'new', 'open', 'delete',
+      'undelete'
+    ];
+    final shown = [
+      for (final name in order)
+        if (find.byKey(ValueKey('x2m-$name')).evaluate().isNotEmpty) name
+    ];
+    expect(shown, order.sublist(0, shown.length),
+        reason: 'a prefix: nothing from the middle is missing');
+    expect(shown, contains('switch'), reason: 'the first button stays');
     await tester.tap(find.byKey(const ValueKey('x2m-more')));
     await tester.pumpAndSettle();
-    for (final name in ['switch', 'add', 'remove', 'undelete']) {
+    for (final name in order.sublist(shown.length)) {
       expect(find.byKey(ValueKey('x2m-more-$name')), findsOneWidget, reason: name);
     }
   }, variant: desktop);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
 import 'package:tryton_flutter_client/core/theme/app_theme.dart';
+import 'package:tryton_flutter_client/core/theme/tryton_colors.dart';
 
 import 'form_harness.dart';
 
@@ -80,17 +81,16 @@ void main() {
       final bar = tester.widget<Container>(
         find.byKey(const ValueKey('x2m-toolbar')),
       );
-      expect(
-        (bar.decoration as BoxDecoration).color,
-        cs.surfaceContainerHighest,
-      );
+      // the bar in the band colour of the theme (same form everywhere)
+      final band = theme.extension<TrytonColors>()!.x2manyHeaderBackground;
+      expect((bar.decoration as BoxDecoration).color, band);
       expect(fillOf(tester, 'x2m-add-entry'), cs.surface);
       expect(
         theme.scaffoldBackgroundColor,
         cs.surface,
         reason: 'form background',
       );
-      expect(cs.surface, isNot(cs.surfaceContainerHighest));
+      expect(cs.surface, isNot(band));
       if (theme.brightness == Brightness.light) {
         // nearly white
         expect(cs.surface.computeLuminance(), greaterThan(0.9));

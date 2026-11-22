@@ -2,7 +2,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/l10n/locale_provider.dart';
+import '../../core/theme/tryton_colors.dart';
 import 'tab_manager.dart';
+import '../../shared/widgets/overflow_list_button.dart';
 
 /// The tab chips of the shell (spec 10.1): a horizontal strip that
 /// scrolls with the mouse wheel and brings the active tab into view;
@@ -146,71 +148,26 @@ class _TabStripState extends State<TabStrip> {
 
   /// All tabs as a list: a click activates, × closes (the list stays
   /// short-lived: it closes with the choice).
-  Widget _allTabsButton() {
-    final cs = Theme.of(context).colorScheme;
-    return PopupMenuButton<int>(
-      key: const ValueKey('tabs-all'),
-      tooltip: context.l10n.allTabs,
-      position: PopupMenuPosition.under,
-      onSelected: widget.onActivate,
-      // number of tabs and arrow
-      child: Container(
-        height: 28,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.only(left: 8, right: 2),
-        decoration: BoxDecoration(
-          border: Border.all(color: cs.outlineVariant),
-          borderRadius: BorderRadius.circular(8),
+  Widget _allTabsButton() => OverflowListButton(
+        key: const ValueKey('tabs-all'),
+        tooltip: context.l10n.allTabs,
+        count: widget.tabs.length,
+        activeIndex: widget.activeIndex,
+        label: (i) => widget.tabs[i].title.split(' / ').last,
+        fullLabel: (i) => widget.tabs[i].title,
+        itemKeyPrefix: 'tabs-all',
+        onSelected: widget.onActivate,
+        trailing: (context, i) => IconButton(
+          key: ValueKey('tabs-all-close-$i'),
+          icon: const Icon(Icons.close, size: 15),
+          tooltip: context.l10n.close,
+          visualDensity: VisualDensity.compact,
+          onPressed: () {
+            Navigator.of(context).pop();
+            widget.onClose(i);
+          },
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('${widget.tabs.length}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          const Icon(Icons.arrow_drop_down, size: 18),
-        ]),
-      ),
-      itemBuilder: (context) => [
-        for (var i = 0; i < widget.tabs.length; i++)
-          PopupMenuItem<int>(
-            key: ValueKey('tabs-all-$i'),
-            value: i,
-            height: 36,
-            child: Row(children: [
-              SizedBox(
-                width: 22,
-                child: i == widget.activeIndex
-                    ? Icon(Icons.check, size: 16, color: cs.primary)
-                    : null,
-              ),
-              Expanded(
-                child: Tooltip(
-                  message: widget.tabs[i].title,
-                  waitDuration: const Duration(milliseconds: 600),
-                  child: Text(
-                    widget.tabs[i].title.split(' / ').last,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight:
-                          i == widget.activeIndex ? FontWeight.w600 : null,
-                    ),
-                  ),
-                ),
-              ),
-              IconButton(
-                key: ValueKey('tabs-all-close-$i'),
-                icon: const Icon(Icons.close, size: 15),
-                tooltip: context.l10n.close,
-                visualDensity: VisualDensity.compact,
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  widget.onClose(i);
-                },
-              ),
-            ]),
-          ),
-      ],
-    );
-  }
+      );
 }
 
 class _TabChip extends StatelessWidget {
@@ -229,35 +186,60 @@ class _TabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: InputChip(
-        // Keyword actions of the menu carry the menu path ("A / B / C"):
-        // the chip shows the last part, the tooltip the full name.
-        tooltip: tab.title,
-        label: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 180),
-          child: Text(
-            tab.title.split(' / ').last,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            ),
+    final tc = TrytonColors.of(context);
+    // a coloured tab bar (Blue Ocean): light chips on the band
+    final onBar = tc.tabBarForeground;
+    final chip = InputChip(
+      // Keyword actions of the menu carry the menu path ("A / B / C"):
+      // the chip shows the last part, the tooltip the full name.
+      tooltip: tab.title,
+      label: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 180),
+        child: Text(
+          tab.title.split(' / ').last,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            color: onBar == null
+                ? null
+                : (isActive ? tc.tabSelectedForeground : onBar),
           ),
         ),
-        selected: isActive,
-        onSelected: (_) => onTap(),
-        onDeleted: onClose,
-        deleteIcon: const Icon(Icons.close, size: 13),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        visualDensity: VisualDensity.compact,
-        selectedColor: cs.primaryContainer,
-        checkmarkColor: cs.onPrimaryContainer,
-        showCheckmark: false,
       ),
+      selected: isActive,
+      onSelected: (_) => onTap(),
+      onDeleted: onClose,
+      deleteIcon: const Icon(Icons.close, size: 13),
+      deleteIconColor: onBar == null
+          ? null
+          : (isActive ? tc.tabSelectedForeground : onBar),
+      side: onBar == null || isActive
+          ? null
+          : BorderSide(color: onBar.withAlpha(120)),
+      // (Material 3 chips paint `color` over `backgroundColor`)
+      color: onBar == null
+          ? null
+          : WidgetStateProperty.resolveWith((states) =>
+              states.contains(WidgetState.selected)
+                  ? tc.tabSelected
+                  : Colors.transparent),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      visualDensity: VisualDensity.compact,
+      selectedColor: TrytonColors.of(context).tabSelected,
+      checkmarkColor: TrytonColors.of(context).tabSelectedForeground,
+      showCheckmark: false,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      // the chip's material paints with the canvas colour (white): on a
+      // coloured bar the inactive chips stay transparent
+      child: onBar == null
+          ? chip
+          : Theme(
+              data: Theme.of(context).copyWith(canvasColor: Colors.transparent),
+              child: chip),
     );
   }
 }

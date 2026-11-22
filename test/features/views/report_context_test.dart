@@ -10,7 +10,8 @@ import 'form_harness.dart';
 void main() {
   final desktop = TargetPlatformVariant.only(TargetPlatform.macOS);
 
-  // „Open report“ and „Print report“ (direct_print, Python toolbar)
+  // one „Report ▾“ like SAO: open the report, or print it directly
+  // (direct_print, the Python toolbar's „Print“)
   for (final (tooltip, direct) in [
     ('Open report', false),
     ('Print report', true),
@@ -72,7 +73,11 @@ void main() {
       // a click selects after the double-click time
       await tester.tap(find.text('Account 412'));
       await pumpFrames(tester, 10);
-      await tester.tap(find.byTooltip('$tooltip: General Ledger'));
+      await tester.tap(find.byKey(const ValueKey('toolbar-print')));
+      await tester.pumpAndSettle();
+      await tester.tap(direct
+          ? find.byKey(const ValueKey('report-print-General Ledger'))
+          : find.widgetWithText(PopupMenuItem<Object>, 'General Ledger').first);
       await pumpFrames(tester, 10);
 
       final call = rpc.named('report.test.general_ledger.execute').single;

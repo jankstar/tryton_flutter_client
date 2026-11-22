@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tryton_flutter_client/core/screen/screen.dart';
+import 'package:tryton_flutter_client/features/views/record_menu.dart';
 
 import 'form_harness.dart';
 
@@ -58,6 +59,19 @@ void main() {
   IconButton buttonOf(WidgetTester tester, IconData icon) =>
       tester.widget<IconButton>(find.widgetWithIcon(IconButton, icon).first);
 
+  /// Copy, delete and revisions are in the record menu only (SAO toolbar).
+  Future<MenuItemButton?> menuEntry(
+      WidgetTester tester, RecordAction action) async {
+    if (find.byKey(const ValueKey('record-menu-save')).evaluate().isEmpty) {
+      await tester.tap(find.byKey(const ValueKey('record-title')));
+      await tester.pumpAndSettle();
+    }
+    final entry = find.byKey(ValueKey('record-menu-${action.name}'));
+    return entry.evaluate().isEmpty
+        ? null
+        : tester.widget<MenuItemButton>(entry);
+  }
+
   testWidgets('without create/delete: New, Duplicate, Delete disabled; '
       'Many2One without read: no Open', (tester) async {
     final rpc = server({
@@ -67,10 +81,10 @@ void main() {
     await pumpForm(tester, rpc,
         model: 'test.form', recordId: 1, settle: false, metadata: true);
     expect(buttonOf(tester, Icons.add).onPressed, isNull);
-    expect(buttonOf(tester, Icons.copy_outlined).onPressed, isNull);
-    expect(buttonOf(tester, Icons.delete_outline).onPressed, isNull);
     expect(find.byKey(const ValueKey('m2o-open-partner')), findsNothing);
-    expect(find.byIcon(Icons.manage_history), findsNothing,
+    expect((await menuEntry(tester, RecordAction.copy))?.onPressed, isNull);
+    expect((await menuEntry(tester, RecordAction.delete))?.onPressed, isNull);
+    expect(await menuEntry(tester, RecordAction.revision), isNull,
         reason: 'no MODELHISTORY model');
     // write right: the form stays editable
     expect(rpc.named('model.ir.model.access.get_access'), isNotEmpty);
@@ -83,9 +97,10 @@ void main() {
     await pumpForm(tester, rpc,
         model: 'test.form', recordId: 1, settle: false, metadata: true);
     expect(buttonOf(tester, Icons.add).onPressed, isNotNull);
-    expect(buttonOf(tester, Icons.delete_outline).onPressed, isNotNull);
     expect(find.byKey(const ValueKey('m2o-open-partner')), findsOneWidget);
-    expect(find.byIcon(Icons.manage_history), findsOneWidget);
+    expect((await menuEntry(tester, RecordAction.delete))?.onPressed, isNotNull);
+    expect(await menuEntry(tester, RecordAction.revision), isNotNull,
+        reason: 'history model: revisions in the record menu');
   });
 
   testWidgets('list: a click selects, a double click opens (desktop)',
@@ -98,7 +113,12 @@ void main() {
     await tester.pump(kDoubleTapTimeout);
     await pumpFrames(tester, 5);
     expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget, reason: 'still the list');
-    expect(find.text('2/2'), findsOneWidget, reason: 'N2 selected');
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('toolbar-position')),
+            matching: find.text('2/2')),
+        findsOneWidget,
+        reason: 'N2 selected');
 
     await tester.tap(find.text('N2'));
     await tester.pump(kDoubleTapMinTime);
@@ -114,7 +134,12 @@ void main() {
     await tester.longPress(find.text('N2'));
     await pumpFrames(tester, 5);
     expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget);
-    expect(find.text('2/2'), findsOneWidget, reason: 'N2 selected');
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('toolbar-position')),
+            matching: find.text('2/2')),
+        findsOneWidget,
+        reason: 'N2 selected');
     await tester.tap(find.text('N1'));
     await pumpFrames(tester);
     expect(find.byKey(const ValueKey('list-column-menu')), findsNothing, reason: 'form opened');

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n/locale_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../core/theme/tryton_colors.dart';
 import '../auth/auth_provider.dart';
 import '../auth/preferences_dialog.dart';
 import '../auth/user_preferences_provider.dart';
@@ -67,7 +68,11 @@ class UserChip extends ConsumerWidget {
             await signOut(context, ref);
         }
       },
-      itemBuilder: (ctx) => [
+      itemBuilder: (ctx) {
+        // the icons in the colour of the main menu (the menu would take the
+        // light icon colour of the coloured tab bar the chip sits on)
+        final menuIcon = TrytonColors.of(ctx).menuIcon;
+        return [
         // ── User info header (not selectable) ──────────────────────────
         PopupMenuItem<_UserMenuItem>(
           enabled: false,
@@ -79,44 +84,44 @@ class UserChip extends ConsumerWidget {
           value: _UserMenuItem.preferences,
           enabled: userId != null && userId > 0,
           child: Row(children: [
-            const Icon(Icons.settings_outlined, size: 16),
+            Icon(Icons.settings_outlined, size: 16, color: menuIcon),
             const SizedBox(width: 8),
-            Text(ctx.l10n.preferences),
+            Flexible(
+                child: Text(ctx.l10n.preferences, overflow: TextOverflow.ellipsis)),
           ]),
         ),
-        // ── Help (Python `Main` menu "Help") ───────────────────────────
+        // ── Help (Python `Main` menu section „Help“; the divider sets the
+        // group apart like SAO, a caption would look like a dead entry) ──
         const PopupMenuDivider(),
-        PopupMenuItem<_UserMenuItem>(
-          enabled: false,
-          height: 28,
-          child: Text(ctx.l10n.help,
-              style: Theme.of(ctx).textTheme.labelSmall),
-        ),
         PopupMenuItem<_UserMenuItem>(
           key: const ValueKey('user-menu-documentation'),
           value: _UserMenuItem.help,
           child: Row(children: [
-            const Icon(Icons.menu_book_outlined, size: 16),
+            Icon(Icons.menu_book_outlined, size: 16, color: menuIcon),
             const SizedBox(width: 8),
-            Text(ctx.l10n.documentation),
+            Flexible(
+                child: Text(ctx.l10n.documentation, overflow: TextOverflow.ellipsis)),
           ]),
         ),
         PopupMenuItem(
           key: const ValueKey('user-menu-shortcuts'),
           value: _UserMenuItem.shortcuts,
           child: Row(children: [
-            const Icon(Icons.keyboard_outlined, size: 16),
+            Icon(Icons.keyboard_outlined, size: 16, color: menuIcon),
             const SizedBox(width: 8),
-            Text('${ctx.l10n.keyboardShortcuts}…'),
+            Flexible(
+                child: Text('${ctx.l10n.keyboardShortcuts}…',
+                    overflow: TextOverflow.ellipsis)),
           ]),
         ),
         PopupMenuItem<_UserMenuItem>(
           key: const ValueKey('user-menu-about'),
           value: _UserMenuItem.about,
           child: Row(children: [
-            const Icon(Icons.info_outline, size: 16),
+            Icon(Icons.info_outline, size: 16, color: menuIcon),
             const SizedBox(width: 8),
-            Text(ctx.l10n.aboutMenu),
+            Flexible(
+                child: Text(ctx.l10n.aboutMenu, overflow: TextOverflow.ellipsis)),
           ]),
         ),
         const PopupMenuDivider(),
@@ -124,11 +129,11 @@ class UserChip extends ConsumerWidget {
         PopupMenuItem<_UserMenuItem>(
           value: _UserMenuItem.themes,
           child: Row(children: [
-            const Icon(Icons.palette_outlined, size: 16),
+            Icon(Icons.palette_outlined, size: 16, color: menuIcon),
             const SizedBox(width: 8),
             const Text('Theme'),
             const Spacer(),
-            const Icon(Icons.chevron_right, size: 16),
+            Icon(Icons.chevron_right, size: 16, color: menuIcon),
           ]),
         ),
         const PopupMenuDivider(),
@@ -144,7 +149,8 @@ class UserChip extends ConsumerWidget {
                     TextStyle(color: Theme.of(ctx).colorScheme.error)),
           ]),
         ),
-      ],
+      ];
+      },
       // ── Chip button showing avatar + name + currency ──────────────────
       // very narrow: only the avatar (name and arrow need more room)
       child: LayoutBuilder(

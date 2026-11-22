@@ -803,9 +803,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get x2mCreate => 'Skapa en ny post';
 
   @override
-  String get x2mEdit => 'Redigera vald post';
-
-  @override
   String get x2mDelete => 'Ta bort vald post';
 
   @override
@@ -1002,6 +999,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get allTabs => 'Alla flikar';
+
+  @override
+  String get allPages => 'Alla flikar';
 
   @override
   String get connectionSecure => 'Krypterad anslutning (HTTPS)';

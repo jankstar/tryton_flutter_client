@@ -63,7 +63,12 @@ void main() {
     // List: one search, the rows loaded with their neighbours in one read.
     expect(find.text('N1'), findsOneWidget);
     expect(find.text('N3'), findsOneWidget);
-    expect(find.text('_/3'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('toolbar-position')),
+            matching: find.text('_/3')),
+        findsOneWidget,
+        reason: 'the position in the toolbar (SAO)');
     expect(rpc.named('model.test.party.search'), hasLength(1));
     expect(rpc.named('model.test.party.read').first.params[0], [1, 2, 3]);
 
@@ -116,7 +121,12 @@ void main() {
     await pumpFrames(tester);
     expect(find.byKey(const ValueKey('list-column-menu')), findsOneWidget);
     expect(find.text('Default'), findsNothing);
-    expect(find.text('_/3'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('toolbar-position')),
+            matching: find.text('_/3')),
+        findsOneWidget,
+        reason: 'the position in the toolbar (SAO)');
   });
 
   testWidgets('form: duplicate, delete and a button with a client action',
@@ -131,8 +141,11 @@ void main() {
     await doubleTap(tester, find.text('N2'));
     expect(formName(tester), 'N2');
 
-    // Duplicate: the copy is loaded on top of the group and shown.
-    await tester.tap(find.byIcon(Icons.copy_outlined));
+    // Duplicate (record menu, like SAO no toolbar button): the copy is
+    // loaded on top of the group and shown.
+    await tester.tap(find.byKey(const ValueKey('record-title')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('record-menu-copy')));
     await pumpFrames(tester);
     expect(rpc.named('model.test.party.copy').single.params, [
       [2],
@@ -141,8 +154,11 @@ void main() {
     expect(formName(tester), 'N100');
     expect(find.textContaining('1/4'), findsOneWidget);
 
-    // Delete: removed from the group, the form shows the next record.
-    await tester.tap(find.byIcon(Icons.delete_outline));
+    // Delete (record menu): removed from the group, the form shows the
+    // next record.
+    await tester.tap(find.byKey(const ValueKey('record-title')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('record-menu-delete')));
     await pumpFrames(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
     await pumpFrames(tester);

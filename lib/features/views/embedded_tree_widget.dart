@@ -8,6 +8,7 @@ import '../../core/rpc/error_processing.dart';
 import '../../core/screen/screen.dart';
 import '../../core/xml/form_xml_parser.dart';
 import '../../core/xml/view_definition.dart';
+import '../actions/action_service.dart' show DialogActionUi, actionServiceProvider;
 import '../../shared/errors/error_dialogs.dart';
 import '../model/field_definition.dart';
 import '../model/field_support.dart';
@@ -21,6 +22,8 @@ import 'search_dialog.dart';
 import 'tree_view.dart';
 import 'wizard_widget.dart' show wizardInvalidTexts;
 import '../../shared/dialogs/tryton_dialogs.dart';
+import '../../core/theme/tryton_colors.dart';
+import 'record_menu.dart' show ToolbarButtonGroup, positionPill;
 import 'form_label_style.dart' show toolbarInputFill;
 
 /// Views of x2many relations (`fields_view_get`), loaded once per
@@ -754,6 +757,30 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
     _table.select([target]);
   }
 
+  /// [items] of the header split into button groups (consecutive items of
+  /// one group: navigation, add/remove, edit).
+  static List<List<(String, IconData, String, VoidCallback?, bool)>> _groups(
+      List<(String, IconData, String, VoidCallback?, bool)> items) {
+    int groupOf(String name) => switch (name) {
+          'switch' || 'previous' || 'next' => 0,
+          'add' || 'remove' => 1,
+          'position' => -1, // with its neighbours
+          _ => 2,
+        };
+    final runs = <List<(String, IconData, String, VoidCallback?, bool)>>[];
+    var current = -2;
+    for (final item in items) {
+      final group = groupOf(item.$1);
+      if (group != -1 && group != current) {
+        runs.add([]);
+        current = group;
+      }
+      if (runs.isEmpty) runs.add([]);
+      runs.last.add(item);
+    }
+    return runs;
+  }
+
   /// The header of the widget (Python `One2Many`/`Many2Many`): all
   /// buttons always shown, disabled when not allowed; on narrow screens
   /// the rare ones (switch, add, remove, undelete) in a „More“ menu.
@@ -790,7 +817,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       if (!_isMany2Many) ...[
         ('new', Icons.add, l.x2mCreate,
             enabled.create ? (_formMode ? _newInline : _newRecord) : null, false),
-        ('open', Icons.edit_outlined, l.x2mEdit,
+        // „Open“ with the icon of the many2one field's Open (SAO
+        // `tryton-open`): the form of the record opens
+        ('open', Icons.open_in_new, l.open,
             enabled.open && first != null ? () => _openRecord(first) : null, false),
         ('delete', Icons.delete_outline, l.x2mDelete,
             enabled.delete ? () => _markSelected(remove: false) : null, false),
@@ -805,9 +834,15 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
       if (name == 'position') {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(tip,
-              key: const ValueKey('x2m-position'),
-              style: TextStyle(fontSize: 12, color: cs.outline)),
+          child: positionPill(
+            context,
+            Text(tip,
+                key: const ValueKey('x2m-position'),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: TrytonColors.of(context).positionForeground ??
+                        cs.outline)),
+          ),
         );
       }
       final color = onPressed == null
@@ -827,16 +862,50 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
 
     return LayoutBuilder(builder: (context, constraints) {
       final narrow = constraints.maxWidth < 560;
-      final shown = [for (final i in items) if (!narrow || !i.$5) i];
-      final more = [for (final i in items) if (narrow && i.$5) i];
+      // like the top bar: as many buttons from the left as fit, the
+      // others in the „More“ menu at the right end – none moves within
+      // the header (decision 2026-11-22)
+      const buttonWidth = 32.0, groupGap = 4.0, positionWidth = 64.0;
+      double extent(List<(String, IconData, String, VoidCallback?, bool)> list) =>
+          [for (final i in list) i.$1 == 'position' ? positionWidth : buttonWidth]
+              .fold(0.0, (a, b) => a + b) +
+          groupGap * _groups(list).length;
+      final available = constraints.maxWidth -
+          8 - // padding
+          80 - // the title keeps at least this (shortened with …)
+          (searchEntry ? (narrow ? 120 : 180) + 8 : 0);
+      var count = items.length;
+      if (extent(items) > available) {
+        while (count > 0 &&
+            extent(items.take(count).toList()) + buttonWidth + groupGap >
+                available) {
+          count--;
+        }
+      }
+      // the position never stays without its „next“
+      while (count > 0 && items[count - 1].$1 == 'position') {
+        count--;
+      }
+      final shown = items.take(count).toList();
+      final more = [
+        for (final i in items.skip(count))
+          if (i.$1 != 'position') i
+      ];
+      final onHeader = TrytonColors.of(context).x2manyHeaderForeground;
+      Widget colored(Widget child) => onHeader == null
+          ? child
+          : IconTheme.merge(
+              data: IconThemeData(color: onHeader),
+              child: DefaultTextStyle.merge(
+                  style: TextStyle(color: onHeader), child: child));
       return Container(
         key: const ValueKey('x2m-toolbar'),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
+          color: TrytonColors.of(context).x2manyHeaderBackground,
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Row(children: [
+        child: colored(Row(children: [
           // the title (Python: label of the field)
           Flexible(
             child: Padding(
@@ -845,7 +914,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                   key: const ValueKey('x2m-title'),
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: cs.primary,
+                        color: TrytonColors.of(context).x2manyTitle,
                       )),
             ),
           ),
@@ -859,7 +928,15 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (searchEntry)
                     _buildAddEntry(enabled: enabled.add, width: narrow ? 120 : 180),
-                  for (final item in shown) button(item),
+                  // button groups like the top bar (Python One2Many:
+                  // navigation | add, remove | new, open, delete, undelete)
+                  for (final run in _groups(shown))
+                    ToolbarButtonGroup(
+                      key: ValueKey('x2m-group-${run.first.$1}'),
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      buttonSize: const Size(32, 32),
+                      children: [for (final item in run) button(item)],
+                    ),
                 ]),
               ),
             ),
@@ -885,7 +962,7 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
                   ),
               ],
             ),
-        ]),
+        ])),
       );
     });
   }
@@ -965,6 +1042,51 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
           ? _selected.first
           : (group.isEmpty ? null : group.first);
     });
+  }
+
+  /// A button of the inline form is running.
+  bool _buttonRunning = false;
+
+  /// A `<button>` of the inline form (shown with „Switch view“): runs on a
+  /// form screen of the child group like in the popup (`showFormDialog`,
+  /// Python One2Many: the child screen's form view) – the typed text is
+  /// written first, the record stays in the parent's group.
+  Future<void> _inlineButton(ButtonNode node) async {
+    final record = _current;
+    if (_buttonRunning || record == null) return;
+    setState(() => _buttonRunning = true);
+    TrytonScreen? screen;
+    try {
+      FocusManager.instance.primaryFocus?.unfocus();
+      await _flushInline();
+      await recordTreeIdle(record);
+      screen = await _childScreen(record.group);
+      await screen.switchView();
+      if (!mounted) return;
+      screen
+        ..currentRecord = record
+        ..onConfirm = ((text) => showSur(context, text))
+        ..onPreValidationFailed = ((message) =>
+            showWarning(context, context.l10n.preValidation, message))
+        ..invalidTexts = (() => wizardInvalidTexts(context));
+      final s = screen;
+      screen.onAction = (action, data, actionContext) => ref
+          .read(actionServiceProvider)
+          .execute(action,
+              data: data,
+              context: actionContext,
+              keyword: true,
+              ui: DialogActionUi(context),
+              screen: s);
+      await screen.button(node);
+    } on HandledRpcError {
+      // shown
+    } catch (e) {
+      if (mounted) await showErrorDialog(context, e);
+    } finally {
+      screen?.dispose();
+      if (mounted) setState(() => _buttonRunning = false);
+    }
   }
 
   /// Writes the text typed in the inline form (before navigation).
@@ -1091,6 +1213,9 @@ class _EmbeddedTreeWidgetState extends ConsumerState<EmbeddedTreeWidget> {
               if (_pending.containsKey(name)) _write(name, _pending.remove(name));
             },
             onChangedImmediate: _write,
+            // the form's <button>s run like in the popup (Python: the
+            // child screen's form view)
+            onButton: _inlineButton,
             // fields by their own states (Python child screen)
             isReadOnly: widget.parentReadOnly || marked,
             breadcrumb: [...widget.breadcrumb, widget.fieldDef.label],
@@ -1202,11 +1327,34 @@ class _TBtn extends StatelessWidget {
   const _TBtn({super.key, required this.icon, required this.tip, this.color, this.onPressed});
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    icon: Icon(icon, size: 16, color: color),
-    tooltip: tip,
-    onPressed: onPressed,
-    padding: EdgeInsets.zero,
-    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-  );
+  Widget build(BuildContext context) {
+    final button = IconButton(
+      icon: Icon(icon, size: 16, color: color),
+      tooltip: tip,
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+    );
+    // filled buttons on the header (Blue Ocean, SAO #B4CEFD); else plain
+    final tc = TrytonColors.of(context);
+    final background = tc.x2manyButtonBackground;
+    if (background == null) return button;
+    final foreground = tc.x2manyButtonForeground ??
+        Theme.of(context).colorScheme.onSurface;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 1),
+      child: IconButtonTheme(
+        data: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            backgroundColor: background,
+            disabledBackgroundColor: background.withAlpha(150),
+            foregroundColor: foreground,
+            disabledForegroundColor: foreground.withAlpha(90),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          ),
+        ),
+        child: button,
+      ),
+    );
+  }
 }

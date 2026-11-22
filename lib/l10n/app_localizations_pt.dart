@@ -805,9 +805,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get x2mCreate => 'Criar novo registro';
 
   @override
-  String get x2mEdit => 'Editar registro selecionado';
-
-  @override
   String get x2mDelete => 'Apagar o registro selecionado';
 
   @override
@@ -1004,6 +1001,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get allTabs => 'Todas as abas';
+
+  @override
+  String get allPages => 'Todas as abas';
 
   @override
   String get connectionSecure => 'Conexão criptografada (HTTPS)';

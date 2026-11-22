@@ -803,9 +803,6 @@ class AppLocalizationsFi extends AppLocalizations {
   String get x2mCreate => 'Luo uusi tietue';
 
   @override
-  String get x2mEdit => 'Muokkaa valittua tietuetta';
-
-  @override
   String get x2mDelete => 'Poista valittu tietue';
 
   @override
@@ -1002,6 +999,9 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get allTabs => 'Kaikki välilehdet';
+
+  @override
+  String get allPages => 'Kaikki välilehdet';
 
   @override
   String get connectionSecure => 'Salattu yhteys (HTTPS)';

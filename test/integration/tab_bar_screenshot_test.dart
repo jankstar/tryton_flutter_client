@@ -23,6 +23,7 @@ import 'package:tryton_flutter_client/features/shell/tab_manager.dart';
 import 'package:tryton_flutter_client/features/shell/tab_strip.dart';
 import 'package:tryton_flutter_client/features/tabs/user_chip.dart';
 import 'package:tryton_flutter_client/l10n/app_localizations.dart';
+import 'package:tryton_flutter_client/core/theme/tryton_colors.dart';
 import 'package:tryton_flutter_client/shared/dialogs/tryton_dialogs.dart';
 
 /// Screenshots of the tab bar of the shell (no server): many tabs with
@@ -100,14 +101,19 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: Builder(builder: (context) {
-              final cs = Theme.of(context).colorScheme;
+              final tc = TrytonColors.of(context);
               return Scaffold(
                 body: Column(children: [
-                  // like AppShell._tabBar
+                  // like AppShell._tabBar: the band colour, white icons and
+                  // texts (spec T5, every theme)
                   Container(
                     height: 40,
-                    color: cs.surfaceContainerHighest,
-                    child: Row(children: [
+                    color: tc.tabBarBackground,
+                    child: IconTheme.merge(
+                      data: IconThemeData(color: tc.tabBarForeground),
+                      child: DefaultTextStyle.merge(
+                        style: TextStyle(color: tc.tabBarForeground),
+                        child: Row(children: [
                       const SizedBox(
                           width: 40, child: Icon(Icons.menu_open, size: 18)),
                       Expanded(
@@ -124,6 +130,8 @@ void main() {
                       ),
                       const SizedBox(width: 4),
                     ]),
+                      ),
+                    ),
                   ),
                   const Expanded(child: SizedBox()),
                 ]),
